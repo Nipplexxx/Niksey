@@ -1,19 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base application theme -->
-    <style name="Theme.Niksey" parent="MaterialDrawerTheme.Light">
-        <!-- Primary brand color -->
-        <item name="colorPrimary">@drawable/head</item>
-        <!-- Primary color profile picture -->
+    <style name="Theme.Niksey" parent="Theme.Material3.Light.NoActionBar">
+
+        <!-- Основные цвета -->
+        <item name="colorPrimary">@color/purple_300</item>
         <item name="colorPrimaryVariant">@color/purple_0</item>
         <item name="colorOnPrimary">@color/white_100</item>
-        <!-- Secondary brand color. -->
+
+        <!-- Вторичные цвета -->
         <item name="colorSecondary">@color/purple_100</item>
         <item name="colorSecondaryVariant">@color/purple_200</item>
         <item name="colorOnSecondary">@color/black_80</item>
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
-        <!-- Customize your theme here. -->
-        <item name="android:colorPrimaryDark">@drawable/head</item>
+
+        <!-- Статус-бар -->
+        <item name="android:statusBarColor">@color/purple_0</item>
+
+        <!-- Popup меню -->
         <item name="popupTheme">@style/actionMenu</item>
+
+        <!-- Цвета для чата (светлая тема) -->
+        <item name="ghost_card_bg">@color/ghost_card_bg_light</item>
+        <item name="text_primary">@color/text_primary_light</item>
+        <item name="text_secondary">@color/text_secondary_light</item>
+        <item name="text_hint">@color/text_hint_light</item>
     </style>
 </resources>

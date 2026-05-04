@@ -7,11 +7,21 @@ data class ViewImageMessage(
     override val fileUrl: String,
     override val text: String = ""
 ) : MessageView {
-    override fun getTypeView(): Int {
-        return MessageView.MESSAGE_IMAGE
-    }
+
+    override fun getTypeView(): Int = MessageView.MESSAGE_IMAGE
+
+    override fun isFromCurrentUser(): Boolean = from == com.example.niksey.database.CURRENT_UID
 
     override fun equals(other: Any?): Boolean {
-        return (other as MessageView).id == id
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+        other as MessageView
+        return id == other.id
+    }
+
+    override fun hashCode(): Int = id.hashCode()
+
+    override fun toString(): String {
+        return "ViewImageMessage(id='$id', from='$from')"
     }
 }

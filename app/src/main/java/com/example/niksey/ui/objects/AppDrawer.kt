@@ -21,15 +21,16 @@ import com.mikepenz.materialdrawer.DrawerBuilder
 import com.mikepenz.materialdrawer.model.DividerDrawerItem
 import com.mikepenz.materialdrawer.model.PrimaryDrawerItem
 import com.mikepenz.materialdrawer.model.ProfileDrawerItem
-import com.mikepenz.materialdrawer.model.interfaces.IDrawerItem
 import com.mikepenz.materialdrawer.util.AbstractDrawerImageLoader
 import com.mikepenz.materialdrawer.util.DrawerImageLoader
 
 class AppDrawer {
+
     private lateinit var mDrawer: Drawer
     private lateinit var mHeader: AccountHeader
     private lateinit var mDrawerLayout: DrawerLayout
     private lateinit var mCurrentProfile: ProfileDrawerItem
+
     fun create() {
         initLoader()
         createHeader()
@@ -37,39 +38,38 @@ class AppDrawer {
         mDrawerLayout = mDrawer.drawerLayout
     }
 
-    //Блокирование навигации
     fun disableDrawer() {
         mDrawer.actionBarDrawerToggle?.isDrawerIndicatorEnabled = false
         APP_ACTIVITY.supportActionBar?.setDisplayHomeAsUpEnabled(true)
         mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
+
         APP_ACTIVITY.mToolbar.setNavigationOnClickListener {
             APP_ACTIVITY.supportFragmentManager.popBackStack()
         }
     }
 
-    //Добавление навигации
     fun enableDrawer() {
         APP_ACTIVITY.supportActionBar?.setDisplayHomeAsUpEnabled(false)
         mDrawer.actionBarDrawerToggle?.isDrawerIndicatorEnabled = true
         mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
+
         APP_ACTIVITY.mToolbar.setNavigationOnClickListener {
             mDrawer.openDrawer()
         }
     }
 
-    //Menu header
     private fun createHeader() {
         mCurrentProfile = ProfileDrawerItem()
             .withName(USER.fullname)
             .withEmail(USER.phone)
             .withIcon(USER.photoUrl)
             .withIdentifier(200)
+
         mHeader = AccountHeaderBuilder()
             .withActivity(APP_ACTIVITY)
             .withHeaderBackground(R.drawable.head)
-            .addProfiles(
-                mCurrentProfile
-            ).build()
+            .addProfiles(mCurrentProfile)
+            .build()
     }
 
     fun updateHeader() {
@@ -77,18 +77,25 @@ class AppDrawer {
             .withName(USER.fullname)
             .withEmail(USER.phone)
             .withIcon(USER.photoUrl)
+
         mHeader.updateProfile(mCurrentProfile)
     }
 
     private fun initLoader() {
         DrawerImageLoader.init(object : AbstractDrawerImageLoader() {
-            override fun set(imageView: ImageView, uri: Uri, placeholder: Drawable) {
+            override fun set(
+                imageView: ImageView,
+                uri: Uri,
+                placeholder: Drawable?,
+                tag: String?
+            ) {
                 imageView.downloadAndSetImage(uri.toString())
             }
+
+            override fun cancel(imageView: ImageView) {}
         })
     }
 
-    //Menu body
     private fun createDrawer() {
         mDrawer = DrawerBuilder()
             .withActivity(APP_ACTIVITY)
@@ -97,42 +104,37 @@ class AppDrawer {
             .withSelectedItem(-1)
             .withAccountHeader(mHeader)
             .addDrawerItems(
-                //Menu block 1
                 PrimaryDrawerItem().withIdentifier(100)
                     .withIconTintingEnabled(true)
                     .withName(R.string.create_a_group)
                     .withSelectable(false)
                     .withIcon(R.drawable.img_group),
-                //Menu block 2
+
                 PrimaryDrawerItem().withIdentifier(101)
                     .withIconTintingEnabled(true)
                     .withName(R.string.my_contacts)
                     .withSelectable(false)
                     .withIcon(R.drawable.img_personal_chat),
-                //Menu lines
+
                 DividerDrawerItem(),
-                //Menu block 3
+
                 PrimaryDrawerItem().withIdentifier(104)
                     .withIconTintingEnabled(true)
                     .withName(R.string.personal_account)
                     .withSelectable(false)
                     .withIcon(R.drawable.img_handyman),
-                //Menu block 4
+
                 PrimaryDrawerItem().withIdentifier(105)
                     .withIconTintingEnabled(true)
                     .withName(R.string.information)
                     .withSelectable(false)
                     .withIcon(R.drawable.img_info)
-            ).withOnDrawerItemClickListener(object : Drawer.OnDrawerItemClickListener{
-                override fun onItemClick(
-                    view: View?,
-                    position: Int,
-                    drawerItem: IDrawerItem<*>
-                ): Boolean {
-                    clickToItem(position)
-                    return false
-                }
-            }).build()
+            )
+            .withOnDrawerItemClickListener { _, position, _ ->
+                clickToItem(position)
+                false
+            }
+            .build()
     }
 
     private fun clickToItem(position: Int) {

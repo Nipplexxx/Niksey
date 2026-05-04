@@ -3,14 +3,13 @@ package com.example.niksey.ui.screens.groups_messages
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.ui.fragments.message_recycler_view.view_holders.AppHolderFactory
-import com.example.niksey.ui.fragments.message_recycler_view.view_holders.MessageHolder
+import com.example.niksey.ui.fragments.message_recycler_view.views.MessageHolder
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 
 class GroupChatAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    private var mListMessagesCache = mutableListOf<MessageView>()
-    private var mListHolders = mutableListOf<MessageHolder>()
-
+    private val mListMessagesCache = mutableListOf<MessageView>()
+    private val mListHolders = mutableListOf<MessageHolder>()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return AppHolderFactory.getHolder(parent, viewType)
@@ -27,43 +26,40 @@ class GroupChatAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {
-        (holder as MessageHolder).onAttach(mListMessagesCache[holder.adapterPosition])
-        mListHolders.add((holder as MessageHolder))
         super.onViewAttachedToWindow(holder)
+        val messageHolder = holder as MessageHolder
+        val position = holder.adapterPosition
+        if (position != RecyclerView.NO_POSITION) {
+            messageHolder.onAttach(mListMessagesCache[position])
+            mListHolders.add(messageHolder)
+        }
     }
 
     override fun onViewDetachedFromWindow(holder: RecyclerView.ViewHolder) {
-        (holder as MessageHolder).onDetach()
-        mListHolders.remove((holder as MessageHolder))
         super.onViewDetachedFromWindow(holder)
+        val messageHolder = holder as MessageHolder
+        messageHolder.onDetach()
+        mListHolders.remove(messageHolder)
     }
 
-    fun addItemToBottom(
-        item: MessageView,
-        onSuccess: () -> Unit
-    ) {
+    fun addItemToBottom(item: MessageView, onSuccess: () -> Unit) {
         if (!mListMessagesCache.contains(item)) {
             mListMessagesCache.add(item)
-            notifyItemInserted(mListMessagesCache.size)
+            notifyItemInserted(mListMessagesCache.lastIndex)
+            onSuccess()
         }
-        onSuccess()
     }
 
-    fun addItemToTop(
-        item: MessageView,
-        onSuccess: () -> Unit
-    ) {
+    fun addItemToTop(item: MessageView, onSuccess: () -> Unit) {
         if (!mListMessagesCache.contains(item)) {
-            mListMessagesCache.add(item)
-            mListMessagesCache.sortBy { it.timeStamp.toString() }
+            mListMessagesCache.add(0, item)
             notifyItemInserted(0)
+            onSuccess()
         }
-        onSuccess()
     }
 
     fun onDestroy() {
-        mListHolders.forEach {
-            it.onDetach()
-        }
+        mListHolders.forEach { it.onDetach() }
+        mListHolders.clear()
     }
 }

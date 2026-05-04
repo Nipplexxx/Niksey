@@ -1,39 +1,72 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    style="@style/settingsButtons"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="@dimen/app_margin"
-    android:background="@color/colorMain">
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginVertical="6dp"
+    android:background="@drawable/bg_ghost_card">
 
-    <de.hdodenhof.circleimageview.CircleImageView
-        android:id="@+id/main_list_item_photo"
-        android:layout_width="@dimen/settings_user_photo_width"
-        android:layout_height="@dimen/settings_btn_change_photo_height"
-        android:background="@color/white_100"
-        android:src="@drawable/default_photo"
+    <!-- Главный контейнер с правильными вертикальными constraints -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent">
 
-    <TextView
-        android:id="@+id/main_list_item_name"
-        style="@style/normalText"
-        android:fontFamily="@font/chivo"
-        android:textColor="@color/black_100"
-        app:layout_constraintStart_toEndOf="@id/main_list_item_photo"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:text="Name item" />
+        <!-- Аватарка -->
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/main_list_item_photo"
+            android:layout_width="58dp"
+            android:layout_height="58dp"
+            android:src="@drawable/default_photo"
+            app:civ_border_width="2.5dp"
+            app:civ_border_color="@color/purple_300"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
 
-    <TextView
-        android:id="@+id/main_list_last_message"
-        style="@style/smallText"
-        android:fontFamily="@font/chivo"
-        android:textColor="@color/black_10"
-        app:layout_constraintStart_toEndOf="@id/main_list_item_photo"
-        app:layout_constraintTop_toBottomOf="@id/main_list_item_name"
-        tools:text="Last message" />
+        <!-- Имя -->
+        <TextView
+            android:id="@+id/main_list_item_name"
+            style="@style/normalText"
+            android:fontFamily="@font/chivo"
+            android:textColor="@color/white_100"
+            android:textSize="16.5sp"
+            app:layout_constraintStart_toEndOf="@id/main_list_item_photo"
+            app:layout_constraintTop_toTopOf="parent"
+            android:layout_marginStart="16dp"
+            tools:text="ghost_niksey" />
+
+        <!-- Последнее сообщение -->
+        <TextView
+            android:id="@+id/main_list_last_message"
+            style="@style/smallText"
+            android:fontFamily="@font/chivo"
+            android:textColor="@color/black_10"
+            android:textSize="13.5sp"
+            app:layout_constraintStart_toEndOf="@id/main_list_item_photo"
+            app:layout_constraintTop_toBottomOf="@id/main_list_item_name"
+            android:layout_marginStart="16dp"
+            tools:text="Последний эхо • 3 мин назад" />
+
+        <!-- Время -->
+        <TextView
+            android:id="@+id/main_list_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/chivo"
+            android:textColor="@color/black_10"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="14:28" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

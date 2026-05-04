@@ -5,88 +5,87 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="@dimen/app_small_margin">
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="8dp">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/bloc_user_message"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="@drawable/bg_user_message"
-        android:elevation="4dp"
-        android:padding="@dimen/app_small_margin"
-        app:layout_constraintBottom_toTopOf="@+id/chat_user_message_time"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <TextView
-            android:id="@+id/chat_user_message"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/chivo"
-            android:gravity="end"
-            android:padding="3dp"
-            android:textColor="@color/black_0"
-            android:textSize="14sp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            tools:text="Аня - мама" />
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <!-- Полученное сообщение -->
+    <com.google.android.material.card.MaterialCardView
         android:id="@+id/bloc_received_message"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_receiving_message"
-        android:elevation="4dp"
-        android:padding="@dimen/app_small_margin"
-        app:layout_constraintBottom_toTopOf="@+id/chat_received_message_time"
+        app:cardBackgroundColor="@color/ghost_card_bg"
+        app:cardCornerRadius="22dp"
+        app:cardElevation="4dp"
+        app:strokeColor="@color/purple_300"
+        app:strokeWidth="1.1dp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        android:maxWidth="280dp">
 
         <TextView
             android:id="@+id/chat_received_message"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="@font/chivo"
-            android:padding="3dp"
-            android:textColor="@color/black_100"
-            android:textSize="14sp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            tools:text="Опять" />
+            android:paddingHorizontal="18dp"
+            android:paddingVertical="14dp"
+            android:textColor="@color/text_primary"
+            android:textSize="15.5sp"
+            android:lineSpacingExtra="4dp"
+            tools:text="Привет, как дела?" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </com.google.android.material.card.MaterialCardView>
 
+    <!-- Время полученного -->
     <TextView
         android:id="@+id/chat_received_message_time"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="3dp"
         android:fontFamily="@font/chivo"
-        android:textColor="@color/material_drawer_primary_icon"
+        android:textColor="@color/text_secondary"
         android:textSize="12sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/bloc_received_message"
-        tools:text="11:15" />
+        app:layout_constraintTop_toBottomOf="@id/bloc_received_message"
+        app:layout_constraintStart_toStartOf="@id/bloc_received_message"
+        android:layout_marginTop="4dp"
+        tools:text="14:28" />
 
+    <!-- Отправленное сообщение -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/bloc_user_message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="@color/purple_300"
+        app:cardCornerRadius="22dp"
+        app:cardElevation="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:maxWidth="280dp">
+
+        <TextView
+            android:id="@+id/chat_user_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/chivo"
+            android:paddingHorizontal="18dp"
+            android:paddingVertical="14dp"
+            android:textColor="@color/white_100"
+            android:textSize="15.5sp"
+            android:lineSpacingExtra="4dp"
+            tools:text="Всё отлично, а у тебя?" />
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Время отправленного -->
     <TextView
         android:id="@+id/chat_user_message_time"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="3dp"
         android:fontFamily="@font/chivo"
-        android:gravity="end"
-        android:textColor="@color/material_drawer_primary_icon"
+        android:textColor="@color/text_secondary"
         android:textSize="12sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/bloc_user_message"
-        tools:text="11:05" />
+        app:layout_constraintTop_toBottomOf="@id/bloc_user_message"
+        app:layout_constraintEnd_toEndOf="@id/bloc_user_message"
+        android:layout_marginTop="4dp"
+        tools:text="14:29" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

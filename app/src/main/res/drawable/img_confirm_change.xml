@@ -1,10 +1,17 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:tint="#F8F6F6"
+    android:width="28dp"
+    android:height="28dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+
+    <!-- Основная галочка (тонкая и элегантная) -->
     <path
-        android:fillColor="@android:color/white"
-        android:pathData="M9,16.17L4.83,12l-1.42,1.41L9,19 21,7l-1.41,-1.41z" />
+        android:fillColor="#00F0FF"
+        android:pathData="M20.285,6.712l-1.414,-1.414L9,15.17 5.129,11.3 3.715,12.714 9,18 20.285,6.712z" />
+
+    <!-- Лёгкий glow эффект (для неонового вида) -->
+    <path
+        android:fillColor="#33FFFFFF"
+        android:pathData="M20.285,6.712l-1.414,-1.414L9,15.17 5.129,11.3 3.715,12.714 9,18 20.285,6.712z" />
+
 </vector>

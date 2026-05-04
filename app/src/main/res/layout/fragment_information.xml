@@ -1,48 +1,112 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/colorMain"
-    tools:context=".ui.screens.other_fragment.InformationFragment">
+    android:background="?android:attr/colorBackground">
 
-    <!-- TODO: Update blank fragment layout -->
+    <!-- Glassmorphic Main Card -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/info_card"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:cardBackgroundColor="@color/ghost_card_bg"
+        app:cardCornerRadius="28dp"
+        app:cardElevation="12dp"
+        app:strokeColor="@color/purple_300"
+        app:strokeWidth="1.5dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_margin="20dp">
 
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-        <LinearLayout
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" >
+            android:layout_height="match_parent"
+            android:padding="28dp">
 
-            <TextView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/chivo"
-                android:paddingStart="10dp"
-                android:paddingTop="10dp"
-                android:paddingEnd="@dimen/appPadding"
-                android:text="  Niksey Мессенджер создан для общения: отправляйте текстовые сообщения, изображения и голосовые сообщения, а также подписывайтесь на каналы и создавайте их.\n  Общайтесь с коллегами в закрытом пространстве. А для семьи и друзей есть отдельное пространство.\n  В Мессенджере есть:\n     • Персональные сообщения и чаты\n     • Голосовые сообщения и отправка изображений\n     • Адресная книга\n  Настройки:\n     • Номер телефона\n     • Приватность\n     • Имя и фото\nРазработчик: Nipplexx"
-                android:textAlignment="viewStart"
-                android:textColor="@color/black_100"
-                android:textSize="17sp" />
-        </LinearLayout>
-    </ScrollView>
+                android:orientation="vertical">
 
+                <!-- Заголовок VOID -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/chivo"
+                    android:text="VOID"
+                    android:textColor="@color/purple_300"
+                    android:textSize="42sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.15" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/chivo"
+                    android:text="Мессенджер абсолютной анонимности"
+                    android:textColor="@color/white_100"
+                    android:textSize="18sp"
+                    android:layout_marginTop="4dp" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/purple_300"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="24dp"
+                    android:alpha="0.3" />
+
+                <!-- Основной текст -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/chivo"
+                    android:text="Niksey — это полностью зашифрованный мессенджер, созданный для тех, кто ценит настоящую свободу общения.\n\nЗдесь нет слежки, нет рекламы, нет сбора данных.\n\nВы можете отправлять текстовые сообщения, изображения, голосовые сообщения и создавать закрытые группы.\n\nВсе сообщения защищены сквозным шифрованием end-to-end."
+                    android:textColor="@color/white_100"
+                    android:textSize="16sp"
+                    android:lineSpacingExtra="6dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/chivo"
+                    android:text="\n\nРазработано с уважением к вашей приватности."
+                    android:textColor="@color/black_10"
+                    android:textSize="15sp"
+                    android:layout_marginTop="16dp" />
+
+            </LinearLayout>
+        </ScrollView>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Версия приложения -->
     <TextView
-        android:id="@+id/textView"
-        android:layout_width="match_parent"
-        android:layout_height="20dp"
-        android:layout_marginRight="10dp"
+        android:id="@+id/tv_version"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:fontFamily="@font/chivo"
         android:text="Version 6.11.0 Alpha"
-        android:textAlignment="textEnd"
-        android:textColor="@color/black_80"
+        android:textColor="@color/black_10"
+        android:textSize="13sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        android:layout_margin="24dp" />
+
+    <!-- Неоновый индикатор шифрования внизу -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="● END-TO-END ENCRYPTED"
+        android:textColor="@color/purple_300"
+        android:textSize="11sp"
+        android:letterSpacing="0.2"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_margin="24dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

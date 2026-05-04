@@ -1,23 +1,19 @@
 package com.example.niksey.ui.screens.settings
 
-import android.app.Activity.RESULT_OK
 import android.content.Intent
+import android.os.Bundle
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.widget.TextView
+import androidx.activity.result.ActivityResultLauncher
 import androidx.constraintlayout.widget.ConstraintLayout
+import com.canhub.cropper.CropImageContract
+import com.canhub.cropper.CropImageContractOptions
+import com.canhub.cropper.CropImageOptions
+import com.canhub.cropper.CropImageView
 import com.example.niksey.R
-import com.example.niksey.database.AUTH
-import com.example.niksey.database.CURRENT_UID
-import com.example.niksey.database.FOLDER_PROFILE_IMAGE
-import com.example.niksey.database.REF_STORAGE_ROOT
-import com.example.niksey.database.USER
-import com.example.niksey.database.donwloadAndSetImage
-import com.example.niksey.database.getUrlFromStorage
-import com.example.niksey.database.putImageToStorage
-import com.example.niksey.database.putUrlToDatabase
-import com.example.niksey.database.removePhotoUser
+import com.example.niksey.database.*
 import com.example.niksey.ui.screens.base_fragment.BaseFragment
 import com.example.niksey.utillits.APP_ACTIVITY
 import com.example.niksey.utillits.AppStates
@@ -25,11 +21,34 @@ import com.example.niksey.utillits.replaceFragment
 import com.example.niksey.utillits.restartActivity
 import com.example.niksey.utillits.showToast
 import com.mikepenz.materialize.util.KeyboardUtil
-import com.theartofdev.edmodo.cropper.CropImage
-import com.theartofdev.edmodo.cropper.CropImageView
 import de.hdodenhof.circleimageview.CircleImageView
 
 class SettingsFragment : BaseFragment(R.layout.fragment_settings) {
+
+    private lateinit var cropImageLauncher: ActivityResultLauncher<CropImageContractOptions>
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        cropImageLauncher = registerForActivityResult(CropImageContract()) { result ->
+            if (result.isSuccessful) {
+                val uri = result.uriContent ?: return@registerForActivityResult
+                val path = REF_STORAGE_ROOT.child(FOLDER_PROFILE_IMAGE).child(CURRENT_UID)
+                putImageToStorage(uri, path) {
+                    getUrlFromStorage(path) {
+                        putUrlToDatabase(it) {
+                            view?.findViewById<CircleImageView>(R.id.settings_user_photo)
+                                ?.donwloadAndSetImage(it)
+                            showToast(getString(R.string.toast_data_update))
+                            USER.photoUrl = it
+                        }
+                    }
+                }
+            } else {
+                showToast("Ошибка при обрезке фото")
+            }
+        }
+    }
 
     override fun onResume() {
         super.onResume()
@@ -43,8 +62,10 @@ class SettingsFragment : BaseFragment(R.layout.fragment_settings) {
         view?.findViewById<TextView>(R.id.settings_bio)?.text = USER.bio
         view?.findViewById<TextView>(R.id.settings_full_name)?.text = USER.fullname
         view?.findViewById<TextView>(R.id.settings_phone_number)?.text = USER.phone
-        view?.findViewById<TextView>(R.id.settings_status)?.text = if (AppStates.getCurrentState() == AppStates.ONLINE) "Online" else "Offline"
+        view?.findViewById<TextView>(R.id.settings_status)?.text =
+            if (AppStates.getCurrentState() == AppStates.ONLINE) "Online" else "Offline"
         view?.findViewById<TextView>(R.id.settings_username)?.text = USER.username
+
         view?.findViewById<ConstraintLayout>(R.id.settings_btn_change_username)
             ?.setOnClickListener { replaceFragment(ChangeUsernameFragment()) }
         view?.findViewById<ConstraintLayout>(R.id.settings_btn_change_bio)
@@ -64,29 +85,18 @@ class SettingsFragment : BaseFragment(R.layout.fragment_settings) {
     }
 
     private fun changePhotoUser() {
-        CropImage.activity()
-            .setAspectRatio(1, 1)
-            .setRequestedSize(250, 250)
-            .setCropShape(CropImageView.CropShape.OVAL)
-            .start(APP_ACTIVITY, this)
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE && resultCode == RESULT_OK && data != null) {
-            val uri = CropImage.getActivityResult(data).uri
-            val path = REF_STORAGE_ROOT.child(FOLDER_PROFILE_IMAGE).child(CURRENT_UID)
-            putImageToStorage(uri, path) {
-                getUrlFromStorage(path) {
-                    putUrlToDatabase(it) {
-                        view?.findViewById<CircleImageView>(R.id.settings_user_photo)
-                            ?.donwloadAndSetImage(it)
-                        showToast(getString(R.string.toast_data_update))
-                        USER.photoUrl = it
-                    }
-                }
-            }
-        }
+        val options = CropImageContractOptions(
+            uri = null,
+            cropImageOptions = CropImageOptions(
+                aspectRatioX = 1,
+                aspectRatioY = 1,
+                fixAspectRatio = true,
+                outputRequestWidth = 250,
+                outputRequestHeight = 250,
+                cropShape = CropImageView.CropShape.OVAL
+            )
+        )
+        cropImageLauncher.launch(options)
     }
 
     private fun maskString(input: String): String {
@@ -116,5 +126,4 @@ class SettingsFragment : BaseFragment(R.layout.fragment_settings) {
         }
         return true
     }
-
 }

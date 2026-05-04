@@ -12,44 +12,47 @@ import de.hdodenhof.circleimageview.CircleImageView
 
 class AddContactsAdapter : RecyclerView.Adapter<AddContactsAdapter.AddContactsHolder>() {
 
-    private var listItems = mutableListOf<CommonModel>()
+    private val listItems = mutableListOf<CommonModel>()
 
-    class AddContactsHolder(view: View) : RecyclerView.ViewHolder(view) {
+    inner class AddContactsHolder(view: View) : RecyclerView.ViewHolder(view) {
         val itemName: TextView = view.findViewById(R.id.add_contacts_item_name)
         val itemLastMessage: TextView = view.findViewById(R.id.add_contacts_last_message)
         val itemPhoto: CircleImageView = view.findViewById(R.id.add_contacts_item_photo)
-        val itemChoice:CircleImageView = view.findViewById(R.id.add_contacts_item_choice)
+        val itemChoice: CircleImageView = view.findViewById(R.id.add_contacts_item_choice)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AddContactsHolder {
-        val view =
-            LayoutInflater.from(parent.context).inflate(R.layout.add_contacts_item, parent, false)
-
-        val holder = AddContactsHolder(view)
-        holder.itemView.setOnClickListener {
-            if (listItems[holder.adapterPosition].choice){
-                holder.itemChoice.visibility = View.INVISIBLE
-                listItems[holder.adapterPosition].choice = false
-                AddContactsFragment.listContacts.remove(listItems[holder.adapterPosition])
-            } else {
-                holder.itemChoice.visibility = View.VISIBLE
-                listItems[holder.adapterPosition].choice = true
-                AddContactsFragment.listContacts.add(listItems[holder.adapterPosition])
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.add_contacts_item, parent, false)
+        return AddContactsHolder(view).apply {
+            itemView.setOnClickListener {
+                val position = adapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    val item = listItems[position]
+                    if (item.choice) {
+                        itemChoice.visibility = View.INVISIBLE
+                        item.choice = false
+                        AddContactsFragment.listContacts.remove(item)
+                    } else {
+                        itemChoice.visibility = View.VISIBLE
+                        item.choice = true
+                        AddContactsFragment.listContacts.add(item)
+                    }
+                }
             }
         }
-        return holder
     }
 
     override fun getItemCount(): Int = listItems.size
 
     override fun onBindViewHolder(holder: AddContactsHolder, position: Int) {
-        holder.itemName.text = listItems[position].fullname
-        holder.itemLastMessage.text = listItems[position].lastMessage
-        holder.itemPhoto.downloadAndSetImage(listItems[position].photoUrl)
+        val item = listItems[position]
+        holder.itemName.text = item.fullname
+        holder.itemLastMessage.text = item.lastMessage
+        holder.itemPhoto.downloadAndSetImage(item.photoUrl)
     }
 
-    fun updateListItems(item:CommonModel){
+    fun updateListItems(item: CommonModel) {
         listItems.add(item)
-        notifyItemInserted(listItems.size)
+        notifyItemInserted(listItems.lastIndex)
     }
 }

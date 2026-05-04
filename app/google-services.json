@@ -15,11 +15,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "638294860369-bmj5c69mfuqe2at16hrici334i54bbja.apps.googleusercontent.com",
+          "client_id": "638294860369-dtqlrvd0he10b05r0umhaihpqfu1c4uh.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.niksey",
-            "certificate_hash": "ab113efc428ad104c798dfffa531d065e191a9d1"
+            "certificate_hash": "78438f9f4ec0851cca69e6fa09411d8fcfffc80c"
           }
         },
         {

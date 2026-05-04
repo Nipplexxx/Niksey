@@ -1,83 +1,120 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:tools="http://schemas.android.com/tools"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".ui.screens.private_messages.SingleChatFragment">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:context=".ui.screens.private_messages.SingleChatFragment">
+        android:layout_height="match_parent">
 
+        <!-- Сообщения -->
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
             android:id="@+id/chat_swipe_refresh"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="0dp"
-            app:layout_constraintBottom_toTopOf="@id/chat_input_message"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toTopOf="@id/chat_input_container"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
+            app:layout_constraintEnd_toEndOf="parent">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/chat_recycle_view"
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
-                app:lineWidth="2dp"/>
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingBottom="16dp" />
 
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-
-        <EditText
-            android:id="@+id/chat_input_message"
+        <!-- Нижняя панель ввода (glassmorphic) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/chat_input_container"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="50dp"
-            android:fontFamily="@font/chivo"
-            android:hint="Сообщение"
-            android:minHeight="48dp"
-            android:padding="@dimen/appPadding"
-            android:textColor="@color/black_100"
-            android:textColorHint="@color/material_drawer_divider"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/chat_btn_attach" />
-
-        <ImageView
-            android:id="@+id/chat_btn_send_message"
-            android:layout_width="50dp"
-            android:layout_height="0dp"
-            android:padding="@dimen/appPadding"
-            android:src="@drawable/img_send"
-            android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/chat_input_message" />
-
-        <ImageView
-            android:id="@+id/chat_btn_attach"
-            android:layout_width="50dp"
-            android:layout_height="0dp"
-            android:padding="@dimen/appPadding"
-            android:src="@drawable/img_attach"
+            app:cardBackgroundColor="@color/ghost_card_bg"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="8dp"
+            app:strokeColor="@color/purple_300"
+            app:strokeWidth="1dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/chat_input_message" />
-
-        <ImageView
-            android:id="@+id/chat_btn_voice"
-            android:layout_width="50dp"
-            android:layout_height="0dp"
-            android:padding="@dimen/appPadding"
-            android:src="@drawable/img_voice"
-            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/chat_input_message" />
+            android:layout_margin="12dp">
 
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingVertical="8dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="12dp">
+
+                <!-- Кнопка прикрепить -->
+                <ImageView
+                    android:id="@+id/chat_btn_attach"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_attach_image"
+                    app:tint="@color/purple_300"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+
+                <!-- Поле ввода -->
+                <EditText
+                    android:id="@+id/chat_input_message"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:background="@null"
+                    android:fontFamily="@font/chivo"
+                    android:hint="Сообщение..."
+                    android:minHeight="48dp"
+                    android:paddingHorizontal="12dp"
+                    android:textColor="@color/black_10"
+                    android:textColorHint="@color/text_secondary"
+                    android:textSize="16sp"
+                    app:layout_constraintStart_toEndOf="@id/chat_btn_attach"
+                    app:layout_constraintEnd_toStartOf="@id/chat_btn_voice"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+
+                <!-- Кнопка голосовое сообщение -->
+                <ImageView
+                    android:id="@+id/chat_btn_voice"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="10dp"
+                    android:src="@drawable/img_voice"
+                    app:tint="@color/purple_300"
+                    app:layout_constraintEnd_toStartOf="@id/chat_btn_send_message"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+
+                <!-- Кнопка отправить -->
+                <ImageView
+                    android:id="@+id/chat_btn_send_message"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="10dp"
+                    android:src="@drawable/img_send"
+                    app:tint="@color/purple_300"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </com.google.android.material.card.MaterialCardView>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <include layout="@layout/choice_upload"/>
+    <!-- BottomSheet для вложений -->
+    <include layout="@layout/choice_upload" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

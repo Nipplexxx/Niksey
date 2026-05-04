@@ -1,7 +1,5 @@
 package com.example.niksey.models
 
-/* Общая модель для всех сущностей приложения*/
-
 data class CommonModel(
     val id: String = "",
     var username: String = "",
@@ -18,25 +16,21 @@ data class CommonModel(
     var lastMessage: String = "",
     var choice: Boolean = false
 ) {
+
+    // equals и hashCode только по id
     override fun equals(other: Any?): Boolean {
-        return (other as CommonModel).id == id
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+        other as CommonModel
+        return id == other.id
     }
 
     override fun hashCode(): Int {
-        var result = id.hashCode()
-        result = 31 * result + username.hashCode()
-        result = 31 * result + bio.hashCode()
-        result = 31 * result + fullname.hashCode()
-        result = 31 * result + state.hashCode()
-        result = 31 * result + phone.hashCode()
-        result = 31 * result + photoUrl.hashCode()
-        result = 31 * result + text.hashCode()
-        result = 31 * result + type.hashCode()
-        result = 31 * result + from.hashCode()
-        result = 31 * result + timeStamp.hashCode()
-        result = 31 * result + fileUrl.hashCode()
-        result = 31 * result + lastMessage.hashCode()
-        result = 31 * result + choice.hashCode()
-        return result
+        return id.hashCode()
+    }
+
+    // Полезный toString для отладки
+    override fun toString(): String {
+        return "CommonModel(id='$id', username='$username', fullname='$fullname', type='$type')"
     }
 }

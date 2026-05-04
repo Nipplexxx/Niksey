@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Кастомные атрибуты для чата (меняются в зависимости от темы) -->
+    <attr name="ghost_card_bg" format="color|reference" />
+    <attr name="text_primary" format="color|reference" />
+    <attr name="text_secondary" format="color|reference" />
+    <attr name="text_hint" format="color|reference" />
+</resources>

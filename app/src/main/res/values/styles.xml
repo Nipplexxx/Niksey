@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- ==================== СТИЛИ ДЛЯ ЧАТА ==================== -->
+    <style name="mainToolbar">
+        <item name="android:theme">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">?attr/actionBarSize</item>
+        <item name="android:background">?attr/ghost_card_bg</item>   <!-- ← используем атрибут -->
+    </style>
+
+    <!-- ==================== ОСТАЛЬНЫЕ СТИЛИ ==================== -->
     <style name="settingsButtons">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
@@ -36,13 +45,6 @@
         <item name="android:layout_marginEnd">@dimen/app_margin</item>
     </style>
 
-    <style name="mainToolbar">
-        <item name="android:theme">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">?attr/actionBarSize</item>
-        <item name="android:background">@drawable/head</item>
-    </style>
-
     <style name="actionMenu" parent="Theme.AppCompat.Light">
         <item name="background">@color/white_100</item>
         <item name="actionMenuTextColor">@color/black_80</item>
@@ -57,7 +59,7 @@
     <style name="style_edit_text" parent="editText">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:autofillHints" tools:targetApi="o"></item>
+        <item name="android:autofillHints" tools:targetApi="o" />
         <item name="android:inputType">text</item>
         <item name="android:textColor">@color/black_80</item>
         <item name="minHeight">48dp</item>
@@ -66,10 +68,10 @@
 
     <style name="style_input_code" parent="editText">
         <item name="android:layout_width">wrap_content</item>
-        <item name="android:autofillHints" tools:targetApi="o"></item>
+        <item name="android:autofillHints" tools:targetApi="o" />
         <item name="android:background">@null</item>
         <item name="android:gravity">center</item>
-        <item name="android:inputType"></item>
+        <item name="android:inputType" />
         <item name="android:maxLength">6</item>
     </style>
 

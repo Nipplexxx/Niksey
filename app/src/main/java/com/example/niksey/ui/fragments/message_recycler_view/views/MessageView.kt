@@ -1,5 +1,9 @@
 package com.example.niksey.ui.fragments.message_recycler_view.views
 
+/**
+ * Базовый интерфейс для всех типов сообщений в чате.
+ * Реализуется в ViewTextMessage, ViewImageMessage, ViewVoiceMessage, ViewFileMessage.
+ */
 interface MessageView {
 
     val id: String
@@ -8,16 +12,16 @@ interface MessageView {
     val fileUrl: String
     val text: String
 
-    companion object {
-        val MESSAGE_IMAGE: Int
-            get() = 0
-        val MESSAGE_TEXT: Int
-            get() = 1
-        val MESSAGE_VOICE: Int
-            get() = 2
-        val MESSAGE_FILE: Int
-            get() = 3
-    }
+    /** Возвращает тип сообщения для RecyclerView (используется в getItemViewType) */
+    fun getTypeView(): Int
 
-    fun getTypeView():Int
+    /** Удобный метод для проверки, является ли сообщение от текущего пользователя */
+    fun isFromCurrentUser(): Boolean = from == com.example.niksey.database.CURRENT_UID
+
+    companion object {
+        const val MESSAGE_TEXT = 1
+        const val MESSAGE_IMAGE = 0
+        const val MESSAGE_VOICE = 2
+        const val MESSAGE_FILE = 3
+    }
 }

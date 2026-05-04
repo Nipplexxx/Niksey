@@ -1,129 +1,191 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="@dimen/app_small_margin"
-    android:background="#FFFFFF">
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="8dp">
 
+    <!-- ==================== ПОЛУЧЕННЫЙ ФАЙЛ ==================== -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/bloc_received_file_message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="@color/ghost_card_bg"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="4dp"
+        app:strokeColor="@color/purple_300"
+        app:strokeWidth="1dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:maxWidth="270dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="10dp"
+            android:gravity="center_vertical">
+
+            <!-- Иконка -->
+            <ImageView
+                android:id="@+id/chat_received_file_icon"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:src="@drawable/ic_file_generic" />
+
+            <!-- Текст -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="8dp">
+
+                <TextView
+                    android:id="@+id/chat_received_filename"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/chivo"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14.5sp"
+                    android:textStyle="bold"
+                    android:maxLines="2"
+                    android:ellipsize="end"
+                    tools:text="20260502_115840.mp4" />
+
+                <TextView
+                    android:id="@+id/chat_received_file_info"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/chivo"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11.5sp"
+                    android:layout_marginTop="1dp"
+                    tools:text="• MP4" />
+
+            </LinearLayout>
+
+            <!-- Кнопка скачивания -->
+            <ImageView
+                android:id="@+id/chat_received_btn_download"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_download"/>
+
+            <ProgressBar
+                android:id="@+id/chat_received_progress_bar"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Время полученного (точно как в тексте) -->
     <TextView
         android:id="@+id/chat_received_file_message_time"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="3dp"
         android:fontFamily="@font/chivo"
-        android:gravity="end"
-        android:textColor="@color/material_drawer_primary_icon"
+        android:textColor="@color/text_secondary"
         android:textSize="12sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/bloc_received_file_message"
-        tools:text="21:45" />
+        app:layout_constraintTop_toBottomOf="@id/bloc_received_file_message"
+        app:layout_constraintStart_toStartOf="@id/bloc_received_file_message"
+        android:layout_marginTop="4dp"
+        tools:text="14:28" />
 
+    <!-- ==================== ОТПРАВЛЕННЫЙ ФАЙЛ ==================== -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/bloc_user_file_message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="@color/purple_300"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:maxWidth="270dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="10dp"
+            android:gravity="center_vertical">
+
+            <!-- Иконка -->
+            <ImageView
+                android:id="@+id/chat_user_file_icon"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:src="@drawable/ic_file_generic" />
+
+            <!-- Текст -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="8dp">
+
+                <TextView
+                    android:id="@+id/chat_user_filename"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/chivo"
+                    android:textColor="@color/white_100"
+                    android:textSize="14.5sp"
+                    android:textStyle="bold"
+                    android:maxLines="2"
+                    android:ellipsize="end"
+                    tools:text="20260502_115840.mp4" />
+
+                <TextView
+                    android:id="@+id/chat_user_file_info"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/chivo"
+                    android:textColor="#E0E0E0"
+                    android:textSize="11.5sp"
+                    android:layout_marginTop="1dp"
+                    tools:text="• MP4" />
+
+            </LinearLayout>
+
+            <!-- Кнопка скачивания -->
+            <ImageView
+                android:id="@+id/chat_user_btn_download"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_download_white"/>
+
+            <ProgressBar
+                android:id="@+id/chat_user_progress_bar"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Время отправленного (точно как в тексте) -->
     <TextView
         android:id="@+id/chat_user_file_message_time"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="3dp"
         android:fontFamily="@font/chivo"
-        android:gravity="end"
-        android:textColor="@color/material_drawer_primary_icon"
+        android:textColor="@color/text_secondary"
         android:textSize="12sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/bloc_user_file_message"
-        tools:text="21:45" />
-
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/bloc_received_file_message"
-        android:layout_width="180dp"
-        android:layout_height="50dp"
-        android:background="@drawable/bg_receiving_message"
-        app:layout_constraintBottom_toTopOf="@+id/chat_received_file_message_time"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <ImageView
-            android:id="@+id/chat_received_btn_download"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:src="@drawable/ic_file_blue"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <TextView
-            android:id="@+id/chat_received_filename"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_margin="@dimen/app_small_margin"
-            android:fontFamily="@font/chivo"
-            android:maxLines="2"
-            android:textColor="@color/purple_300"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@id/chat_received_btn_download"
-            app:layout_constraintTop_toTopOf="parent" />
-
-
-        <ProgressBar
-            android:id="@+id/chat_received_progress_bar"
-            style="?android:attr/progressBarStyle"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:visibility="invisible"
-
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_bias="0.0" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/bloc_user_file_message"
-        android:layout_width="180dp"
-        android:layout_height="50dp"
-        android:background="@drawable/bg_user_message"
-        app:layout_constraintBottom_toTopOf="@+id/chat_user_file_message_time"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <ProgressBar
-            android:id="@+id/chat_user_progress_bar"
-            style="?android:attr/progressBarStyle"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:layout_margin="@dimen/app_small_margin"
-            android:visibility="invisible"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="@+id/chat_user_btn_download"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <ImageView
-            android:id="@+id/chat_user_btn_download"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-
-            android:src="@drawable/ic_file_white"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <TextView
-            android:id="@+id/chat_user_filename"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_margin="@dimen/app_small_margin"
-            android:fontFamily="@font/chivo"
-            android:maxLines="2"
-            android:textColor="@color/white_100"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/chat_user_progress_bar"
-            app:layout_constraintTop_toTopOf="parent" />
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
+        app:layout_constraintTop_toBottomOf="@id/bloc_user_file_message"
+        app:layout_constraintEnd_toEndOf="@id/bloc_user_file_message"
+        android:layout_marginTop="4dp"
+        tools:text="14:29" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

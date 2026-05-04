@@ -7,33 +7,41 @@ import com.example.niksey.R
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 
 class AppHolderFactory {
+
     companion object {
+
         fun getHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             return when (viewType) {
+                MessageView.MESSAGE_TEXT -> {
+                    inflate(parent, R.layout.message_item_text) { HolderTextMessage(it) }
+                }
+
                 MessageView.MESSAGE_IMAGE -> {
-                    val view = LayoutInflater.from(parent.context)
-                        .inflate(R.layout.message_item_image, parent, false)
-                    HolderImageMessage(view)
+                    inflate(parent, R.layout.message_item_image) { HolderImageMessage(it) }
                 }
 
                 MessageView.MESSAGE_VOICE -> {
-                    val view = LayoutInflater.from(parent.context)
-                        .inflate(R.layout.message_item_voice, parent, false)
-                    HolderVoiceMessage(view)
+                    inflate(parent, R.layout.message_item_voice) { HolderVoiceMessage(it) }
                 }
 
                 MessageView.MESSAGE_FILE -> {
-                    val view = LayoutInflater.from(parent.context)
-                        .inflate(R.layout.message_item_file, parent, false)
-                    HolderFileMessage(view)
+                    inflate(parent, R.layout.message_item_file) { HolderFileMessage(it) }
                 }
 
-                else ->{
-                    val view = LayoutInflater.from(parent.context)
-                        .inflate(R.layout.message_item_text, parent, false)
-                    HolderTextMessage(view)
+                else -> {
+                    throw IllegalArgumentException("Unknown viewType: $viewType")
                 }
             }
+        }
+
+        /** Вспомогательная функция для уменьшения повторения кода */
+        private inline fun inflate(
+            parent: ViewGroup,
+            layoutRes: Int,
+            holderCreator: (android.view.View) -> RecyclerView.ViewHolder
+        ): RecyclerView.ViewHolder {
+            val view = LayoutInflater.from(parent.context).inflate(layoutRes, parent, false)
+            return holderCreator(view)
         }
     }
 }

@@ -11,7 +11,7 @@
         android:id="@+id/settings_header_block"
         android:layout_width="match_parent"
         android:layout_height="100dp"
-        android:background="@drawable/head"
+        app:cardBackgroundColor="@color/ghost_card_bg"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">

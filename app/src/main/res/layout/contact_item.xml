@@ -1,37 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    style="@style/settingsButtons"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="@dimen/app_margin"
-    android:background="@color/colorMain">
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginVertical="6dp"
+    android:background="@drawable/bg_ghost_card">
 
-    <de.hdodenhof.circleimageview.CircleImageView
-        android:id="@+id/contact_photo"
-        android:src="@drawable/default_photo"
-        app:layout_constraintBottom_toBottomOf="parent"
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="@color/ghost_card_bg"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="4dp"
+        app:strokeColor="@color/purple_300"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        style="@style/style_photo_profil"/>
+        app:layout_constraintEnd_toEndOf="parent"
+        app:strokeWidth="1.1dp">
 
-    <TextView
-        android:id="@+id/contact_fullname"
-        style="@style/normalText"
-        android:fontFamily="@font/chivo"
-        android:textColor="@color/black_100"
-        app:layout_constraintStart_toEndOf="@id/contact_photo"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:text="Yura Petrov" />
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp">
 
-    <TextView
-        android:id="@+id/contact_status"
-        style="@style/smallText"
-        android:fontFamily="@font/chivo"
-        android:textColor="@color/black_10"
-        app:layout_constraintStart_toEndOf="@id/contact_photo"
-        app:layout_constraintTop_toBottomOf="@id/contact_fullname"
-        tools:text="в сети" />
+            <!-- Аватарка с неоновым бордером -->
+            <de.hdodenhof.circleimageview.CircleImageView
+                android:id="@+id/contact_photo"
+                android:layout_width="58dp"
+                android:layout_height="58dp"
+                android:src="@drawable/default_photo"
+                app:civ_border_width="2.5dp"
+                app:civ_border_color="@color/purple_300"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+
+            <!-- Имя контакта -->
+            <TextView
+                android:id="@+id/contact_fullname"
+                style="@style/normalText"
+                android:fontFamily="@font/chivo"
+                android:textColor="@color/text_primary"
+                android:textSize="16.5sp"
+                app:layout_constraintStart_toEndOf="@id/contact_photo"
+                app:layout_constraintTop_toTopOf="parent"
+                android:layout_marginStart="16dp"
+                tools:text="Yura Petrov" />
+
+            <!-- Статус -->
+            <TextView
+                android:id="@+id/contact_status"
+                style="@style/smallText"
+                android:fontFamily="@font/chivo"
+                android:textColor="@color/text_secondary"
+                android:textSize="13.5sp"
+                app:layout_constraintStart_toEndOf="@id/contact_photo"
+                app:layout_constraintTop_toBottomOf="@id/contact_fullname"
+                android:layout_marginStart="16dp"
+                tools:text="в сети" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </com.google.android.material.card.MaterialCardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
