@@ -5,22 +5,21 @@
     android:id="@+id/bottom_sheet_choice"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:elevation="16dp"
+    android:background="@android:color/transparent"
     app:behavior_hideable="true"
     app:behavior_peekHeight="0dp"
     app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
 
-    <!-- Glassmorphic Card (фон ТОЛЬКО здесь) -->
+    <!-- Glassmorphic Card -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:cardBackgroundColor="@color/ghost_card_bg"
-        app:cardCornerRadius="24dp"
-        app:cardElevation="0dp"
+        app:cardCornerRadius="28dp"
+        app:cardElevation="20dp"
         app:strokeColor="@color/purple_300"
         app:strokeWidth="1.5dp"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
@@ -28,110 +27,117 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingTop="8dp"
-            android:paddingBottom="20dp">
+            android:paddingTop="12dp"
+            android:paddingBottom="28dp">
+
+            <!-- Drag Handle -->
+            <View
+                android:layout_width="40dp"
+                android:layout_height="4dp"
+                android:background="@color/purple_300"
+                android:alpha="0.4"
+                android:layout_gravity="center"
+                android:layout_marginBottom="20dp" />
 
             <!-- Заголовок -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center"
-                android:paddingBottom="16dp"
+                android:fontFamily="@font/chivo"
                 android:text="Прикрепить"
+                android:textSize="20sp"
+                android:textStyle="bold"
                 android:textColor="@color/purple_300"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:gravity="center"
+                android:paddingBottom="20dp" />
 
             <!-- Три варианта -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center"
                 android:orientation="horizontal"
-                android:paddingHorizontal="8dp">
+                android:gravity="center"
+                android:paddingHorizontal="16dp">
 
                 <!-- Изображение -->
                 <LinearLayout
+                    android:id="@+id/btn_attach_image"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:gravity="center"
                     android:orientation="vertical"
-                    android:paddingVertical="6dp">
+                    android:gravity="center"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="12dp">
 
                     <ImageView
-                        android:id="@+id/btn_attach_image"
-                        android:layout_width="52dp"
-                        android:layout_height="52dp"
-                        android:padding="8dp"
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
                         android:src="@drawable/ic_attach_image"
                         app:tint="@color/purple_300" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
                         android:text="Изображение"
-                        android:textColor="@color/purple_300"
-                        android:textSize="12sp"
-                        android:gravity="center" />
+                        android:fontFamily="@font/chivo"
+                        android:textColor="@color/white_100"
+                        android:textSize="13sp"
+                        android:layout_marginTop="8dp" />
                 </LinearLayout>
 
                 <!-- Файл -->
                 <LinearLayout
+                    android:id="@+id/btn_attach_file"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:gravity="center"
                     android:orientation="vertical"
-                    android:paddingVertical="6dp">
+                    android:gravity="center"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="12dp">
 
                     <ImageView
-                        android:id="@+id/btn_attach_file"
-                        android:layout_width="52dp"
-                        android:layout_height="52dp"
-                        android:padding="8dp"
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
                         android:src="@drawable/ic_attach_file"
                         app:tint="@color/purple_300" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
                         android:text="Файл"
-                        android:textColor="@color/purple_300"
-                        android:textSize="12sp"
-                        android:gravity="center" />
+                        android:fontFamily="@font/chivo"
+                        android:textColor="@color/white_100"
+                        android:textSize="13sp"
+                        android:layout_marginTop="8dp" />
                 </LinearLayout>
 
                 <!-- Закрыть -->
                 <LinearLayout
+                    android:id="@+id/btn_attach_to_close"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:gravity="center"
                     android:orientation="vertical"
-                    android:paddingVertical="6dp">
+                    android:gravity="center"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="12dp">
 
                     <ImageView
-                        android:id="@+id/btn_attach_to_close"
-                        android:layout_width="52dp"
-                        android:layout_height="52dp"
-                        android:padding="8dp"
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
                         android:src="@drawable/baseline_close_24"
                         app:tint="@color/purple_300" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
                         android:text="Закрыть"
-                        android:textColor="@color/purple_300"
-                        android:textSize="12sp"
-                        android:gravity="center" />
+                        android:fontFamily="@font/chivo"
+                        android:textColor="@color/white_100"
+                        android:textSize="13sp"
+                        android:layout_marginTop="8dp" />
                 </LinearLayout>
 
             </LinearLayout>

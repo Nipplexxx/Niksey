@@ -1,9 +1,10 @@
 package com.example.niksey.ui.objects
 
-import android.graphics.drawable.Drawable
-import android.net.Uri
 import android.view.View
 import android.widget.ImageView
+import android.widget.TextView
+import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import com.example.niksey.R
 import com.example.niksey.database.USER
@@ -14,34 +15,41 @@ import com.example.niksey.ui.screens.settings.SettingsFragment
 import com.example.niksey.utillits.APP_ACTIVITY
 import com.example.niksey.utillits.downloadAndSetImage
 import com.example.niksey.utillits.replaceFragment
-import com.mikepenz.materialdrawer.AccountHeader
-import com.mikepenz.materialdrawer.AccountHeaderBuilder
-import com.mikepenz.materialdrawer.Drawer
-import com.mikepenz.materialdrawer.DrawerBuilder
-import com.mikepenz.materialdrawer.model.DividerDrawerItem
-import com.mikepenz.materialdrawer.model.PrimaryDrawerItem
-import com.mikepenz.materialdrawer.model.ProfileDrawerItem
-import com.mikepenz.materialdrawer.util.AbstractDrawerImageLoader
-import com.mikepenz.materialdrawer.util.DrawerImageLoader
+import com.google.android.material.navigation.NavigationView
 
 class AppDrawer {
 
-    private lateinit var mDrawer: Drawer
-    private lateinit var mHeader: AccountHeader
     private lateinit var mDrawerLayout: DrawerLayout
-    private lateinit var mCurrentProfile: ProfileDrawerItem
+    private lateinit var mNavigationView: NavigationView
+    private lateinit var mToggle: ActionBarDrawerToggle
 
     fun create() {
-        initLoader()
-        createHeader()
-        createDrawer()
-        mDrawerLayout = mDrawer.drawerLayout
+        mDrawerLayout = APP_ACTIVITY.findViewById(R.id.drawer_layout)
+        mNavigationView = APP_ACTIVITY.findViewById(R.id.nav_view)
+
+        setupHeader()
+        setupMenu()
+        setupToggle()
+    }
+
+    private fun setupToggle() {
+        mToggle = ActionBarDrawerToggle(
+            APP_ACTIVITY,
+            mDrawerLayout,
+            APP_ACTIVITY.mToolbar,
+            R.string.open_drawer,
+            R.string.close_drawer
+        )
+        mDrawerLayout.addDrawerListener(mToggle)
+        mToggle.syncState()
     }
 
     fun disableDrawer() {
-        mDrawer.actionBarDrawerToggle?.isDrawerIndicatorEnabled = false
-        APP_ACTIVITY.supportActionBar?.setDisplayHomeAsUpEnabled(true)
         mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
+
+        // Показываем стрелку назад
+        APP_ACTIVITY.supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        APP_ACTIVITY.mToolbar.setNavigationIcon(R.drawable.ic_arrow_back)
 
         APP_ACTIVITY.mToolbar.setNavigationOnClickListener {
             APP_ACTIVITY.supportFragmentManager.popBackStack()
@@ -49,100 +57,52 @@ class AppDrawer {
     }
 
     fun enableDrawer() {
-        APP_ACTIVITY.supportActionBar?.setDisplayHomeAsUpEnabled(false)
-        mDrawer.actionBarDrawerToggle?.isDrawerIndicatorEnabled = true
         mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
+        mToggle.syncState()
+
+        // Возвращаем гамбургер
+        APP_ACTIVITY.supportActionBar?.setDisplayHomeAsUpEnabled(false)
+        mToggle.syncState()
 
         APP_ACTIVITY.mToolbar.setNavigationOnClickListener {
-            mDrawer.openDrawer()
+            mDrawerLayout.openDrawer(GravityCompat.START)
         }
     }
 
-    private fun createHeader() {
-        mCurrentProfile = ProfileDrawerItem()
-            .withName(USER.fullname)
-            .withEmail(USER.phone)
-            .withIcon(USER.photoUrl)
-            .withIdentifier(200)
+    private fun setupHeader() {
+        val headerView = mNavigationView.getHeaderView(0)
 
-        mHeader = AccountHeaderBuilder()
-            .withActivity(APP_ACTIVITY)
-            .withHeaderBackground(R.drawable.head)
-            .addProfiles(mCurrentProfile)
-            .build()
+        val nameTextView = headerView.findViewById<TextView>(R.id.header_name)
+        val phoneTextView = headerView.findViewById<TextView>(R.id.header_phone)
+        val avatarImageView = headerView.findViewById<ImageView>(R.id.header_avatar)
+
+        nameTextView.text = USER.fullname.ifEmpty { "Пользователь" }
+        phoneTextView.text = USER.phone.ifEmpty { "Нет номера" }
+        avatarImageView.downloadAndSetImage(USER.photoUrl)
     }
 
     fun updateHeader() {
-        mCurrentProfile
-            .withName(USER.fullname)
-            .withEmail(USER.phone)
-            .withIcon(USER.photoUrl)
+        val headerView = mNavigationView.getHeaderView(0)
 
-        mHeader.updateProfile(mCurrentProfile)
+        val nameTextView = headerView.findViewById<TextView>(R.id.header_name)
+        val phoneTextView = headerView.findViewById<TextView>(R.id.header_phone)
+        val avatarImageView = headerView.findViewById<ImageView>(R.id.header_avatar)
+
+        nameTextView.text = USER.fullname.ifEmpty { "Пользователь" }
+        phoneTextView.text = USER.phone.ifEmpty { "Нет номера" }
+        avatarImageView.downloadAndSetImage(USER.photoUrl)
     }
 
-    private fun initLoader() {
-        DrawerImageLoader.init(object : AbstractDrawerImageLoader() {
-            override fun set(
-                imageView: ImageView,
-                uri: Uri,
-                placeholder: Drawable?,
-                tag: String?
-            ) {
-                imageView.downloadAndSetImage(uri.toString())
+    private fun setupMenu() {
+        mNavigationView.setNavigationItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.nav_create_group -> replaceFragment(AddContactsFragment())
+                R.id.nav_contacts -> replaceFragment(ContactsFragment())
+                R.id.nav_personal_account -> replaceFragment(SettingsFragment())
+                R.id.nav_information -> replaceFragment(InformationFragment())
             }
-
-            override fun cancel(imageView: ImageView) {}
-        })
-    }
-
-    private fun createDrawer() {
-        mDrawer = DrawerBuilder()
-            .withActivity(APP_ACTIVITY)
-            .withToolbar(APP_ACTIVITY.mToolbar)
-            .withActionBarDrawerToggle(true)
-            .withSelectedItem(-1)
-            .withAccountHeader(mHeader)
-            .addDrawerItems(
-                PrimaryDrawerItem().withIdentifier(100)
-                    .withIconTintingEnabled(true)
-                    .withName(R.string.create_a_group)
-                    .withSelectable(false)
-                    .withIcon(R.drawable.img_group),
-
-                PrimaryDrawerItem().withIdentifier(101)
-                    .withIconTintingEnabled(true)
-                    .withName(R.string.my_contacts)
-                    .withSelectable(false)
-                    .withIcon(R.drawable.img_personal_chat),
-
-                DividerDrawerItem(),
-
-                PrimaryDrawerItem().withIdentifier(104)
-                    .withIconTintingEnabled(true)
-                    .withName(R.string.personal_account)
-                    .withSelectable(false)
-                    .withIcon(R.drawable.img_handyman),
-
-                PrimaryDrawerItem().withIdentifier(105)
-                    .withIconTintingEnabled(true)
-                    .withName(R.string.information)
-                    .withSelectable(false)
-                    .withIcon(R.drawable.img_info)
-            )
-            .withOnDrawerItemClickListener { _, position, _ ->
-                clickToItem(position)
-                false
-            }
-            .build()
-    }
-
-    private fun clickToItem(position: Int) {
-        when (position) {
-            1 -> replaceFragment(AddContactsFragment())
-            2 -> replaceFragment(ContactsFragment())
-            4 -> replaceFragment(SettingsFragment())
-            5 -> replaceFragment(InformationFragment())
+            mDrawerLayout.closeDrawer(GravityCompat.START)
+            true
         }
     }
 }

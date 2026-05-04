@@ -1,13 +1,14 @@
 package com.example.niksey.ui.screens.phone_book
 
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.os.Bundle
+import android.view.*
 import android.widget.TextView
+import androidx.appcompat.widget.SearchView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
 import com.example.niksey.database.*
 import com.example.niksey.models.CommonModel
+import com.example.niksey.models.UserModel
 import com.example.niksey.ui.screens.base_fragment.BaseFragment
 import com.example.niksey.ui.screens.private_messages.SingleChatFragment
 import com.example.niksey.utillits.*
@@ -20,41 +21,44 @@ class ContactsFragment : BaseFragment(R.layout.fragment_contacts) {
 
     private lateinit var mRecyclerView: RecyclerView
     private lateinit var mAdapter: FirebaseRecyclerAdapter<CommonModel, ContactsHolder>
-    private lateinit var mRefUsers: DatabaseReference
-    private lateinit var mRefUsersListener: AppValueEventListener
-    private var mapListeners = hashMapOf<DatabaseReference, AppValueEventListener>()
+    private lateinit var mRefMainList: DatabaseReference
+    private var searchView: SearchView? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true)
+    }
 
     override fun onResume() {
         super.onResume()
-        APP_ACTIVITY.title = getString(R.string.contacts)
+        APP_ACTIVITY.mToolbar?.title = getString(R.string.contacts)
         initRecycleView()
         hideKeyboard()
     }
 
     private fun initRecycleView() {
-        mRecyclerView = view?.findViewById(R.id.contacts_recycle_view)!!
-        mRefUsers = REF_DATABASE_ROOT.child(NODE_USERS)
+        mRecyclerView = requireView().findViewById(R.id.contacts_recycle_view)
+        mRefMainList = REF_DATABASE_ROOT.child(NODE_MAIN_LIST).child(CURRENT_UID)
 
-        // Set up the adapter with the query for all users
         val options = FirebaseRecyclerOptions.Builder<CommonModel>()
-            .setQuery(mRefUsers, CommonModel::class.java)
+            .setQuery(mRefMainList, CommonModel::class.java)
             .build()
 
-        // Adapter to handle displaying user data
         mAdapter = object : FirebaseRecyclerAdapter<CommonModel, ContactsHolder>(options) {
-
             override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ContactsHolder {
-                // Inflate the contact item layout
                 val view = LayoutInflater.from(parent.context)
                     .inflate(R.layout.contact_item, parent, false)
                 return ContactsHolder(view)
             }
 
             override fun onBindViewHolder(holder: ContactsHolder, position: Int, model: CommonModel) {
-                // Bind the user data to the holder
-                holder.name.text = if (model.fullname.isEmpty()) model.username else model.fullname
-                holder.status.text = model.state
-                holder.photo.downloadAndSetImage(model.photoUrl)
+                REF_DATABASE_ROOT.child(NODE_USERS).child(model.id)
+                    .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
+                        val user = snapshot.getValue(UserModel::class.java) ?: return@AppValueEventListener
+                        holder.name.text = if (user.fullname.isNotEmpty()) user.fullname else user.username
+                        holder.status.text = user.getStateText()
+                        holder.photo.downloadAndSetImage(user.photoUrl)
+                    })
 
                 holder.itemView.setOnClickListener {
                     replaceFragment(SingleChatFragment(model))
@@ -66,17 +70,85 @@ class ContactsFragment : BaseFragment(R.layout.fragment_contacts) {
         mAdapter.startListening()
     }
 
-    class ContactsHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val name: TextView = view.findViewById(R.id.contact_fullname)
-        val status: TextView = view.findViewById(R.id.contact_status)
-        val photo: CircleImageView = view.findViewById(R.id.contact_photo)
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.contacts_menu, menu)
+        val searchItem = menu.findItem(R.id.action_search)
+        searchView = searchItem.actionView as SearchView
+
+        searchView?.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                if (!query.isNullOrBlank()) searchUsers(query)
+                return true
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                if (newText.isNullOrBlank()) {
+                    initRecycleView()
+                } else {
+                    searchUsers(newText)
+                }
+                return true
+            }
+        })
+    }
+
+    private fun searchUsers(query: String) {
+        val searchQuery = REF_DATABASE_ROOT.child(NODE_USERS)
+            .orderByChild("username")
+            .startAt(query)
+            .endAt(query + "\uf8ff")
+
+        val options = FirebaseRecyclerOptions.Builder<CommonModel>()
+            .setQuery(searchQuery, CommonModel::class.java)
+            .build()
+
+        mAdapter = object : FirebaseRecyclerAdapter<CommonModel, ContactsHolder>(options) {
+            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ContactsHolder {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.contact_item, parent, false)
+                return ContactsHolder(view)
+            }
+
+            override fun onBindViewHolder(holder: ContactsHolder, position: Int, model: CommonModel) {
+                REF_DATABASE_ROOT.child(NODE_USERS).child(model.id)
+                    .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
+                        val user = snapshot.getValue(UserModel::class.java) ?: return@AppValueEventListener
+
+                        holder.name.text = if (user.fullname.isNotEmpty()) user.fullname else user.username
+                        holder.status.text = user.getStateText()
+                        holder.photo.downloadAndSetImage(user.photoUrl)
+                    })
+
+                holder.itemView.setOnClickListener {
+                    // Добавляем/обновляем в контактах
+                    saveToMainList(model.id, TYPE_CHAT)
+
+                    // Открываем чат
+                    replaceFragment(SingleChatFragment(model))
+
+                    // Закрываем поиск
+                    searchView?.setQuery("", false)
+                    searchView?.clearFocus()
+
+                    // УБРАЛИ initRecycleView() — именно он вызывал краш
+                }
+            }
+        }
+
+        mRecyclerView.adapter = mAdapter
+        mAdapter.startListening()
     }
 
     override fun onPause() {
         super.onPause()
-        mAdapter.stopListening()
-        mapListeners.forEach {
-            it.key.removeEventListener(it.value)
+        if (::mAdapter.isInitialized) {
+            mAdapter.stopListening()
         }
+    }
+
+    class ContactsHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val name: TextView = view.findViewById(R.id.contact_fullname)
+        val status: TextView = view.findViewById(R.id.contact_status)
+        val photo: CircleImageView = view.findViewById(R.id.contact_photo)
     }
 }

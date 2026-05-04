@@ -2,28 +2,27 @@
 <resources>
 
     <!-- ==================== ОСНОВНЫЕ ЦВЕТА ==================== -->
-    <color name="purple_0">#F3EDFF</color>
-    <color name="purple_100">#E4D9FF</color>
-    <color name="purple_200">#D0BFFF</color>
+    <color name="purple_0">#F0E8FF</color>
+    <color name="purple_100">#E0D0FF</color>
+    <color name="purple_200">#C8B0FF</color>
     <color name="purple_300">#6C51F7</color>
 
-    <color name="black_0">#F8F9FA</color>
-    <color name="black_10">#E2E4E8</color>
+    <color name="black_0">#F5F6F8</color>
+    <color name="black_10">#E8EAEF</color>
     <color name="black_80">#1F1F1F</color>
     <color name="black_100">#111111</color>
     <color name="white_100">#FFFFFFFF</color>
 
     <!-- ==================== ЦВЕТА ДЛЯ СТИЛЕЙ ==================== -->
-    <color name="colorMain">#FFFFFF</color>
-    <color name="material_default">#143952</color>
+    <color name="colorMain">#F5F6F8</color>
 
-    <!-- Светлая тема -->
-    <color name="ghost_card_bg_light">#F8F9FA</color>
-    <color name="text_primary_light">#111111</color>
-    <color name="text_secondary_light">#666666</color>
-    <color name="text_hint_light">#8A000000</color>
+    <!-- Светлая тема — СДЕЛАЛ ТЕМНЕЕ -->
+    <color name="ghost_card_bg_light">#E5E7ED</color>      <!-- было очень светло -->
+    <color name="text_primary_light">#1F1F1F</color>
+    <color name="text_secondary_light">#4F4F4F</color>
+    <color name="text_hint_light">#6F6F6F</color>
 
-    <!-- Тёмная тема -->
+    <!-- Тёмная тема (оставил как было) -->
     <color name="ghost_card_bg_dark">#1C1C1E</color>
     <color name="text_primary_dark">#FFFFFF</color>
     <color name="text_secondary_dark">#B3B3B3</color>
@@ -36,7 +35,7 @@
     <color name="text_hint">@color/text_hint_dark</color>
 
     <!-- MaterialDrawer -->
-    <color name="material_drawer_background">#F8F9FA</color>
+    <color name="material_drawer_background">#F5F6F8</color>
     <color name="material_drawer_primary_text">@color/black_100</color>
     <color name="material_drawer_primary_icon">#8A000000</color>
     <color name="material_drawer_secondary_text">#8A000000</color>

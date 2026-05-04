@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_create_group"
+        android:icon="@drawable/img_group"
+        android:title="@string/create_a_group" />
+
+    <item
+        android:id="@+id/nav_contacts"
+        android:icon="@drawable/img_personal_chat"
+        android:title="@string/my_contacts" />
+
+    <item android:id="@+id/divider"
+        android:title="">
+        <menu>
+            <item android:id="@+id/divider_item" android:enabled="false"
+                android:title="TODO" />
+        </menu>
+    </item>
+
+    <item
+        android:id="@+id/nav_personal_account"
+        android:icon="@drawable/img_handyman"
+        android:title="@string/personal_account" />
+
+    <item
+        android:id="@+id/nav_information"
+        android:icon="@drawable/img_info"
+        android:title="@string/information" />
+
+</menu>

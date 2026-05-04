@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Environment
 import android.view.View
 import android.widget.ImageView
@@ -14,11 +13,11 @@ import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
 import com.example.niksey.database.CURRENT_UID
-import com.example.niksey.database.REF_DATABASE_ROOT
 import com.example.niksey.database.getFileFromStorage
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageHolder
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 import com.example.niksey.utillits.APP_ACTIVITY
+import com.example.niksey.utillits.ChatEncryptionManager
 import com.example.niksey.utillits.asTime
 import com.example.niksey.utillits.showToast
 import com.google.android.material.card.MaterialCardView
@@ -52,9 +51,10 @@ class HolderFileMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
         blocUserFileMessage.visibility = View.VISIBLE
         blocReceivedFileMessage.visibility = View.GONE
 
-        chatUserFilename.text = getDisplayFileName(view.text)
-        chatUserFileInfo.text = getFileInfo(view.text)
-        chatUserFileIcon.setImageResource(getFileIcon(view.text))
+        val decryptedFileName = decryptFileName(view)
+        chatUserFilename.text = getDisplayFileName(decryptedFileName)
+        chatUserFileInfo.text = getFileInfo(decryptedFileName)
+        chatUserFileIcon.setImageResource(getFileIcon(decryptedFileName))
         chatUserFileMessageTime.text = view.timeStamp.asTime()
         chatUserBtnDownload.setImageResource(R.drawable.ic_download_white)
         chatUserProgressBar.visibility = View.INVISIBLE
@@ -64,13 +64,31 @@ class HolderFileMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
         blocUserFileMessage.visibility = View.GONE
         blocReceivedFileMessage.visibility = View.VISIBLE
 
-        chatReceivedFilename.text = getDisplayFileName(view.text)
-        chatReceivedFileInfo.text = getFileInfo(view.text)
-        chatReceivedFileIcon.setImageResource(getFileIcon(view.text))
+        val decryptedFileName = decryptFileName(view)
+        chatReceivedFilename.text = getDisplayFileName(decryptedFileName)
+        chatReceivedFileInfo.text = getFileInfo(decryptedFileName)
+        chatReceivedFileIcon.setImageResource(getFileIcon(decryptedFileName))
         chatReceivedFileMessageTime.text = view.timeStamp.asTime()
         chatReceivedBtnDownload.setImageResource(R.drawable.ic_download)
         chatReceivedProgressBar.visibility = View.INVISIBLE
     }
+
+    // ==================== НОВАЯ ВЕРСИЯ РАСШИФРОВКИ ====================
+    private fun decryptFileName(view: MessageView): String {
+        return try {
+            val chatKey = ChatEncryptionManager.getChatKey(view.from)
+
+            if (chatKey != null) {
+                ChatEncryptionManager.decryptMessage(view.text, chatKey)
+            } else {
+                // Если ключа нет — показываем оригинальное имя файла
+                view.text.ifEmpty { "Файл" }
+            }
+        } catch (e: Exception) {
+            view.text.ifEmpty { "Файл" }
+        }
+    }
+    // ===============================================================
 
     private fun getDisplayFileName(name: String?): String {
         if (name.isNullOrEmpty()) return "Файл"

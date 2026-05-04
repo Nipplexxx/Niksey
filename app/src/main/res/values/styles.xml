@@ -1,28 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- ==================== СТИЛИ ДЛЯ ЧАТА ==================== -->
+    <!-- ==================== ОСНОВНЫЕ СТИЛИ ==================== -->
     <style name="mainToolbar">
         <item name="android:theme">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">?attr/actionBarSize</item>
-        <item name="android:background">?attr/ghost_card_bg</item>   <!-- ← используем атрибут -->
+        <item name="android:background">@color/ghost_card_bg</item>
     </style>
 
-    <!-- ==================== ОСТАЛЬНЫЕ СТИЛИ ==================== -->
     <style name="settingsButtons">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_marginTop">@dimen/app_small_margin</item>
         <item name="android:clickable">true</item>
-        <item name="background">@drawable/ripple_effect</item>
         <item name="android:focusable">true</item>
+        <item name="background">@drawable/ripple_effect</item>
     </style>
 
+    <!-- Адаптивные тексты (работают на светлой и тёмной теме) -->
     <style name="normalText">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textColor">@color/black_80</item>
+        <item name="android:textColor">?attr/text_primary</item>
         <item name="android:layout_marginStart">@dimen/app_margin</item>
         <item name="android:layout_marginTop">10dp</item>
         <item name="android:textSize">@dimen/normalText</item>
@@ -31,15 +31,16 @@
     <style name="smallText">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textColor">@color/black_10</item>
+        <item name="android:textColor">?attr/text_secondary</item>
         <item name="android:layout_marginStart">@dimen/app_margin</item>
         <item name="android:textSize">@dimen/smallText</item>
     </style>
 
+    <!-- Разделитель (адаптивный) -->
     <style name="separator">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">1dp</item>
-        <item name="android:background">@color/black_10</item>
+        <item name="android:background">?attr/colorOutline</item>   <!-- или @color/black_10 с прозрачностью -->
         <item name="android:layout_marginTop">@dimen/app_small_margin</item>
         <item name="android:layout_marginStart">@dimen/app_margin</item>
         <item name="android:layout_marginEnd">@dimen/app_margin</item>
@@ -53,7 +54,7 @@
     <style name="style_constratint_layout">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">0dp</item>
-        <item name="android:background">@color/colorMain</item>
+        <item name="android:background">?android:attr/colorBackground</item>
     </style>
 
     <style name="style_edit_text" parent="editText">
@@ -61,11 +62,11 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:autofillHints" tools:targetApi="o" />
         <item name="android:inputType">text</item>
-        <item name="android:textColor">@color/black_80</item>
+        <item name="android:textColor">?attr/text_primary</item>
         <item name="minHeight">48dp</item>
-        <item name="android:backgroundTint">@color/material_default</item>
     </style>
 
+    <!-- Остальные стили (оставляем как были) -->
     <style name="style_input_code" parent="editText">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:autofillHints" tools:targetApi="o" />
@@ -78,7 +79,7 @@
     <style name="style_photo_profil">
         <item name="android:layout_width">@dimen/settings_user_photo_width</item>
         <item name="android:layout_height">@dimen/settings_btn_change_photo_height</item>
-        <item name="android:background">@color/white_100</item>
+        <item name="android:background">?attr/ghost_card_bg</item>
     </style>
 
     <style name="style_pinView" parent="PinWidget.PinView">
@@ -88,7 +89,7 @@
         <item name="android:cursorVisible">true</item>
         <item name="android:elevation">15dp</item>
         <item name="android:inputType">text</item>
-        <item name="android:textColor">@color/black_100</item>
+        <item name="android:textColor">?attr/text_primary</item>
         <item name="android:textSize">18sp</item>
         <item name="android:textStyle">bold</item>
     </style>

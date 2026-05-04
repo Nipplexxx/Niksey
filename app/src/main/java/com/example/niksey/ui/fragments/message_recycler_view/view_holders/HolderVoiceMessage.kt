@@ -13,12 +13,10 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
 import com.example.niksey.database.CURRENT_UID
-import com.example.niksey.database.REF_DATABASE_ROOT
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageHolder
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
-import com.example.niksey.utillits.APP_ACTIVITY
+import com.example.niksey.utillits.ChatEncryptionManager
 import com.example.niksey.utillits.asTime
-import com.example.niksey.utillits.showToast
 import com.google.android.material.card.MaterialCardView
 
 class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHolder {
@@ -90,6 +88,21 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         currentUrl = view.fileUrl
     }
 
+    // ==================== END-TO-END ШИФРОВАНИЕ ====================
+    private fun decryptVoiceText(view: MessageView): String {
+        return try {
+            val chatKey = ChatEncryptionManager.getChatKey(view.from)
+
+            if (chatKey != null) {
+                ChatEncryptionManager.decryptMessage(view.text, chatKey)
+            } else {
+                view.text.ifEmpty { "Голосовое сообщение" }
+            }
+        } catch (e: Exception) {
+            view.text.ifEmpty { "Голосовое сообщение" }
+        }
+    }
+
     // ==================== ПРЕДПРОСМОТР НАЧАЛА ЗВУКА ====================
     private fun preloadInitialWaveform(url: String, bars: List<View>) {
         Thread {
@@ -119,14 +132,13 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
                     enabled = true
                 }
 
-                // Даём время на захват
                 Thread.sleep(80)
                 tempVisualizer.enabled = false
                 tempVisualizer.release()
                 tempPlayer.release()
 
             } catch (e: Exception) {
-                // Если не получилось — оставляем дефолтные высоты
+                // Оставляем дефолтные высоты
             }
         }.start()
     }

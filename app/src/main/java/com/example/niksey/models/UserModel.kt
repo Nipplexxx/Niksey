@@ -1,35 +1,44 @@
 package com.example.niksey.models
 
-/**
- * Модель пользователя.
- * Содержит основные данные профиля.
-*/
+import com.google.firebase.database.IgnoreExtraProperties
 
+@IgnoreExtraProperties
 data class UserModel(
-    val id: String = "",
+    var id: String = "",
     var username: String = "",
     var bio: String = "",
     var fullname: String = "",
-    var state: String = "",
+    var state: Any = "",           // ← Any — принимает Long и String
     var phone: String = "",
     var photoUrl: String = "empty",
     var email: String = "",
-    var password: String = ""
+    var password: String = "",
+    var publicKey: String = ""
 ) {
 
-    /** Пользователь онлайн? */
     fun isOnline(): Boolean {
-        return state.lowercase() == "online" || state == "В сети"
+        val s = state
+        return when (s) {
+            is String -> s.lowercase() == "online" || s == "В сети"
+            else -> false
+        }
     }
 
-    /** Отображаемое имя (fullname или username) */
     fun getDisplayName(): String {
         return fullname.ifBlank { username.ifBlank { phone.ifBlank { id } } }
     }
 
-    /** Короткое имя для списка */
     fun getShortName(): String {
         return fullname.ifBlank { username }.take(20)
+    }
+
+    fun getStateText(): String {
+        val s = state
+        return when (s) {
+            is String -> s
+            is Long -> "был(а) недавно"
+            else -> "offline"
+        }
     }
 
     override fun toString(): String {

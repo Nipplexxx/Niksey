@@ -5,7 +5,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground">
+    android:background="?android:attr/colorBackground"
+    tools:context=".ui.screens.groups_messages.CreateGroupFragment">
 
     <!-- Glassmorphic Header -->
     <com.google.android.material.card.MaterialCardView
@@ -13,8 +14,8 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         app:cardBackgroundColor="@color/ghost_card_bg"
-        app:cardCornerRadius="24dp"
-        app:cardElevation="10dp"
+        app:cardCornerRadius="28dp"
+        app:cardElevation="12dp"
         app:strokeColor="@color/purple_300"
         app:strokeWidth="1.5dp"
         app:layout_constraintTop_toTopOf="parent"
@@ -45,23 +46,36 @@
                 app:layout_constraintBottom_toBottomOf="@id/create_group_photo"
                 app:tint="@color/purple_300" />
 
-            <EditText
-                android:id="@+id/create_group_input_name"
+            <!-- Поле названия группы -->
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:background="@null"
-                android:fontFamily="@font/chivo"
                 android:hint="Название Void-группы"
-                android:inputType="textCapWords"
-                android:maxLength="40"
-                android:textColor="@color/white_100"
-                android:textColorHint="@color/black_10"
-                android:textSize="19sp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                app:boxStrokeColor="@color/purple_300"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusBottomEnd="16dp"
+                app:hintTextColor="@color/purple_300"
+                app:boxStrokeWidth="2dp"
                 app:layout_constraintStart_toEndOf="@id/create_group_photo"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="@id/create_group_photo"
                 app:layout_constraintBottom_toBottomOf="@id/create_group_photo"
-                android:layout_marginStart="20dp" />
+                android:layout_marginStart="20dp">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/create_group_input_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/chivo"
+                    android:textColor="@color/white_100"
+                    android:textColorHint="@color/purple_0"
+                    android:inputType="textCapWords"
+                    android:maxLength="40"
+                    android:textSize="19sp" />
+            </com.google.android.material.textfield.TextInputLayout>
 
             <TextView
                 android:id="@+id/create_group_counts"
@@ -79,7 +93,7 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- RecyclerView -->
+    <!-- RecyclerView участников -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/create_group_recycle_view"
         android:layout_width="0dp"
@@ -94,7 +108,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         tools:listitem="@layout/add_contacts_item" />
 
-    <!-- Большая FAB (исправлено позиционирование) -->
+    <!-- Кнопка создания группы -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/create_group_btn_complete"
         android:layout_width="54dp"

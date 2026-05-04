@@ -1,3 +1,4 @@
+@file:Suppress("UNCHECKED_CAST", "DEPRECATION")
 package com.example.niksey.ui.screens.groups_messages
 
 import android.Manifest.permission.RECORD_AUDIO
@@ -6,7 +7,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.*
-import android.widget.AbsListView
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
@@ -29,9 +29,6 @@ import com.example.niksey.ui.screens.main_list.MainListFragment
 import com.example.niksey.utillits.*
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.firebase.database.DatabaseReference
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.fragment_chat) {
 
@@ -58,11 +55,11 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
         cropImageLauncher = registerForActivityResult(CropImageContract()) { result ->
             if (result.isSuccessful) {
                 val uri = result.uriContent ?: return@registerForActivityResult
-                val messageKey = getMessageKey(group.id)
+                val messageKey = getMessageKeyGroup(group.id)
                 uploadFileToStorageGroup(uri, messageKey, group.id, TYPE_MESSAGE_IMAGE)
                 mSmoothScrollToPosition = true
             } else {
-                showToast(APP_ACTIVITY.getString(R.string.error_cropping_image))
+                showToast(getString(R.string.error_cropping_image))
             }
         }
     }
@@ -77,74 +74,66 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
     @SuppressLint("ClickableViewAccessibility")
     private fun initFields() {
         setHasOptionsMenu(true)
-        mBottomSheetBehavior = BottomSheetBehavior.from(view?.findViewById(R.id.bottom_sheet_choice)!!)
+        mBottomSheetBehavior = BottomSheetBehavior.from(requireView().findViewById(R.id.bottom_sheet_choice))
         mBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
         mAppVoiceRecorder = AppVoiceRecorder()
-        mSwipeRefreshLayout = view?.findViewById(R.id.chat_swipe_refresh)!!
+        mSwipeRefreshLayout = requireView().findViewById(R.id.chat_swipe_refresh)
         mLayoutManager = LinearLayoutManager(requireContext())
 
-        view?.findViewById<EditText>(R.id.chat_input_message)?.addTextChangedListener(AppTextWatcher {
-            val string = view?.findViewById<EditText>(R.id.chat_input_message)?.text.toString()
-            val sendBtn = view?.findViewById<ImageView>(R.id.chat_btn_send_message)
-            val attachBtn = view?.findViewById<ImageView>(R.id.chat_btn_attach)
-            val voiceBtn = view?.findViewById<ImageView>(R.id.chat_btn_voice)
+        requireView().findViewById<EditText>(R.id.chat_input_message)
+            .addTextChangedListener(AppTextWatcher { text ->
+                val sendBtn = requireView().findViewById<ImageView>(R.id.chat_btn_send_message)
+                val attachBtn = requireView().findViewById<ImageView>(R.id.chat_btn_attach)
+                val voiceBtn = requireView().findViewById<ImageView>(R.id.chat_btn_voice)
 
-            if (string.isEmpty() || string == getString(R.string.record)) {
-                sendBtn?.visibility = View.GONE
-                attachBtn?.visibility = View.VISIBLE
-                voiceBtn?.visibility = View.VISIBLE
-            } else {
-                sendBtn?.visibility = View.VISIBLE
-                attachBtn?.visibility = View.GONE
-                voiceBtn?.visibility = View.GONE
-            }
-        })
+                val textStr = text?.toString() ?: ""
+                val isEmpty = textStr.isEmpty() || textStr == getString(R.string.record)
 
-        view?.findViewById<ImageView>(R.id.chat_btn_attach)?.setOnClickListener { attach() }
+                sendBtn?.visibility = if (isEmpty) View.GONE else View.VISIBLE
+                attachBtn?.visibility = if (isEmpty) View.VISIBLE else View.GONE
+                voiceBtn?.visibility = if (isEmpty) View.VISIBLE else View.GONE
+            })
 
-        // ==================== AI Quick Reply ====================
-        view?.findViewById<ImageView>(R.id.chat_btn_send_message)?.setOnLongClickListener {
-            (requireActivity() as com.example.niksey.MainActivity).showAIQuickReplies { reply ->
-                view?.findViewById<EditText>(R.id.chat_input_message)?.setText(reply)
-            }
+        requireView().findViewById<ImageView>(R.id.chat_btn_attach)?.setOnClickListener { attach() }
+
+        requireView().findViewById<ImageView>(R.id.chat_btn_send_message)?.setOnLongClickListener {
+            showAIQuickRepliesLocal()
             true
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
-            view?.findViewById<ImageView>(R.id.chat_btn_voice)?.setOnTouchListener { _, event ->
-                if (checkPermission(RECORD_AUDIO)) {
-                    when (event.action) {
-                        MotionEvent.ACTION_DOWN -> {
-                            view?.findViewById<EditText>(R.id.chat_input_message)?.setText(getString(R.string.record))
-                            view?.findViewById<ImageView>(R.id.chat_btn_voice)?.setColorFilter(
-                                ContextCompat.getColor(APP_ACTIVITY, R.color.purple_200)
-                            )
-                            val messageKey = getMessageKeyGroup(group.id)
-                            mAppVoiceRecorder.startRecord(messageKey)
-                        }
-                        MotionEvent.ACTION_UP -> {
-                            view?.findViewById<EditText>(R.id.chat_input_message)?.setText("")
-                            view?.findViewById<ImageView>(R.id.chat_btn_voice)?.colorFilter = null
-                            mAppVoiceRecorder.stopRecord { file, messageKey ->
-                                uploadFileToStorageGroup(Uri.fromFile(file), messageKey, group.id, TYPE_MESSAGE_VOICE)
-                                mSmoothScrollToPosition = true
-                            }
+        requireView().findViewById<ImageView>(R.id.chat_btn_voice)?.setOnTouchListener { _, event ->
+            if (checkPermission(RECORD_AUDIO)) {
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        requireView().findViewById<EditText>(R.id.chat_input_message)?.setText(getString(R.string.record))
+                        requireView().findViewById<ImageView>(R.id.chat_btn_voice)?.setColorFilter(
+                            ContextCompat.getColor(APP_ACTIVITY, R.color.purple_200)
+                        )
+                        val messageKey = getMessageKeyGroup(group.id)
+                        mAppVoiceRecorder.startRecord(messageKey)
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        requireView().findViewById<EditText>(R.id.chat_input_message)?.setText("")
+                        requireView().findViewById<ImageView>(R.id.chat_btn_voice)?.colorFilter = null
+                        mAppVoiceRecorder.stopRecord { file, messageKey ->
+                            uploadFileToStorageGroup(Uri.fromFile(file), messageKey, group.id, TYPE_MESSAGE_VOICE)
+                            mSmoothScrollToPosition = true
                         }
                     }
                 }
-                true
             }
+            true
         }
     }
 
     private fun attach() {
         mBottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
-        view?.findViewById<ImageView>(R.id.btn_attach_file)?.setOnClickListener { attachFile() }
-        view?.findViewById<ImageView>(R.id.btn_attach_image)?.setOnClickListener { attachImage() }
-        view?.findViewById<ImageView>(R.id.btn_attach_to_close)?.setOnClickListener { attachToclose() }
+        requireView().findViewById<ImageView>(R.id.btn_attach_file)?.setOnClickListener { attachFile() }
+        requireView().findViewById<ImageView>(R.id.btn_attach_image)?.setOnClickListener { attachImage() }
+        requireView().findViewById<ImageView>(R.id.btn_attach_to_close)?.setOnClickListener { attachToClose() }
     }
 
-    private fun attachToclose() {
+    private fun attachToClose() {
         mBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
     }
 
@@ -169,9 +158,8 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
     }
 
     private fun initRecycleView() {
-        mRecyclerView = view?.findViewById(R.id.chat_recycle_view)!!
+        mRecyclerView = requireView().findViewById(R.id.chat_recycle_view)
         mAdapter = GroupChatAdapter()
-
         mRefMessages = REF_DATABASE_ROOT.child(NODE_GROUPS).child(group.id).child(NODE_MESSAGES)
 
         mRecyclerView.apply {
@@ -208,9 +196,7 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
 
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                 super.onScrollStateChanged(recyclerView, newState)
-                if (newState == AbsListView.OnScrollListener.SCROLL_STATE_TOUCH_SCROLL) {
-                    mIsScrolling = true
-                }
+                mIsScrolling = newState == RecyclerView.SCROLL_STATE_DRAGGING
             }
         })
 
@@ -237,31 +223,53 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
         mRefUser = REF_DATABASE_ROOT.child(NODE_USERS).child(group.id)
         mRefUser.addValueEventListener(mListenerInfoToolbar)
 
-        view?.findViewById<ImageView>(R.id.chat_btn_send_message)?.setOnClickListener {
+        // === ШИФРОВАНИЕ ДЛЯ ГРУПП ===
+        if (USER.publicKey.isNotEmpty()) {
+            ChatEncryptionManager.cachePublicKey(CURRENT_UID, USER.publicKey)
+        }
+        preloadGroupMembersPublicKeys()
+        // ============================
+
+        requireView().findViewById<ImageView>(R.id.chat_btn_send_message)?.setOnClickListener {
             mSmoothScrollToPosition = true
-            val message = view?.findViewById<EditText>(R.id.chat_input_message)?.text.toString()
+            val message = requireView().findViewById<EditText>(R.id.chat_input_message)?.text.toString()
             if (message.isEmpty()) {
                 showToast(getString(R.string.enter_a_message))
             } else {
                 sendMessageToGroup(message, group.id, TYPE_TEXT) {
-                    view?.findViewById<EditText>(R.id.chat_input_message)?.setText("")
+                    requireView().findViewById<EditText>(R.id.chat_input_message)?.setText("")
                 }
             }
         }
+    }
+
+    /** Исправленная предзагрузка ключей для групп */
+    private fun preloadGroupMembersPublicKeys() {
+        REF_DATABASE_ROOT.child("$NODE_GROUPS/${group.id}/$NODE_MEMBERS")
+            .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
+                snapshot.children.forEach { member ->
+                    val memberId = member.key ?: return@forEach
+                    if (memberId != CURRENT_UID) {
+                        // Предзагружаем ключ через существующий метод
+                        ChatEncryptionManager.getChatKey(memberId)
+                    }
+                }
+            })
     }
 
     private fun initInfoToolbar() {
         val fullname = if (mReceivingUser.fullname.isEmpty()) group.fullname else mReceivingUser.fullname
         mToolbarInfo.findViewById<TextView>(R.id.toolbar_chat_fullname).text = fullname
         mToolbarInfo.findViewById<ImageView>(R.id.toolbar_chat_image).downloadAndSetImage(group.photoUrl)
-        mToolbarInfo.findViewById<TextView>(R.id.toolbar_chat_status).text = mReceivingUser.state
+        mToolbarInfo.findViewById<TextView>(R.id.toolbar_chat_status).text = mReceivingUser.getStateText()
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (data?.data != null && requestCode == PICK_FILE_REQUEST_CODE) {
             val uri = data.data!!
-            val messageKey = getMessageKey(group.id)
+            val messageKey = getMessageKeyGroup(group.id)
             val filename = getFilenameFromUri(uri)
             uploadFileToStorageGroup(uri, messageKey, group.id, TYPE_MESSAGE_FILE, filename)
             mSmoothScrollToPosition = true
@@ -283,9 +291,7 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
 
     @Deprecated("Deprecated in Java")
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        val menuRes = if ("$NODE_GROUPS/${group.id}/$NODE_MEMBERS/$CURRENT_UID" == USER_MEMBER)
-            R.menu.single_chat_action_menu else R.menu.group_chat_action_menu
-        activity?.menuInflater?.inflate(menuRes, menu)
+        activity?.menuInflater?.inflate(R.menu.single_chat_action_menu, menu)
     }
 
     @Deprecated("Deprecated in Java")
@@ -305,5 +311,42 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
             }
         }
         return true
+    }
+
+    private fun showAIQuickRepliesLocal() {
+        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_ai_replies, null)
+        bottomSheet.setContentView(view)
+
+        val reply1 = view.findViewById<TextView>(R.id.reply_1)
+        val reply2 = view.findViewById<TextView>(R.id.reply_2)
+        val reply3 = view.findViewById<TextView>(R.id.reply_3)
+        val reply4 = view.findViewById<TextView>(R.id.reply_4)
+
+        val replies = listOf(
+            getString(R.string.ai_reply_thanks),
+            getString(R.string.ai_reply_ok),
+            getString(R.string.ai_reply_later),
+            getString(R.string.ai_reply_call_me)
+        )
+
+        reply1.setOnClickListener {
+            requireView().findViewById<EditText>(R.id.chat_input_message)?.setText(replies[0])
+            bottomSheet.dismiss()
+        }
+        reply2.setOnClickListener {
+            requireView().findViewById<EditText>(R.id.chat_input_message)?.setText(replies[1])
+            bottomSheet.dismiss()
+        }
+        reply3.setOnClickListener {
+            requireView().findViewById<EditText>(R.id.chat_input_message)?.setText(replies[2])
+            bottomSheet.dismiss()
+        }
+        reply4.setOnClickListener {
+            requireView().findViewById<EditText>(R.id.chat_input_message)?.setText(replies[3])
+            bottomSheet.dismiss()
+        }
+
+        bottomSheet.show()
     }
 }

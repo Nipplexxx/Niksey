@@ -20,7 +20,7 @@
     <!-- Неоновый блик по краю -->
     <item>
         <shape android:shape="rectangle">
-            <stroke android:width="1.5dp" android:color="#00F0FF" />
+            <stroke android:width="1.5dp" android:color="@color/purple_300" />
             <corners android:radius="18dp" />
         </shape>
     </item>

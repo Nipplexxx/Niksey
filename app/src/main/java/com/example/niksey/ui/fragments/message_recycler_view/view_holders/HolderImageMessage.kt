@@ -1,6 +1,5 @@
 package com.example.niksey.ui.fragments.message_recycler_view.view_holders
 
-import android.content.Intent
 import android.view.View
 import android.widget.ImageView
 import android.widget.PopupMenu
@@ -62,7 +61,7 @@ class HolderImageMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         chatUserImage.setOnClickListener(clickListener)
         chatReceivedImage.setOnClickListener(clickListener)
 
-        // Долгий клик остаётся
+        // Долгий клик
         val longClickListener = View.OnLongClickListener {
             showMessageOptions(view, it)
             true

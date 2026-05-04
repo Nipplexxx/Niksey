@@ -66,6 +66,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-database-ktx:21.0.0'
     implementation 'com.google.firebase:firebase-storage-ktx:21.0.2'
     implementation 'com.google.firebase:firebase-auth-ktx:23.2.1'
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
 
     implementation 'com.google.android.gms:play-services-auth:21.5.1'
 

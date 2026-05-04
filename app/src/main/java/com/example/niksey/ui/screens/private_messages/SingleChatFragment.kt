@@ -1,3 +1,4 @@
+@file:Suppress("UNCHECKED_CAST", "DEPRECATION")
 package com.example.niksey.ui.screens.private_messages
 
 import android.Manifest
@@ -21,7 +22,6 @@ import com.canhub.cropper.CropImageContract
 import com.canhub.cropper.CropImageContractOptions
 import com.canhub.cropper.CropImageOptions
 import com.canhub.cropper.CropImageView
-import com.example.niksey.MainActivity
 import com.example.niksey.R
 import com.example.niksey.database.*
 import com.example.niksey.models.CommonModel
@@ -33,22 +33,24 @@ import com.example.niksey.utillits.*
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.firebase.database.DatabaseReference
 import de.hdodenhof.circleimageview.CircleImageView
+import com.example.niksey.utillits.ChatEncryptionManager
 
 class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layout.fragment_chat) {
 
-    // ====================== View references (cached) ======================
+    // ====================== View references ======================
     private lateinit var mChatInputMessage: EditText
     private lateinit var mChatBtnSendMessage: ImageView
     private lateinit var mChatBtnAttach: ImageView
     private lateinit var mChatBtnVoice: ImageView
-    private lateinit var mBtnAttachFile: ImageView
-    private lateinit var mBtnAttachImage: ImageView
-    private lateinit var mBtnAttachClose: ImageView
+
+    private lateinit var mBtnAttachFile: View
+    private lateinit var mBtnAttachImage: View
+    private lateinit var mBtnAttachClose: View
 
     // ====================== Firebase & listeners ======================
     private lateinit var mListenerInfoToolbar: AppValueEventListener
     private lateinit var mReceivingUser: UserModel
-    private lateinit var mToolbarInfo: View
+    private var mToolbarInfo: View? = null
     private lateinit var mRefUser: DatabaseReference
     private lateinit var mRefMessages: DatabaseReference
     private lateinit var mAdapter: SingleChatAdapter
@@ -73,6 +75,7 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // === Crop Image ===
         cropImageLauncher = registerForActivityResult(CropImageContract()) { result ->
             if (result.isSuccessful) {
                 val uri = result.uriContent ?: return@registerForActivityResult
@@ -84,6 +87,7 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
             }
         }
 
+        // === Pick File ===
         pickFileLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 val uri = result.data?.data ?: return@registerForActivityResult
@@ -95,20 +99,13 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        initViews()
-        initFields()
-        initToolbar()
-        initRecycleView()
-    }
-
     private fun initViews() {
         val root = requireView()
         mChatInputMessage = root.findViewById(R.id.chat_input_message)
         mChatBtnSendMessage = root.findViewById(R.id.chat_btn_send_message)
         mChatBtnAttach = root.findViewById(R.id.chat_btn_attach)
         mChatBtnVoice = root.findViewById(R.id.chat_btn_voice)
+
         mBtnAttachFile = root.findViewById(R.id.btn_attach_file)
         mBtnAttachImage = root.findViewById(R.id.btn_attach_image)
         mBtnAttachClose = root.findViewById(R.id.btn_attach_to_close)
@@ -127,6 +124,7 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
         mAppVoiceRecorder = AppVoiceRecorder()
         mLayoutManager = LinearLayoutManager(requireContext())
 
+        // TextWatcher
         mChatInputMessage.addTextChangedListener(AppTextWatcher {
             val text = mChatInputMessage.text.toString()
             val isEmptyOrRecording = text.isEmpty() || text == getString(R.string.record)
@@ -138,21 +136,25 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
 
         mChatBtnAttach.setOnClickListener { attach() }
 
-        mChatBtnSendMessage.setOnLongClickListener {
-            (requireActivity() as MainActivity).showAIQuickReplies { reply ->
-                mChatInputMessage.setText(reply)
+        // === Отправка сообщения с обработкой ошибок ===
+        mChatBtnSendMessage.setOnClickListener {
+            mSmoothScrollToPosition = true
+            val message = mChatInputMessage.text.toString().trim()
+            if (message.isEmpty()) {
+                showToast(getString(R.string.enter_a_message))
+                return@setOnClickListener
             }
-            true
+
+            safeSendMessage(message)
         }
 
+        // Голосовое сообщение
         mChatBtnVoice.setOnTouchListener { _, event ->
             if (checkPermission(RECORD_AUDIO)) {
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
                         mChatInputMessage.setText(getString(R.string.record))
-                        mChatBtnVoice.setColorFilter(
-                            ContextCompat.getColor(APP_ACTIVITY, R.color.purple_200)
-                        )
+                        mChatBtnVoice.setColorFilter(ContextCompat.getColor(requireContext(), R.color.purple_200))
                         val messageKey = getMessageKey(contact.id)
                         mAppVoiceRecorder.startRecord(messageKey)
                     }
@@ -170,9 +172,20 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
         }
     }
 
+    // === Безопасная отправка сообщения с обработкой ошибок ===
+    private fun safeSendMessage(message: String) {
+        try {
+            sendMessage(message, contact.id, TYPE_TEXT) {
+                saveToMainList(contact.id, TYPE_CHAT)
+                mChatInputMessage.setText("")
+            }
+        } catch (e: Exception) {
+            showToast("Ошибка отправки: ${e.message}")
+        }
+    }
+
     private fun attach() {
         mBottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
-
         mBtnAttachFile.setOnClickListener { attachFile() }
         mBtnAttachImage.setOnClickListener { attachImage() }
         mBtnAttachClose.setOnClickListener { attachToClose() }
@@ -188,8 +201,7 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
     }
 
     private fun attachImage() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
-            == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             launchCropper()
         } else {
             requestPermissions(arrayOf(Manifest.permission.CAMERA), 1001)
@@ -273,51 +285,99 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
         mRefMessages.limitToLast(mCountMessages).addChildEventListener(mMessagesListener)
     }
 
-    private fun initToolbar() {
-        mToolbarInfo = APP_ACTIVITY.mToolbar.findViewById(R.id.toolbar_info)
-        mToolbarInfo.visibility = View.VISIBLE
+    override fun onResume() {
+        super.onResume()
+        initViews()
+        initFields()
 
+        ChatEncryptionManager.currentChatPartnerId = contact.id
+
+        // Временно упрощённая загрузка ключа (прямо из Firebase)
+        REF_DATABASE_ROOT.child("users/${contact.id}/publicKey")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val key = snapshot.value as? String
+                if (!key.isNullOrEmpty()) {
+                    ChatEncryptionManager.cachePublicKey(contact.id, key)
+                }
+            }
+
+        initToolbar()
+        initRecycleView()
+    }
+
+    private fun initToolbar() {
+        val toolbar = APP_ACTIVITY.mToolbar ?: return
+        mToolbarInfo = toolbar.findViewById(R.id.toolbar_info)
+
+        if (mToolbarInfo == null) {
+            APP_ACTIVITY.supportActionBar?.title = contact.fullname.ifEmpty { contact.username }
+            return
+        }
+
+        mToolbarInfo?.visibility = View.VISIBLE
+
+        // Сразу показываем данные
+        val fullname = contact.fullname.ifEmpty { contact.username }
+        mToolbarInfo?.findViewById<TextView>(R.id.toolbar_chat_fullname)?.text = fullname
+        mToolbarInfo?.findViewById<CircleImageView>(R.id.toolbar_chat_image)
+            ?.downloadAndSetImage(contact.photoUrl)
+
+        // Подписка на обновления
         mListenerInfoToolbar = AppValueEventListener {
             mReceivingUser = it.getUserModel()
+
+            if (mReceivingUser.publicKey.isNotEmpty()) {
+                ChatEncryptionManager.cachePublicKey(contact.id, mReceivingUser.publicKey)
+            }
+
             initInfoToolbar()
         }
 
         mRefUser = REF_DATABASE_ROOT.child(NODE_USERS).child(contact.id)
         mRefUser.addValueEventListener(mListenerInfoToolbar)
-
-        mChatBtnSendMessage.setOnClickListener {
-            mSmoothScrollToPosition = true
-            val message = mChatInputMessage.text.toString().trim()
-            if (message.isEmpty()) {
-                showToast(getString(R.string.enter_a_message))
-            } else {
-                sendMessage(message, contact.id, TYPE_TEXT) {
-                    saveToMainList(contact.id, TYPE_CHAT)
-                    mChatInputMessage.setText("")
-                }
-            }
-        }
     }
 
     private fun initInfoToolbar() {
-        val fullname = if (mReceivingUser.fullname.isEmpty()) contact.fullname else mReceivingUser.fullname
-        mToolbarInfo.findViewById<TextView>(R.id.toolbar_chat_fullname).text = fullname
-        mToolbarInfo.findViewById<CircleImageView>(R.id.toolbar_chat_image)
-            .downloadAndSetImage(mReceivingUser.photoUrl)
-        mToolbarInfo.findViewById<TextView>(R.id.toolbar_chat_status).text = mReceivingUser.state
+        mToolbarInfo?.let { toolbar ->
+            val fullname = if (mReceivingUser.fullname.isEmpty()) contact.fullname else mReceivingUser.fullname
+
+            toolbar.findViewById<TextView>(R.id.toolbar_chat_fullname)?.text = fullname
+            toolbar.findViewById<CircleImageView>(R.id.toolbar_chat_image)
+                ?.downloadAndSetImage(mReceivingUser.photoUrl)
+            toolbar.findViewById<TextView>(R.id.toolbar_chat_status)?.text = mReceivingUser.getStateText()
+        }
     }
 
     override fun onPause() {
         super.onPause()
-        mToolbarInfo.visibility = View.GONE
-        mRefUser.removeEventListener(mListenerInfoToolbar)
-        mRefMessages.removeEventListener(mMessagesListener)
+        try {
+            mToolbarInfo?.visibility = View.GONE
+            APP_ACTIVITY.mToolbar?.title = getString(R.string.app_name)
+
+            if (::mRefUser.isInitialized && ::mListenerInfoToolbar.isInitialized) {
+                mRefUser.removeEventListener(mListenerInfoToolbar)
+            }
+
+            if (::mRefMessages.isInitialized && ::mMessagesListener.isInitialized) {
+                mRefMessages.removeEventListener(mMessagesListener)
+            }
+
+            ChatEncryptionManager.currentChatPartnerId = null
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        mAppVoiceRecorder.releaseRecorder()
-        mAdapter.onDestroy()
+        try {
+            mAppVoiceRecorder.releaseRecorder()
+            mAdapter.onDestroy()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     @Deprecated("Deprecated in Java")
@@ -342,5 +402,30 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
             }
         }
         return true
+    }
+
+    private fun showAIQuickRepliesLocal() {
+        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_ai_replies, null)
+        bottomSheet.setContentView(view)
+
+        val reply1 = view.findViewById<TextView>(R.id.reply_1)
+        val reply2 = view.findViewById<TextView>(R.id.reply_2)
+        val reply3 = view.findViewById<TextView>(R.id.reply_3)
+        val reply4 = view.findViewById<TextView>(R.id.reply_4)
+
+        val replies = listOf(
+            getString(R.string.ai_reply_thanks),
+            getString(R.string.ai_reply_ok),
+            getString(R.string.ai_reply_later),
+            getString(R.string.ai_reply_call_me)
+        )
+
+        reply1.setOnClickListener { mChatInputMessage.setText(replies[0]); bottomSheet.dismiss() }
+        reply2.setOnClickListener { mChatInputMessage.setText(replies[1]); bottomSheet.dismiss() }
+        reply3.setOnClickListener { mChatInputMessage.setText(replies[2]); bottomSheet.dismiss() }
+        reply4.setOnClickListener { mChatInputMessage.setText(replies[3]); bottomSheet.dismiss() }
+
+        bottomSheet.show()
     }
 }

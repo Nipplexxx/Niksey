@@ -31,174 +31,142 @@ import com.google.firebase.database.ValueEventListener
 class EnteredFragment : Fragment(R.layout.fragment_entered) {
     private val RC_SIGN_IN = 9001
 
-    @SuppressLint("LongLogTag")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val signInButton: SignInButton? = view.findViewById(R.id.sign_in_button)
-        val anonymousSignInButton: Button? = view.findViewById(R.id.anonymous_sign_in_button)
-        val emailSignInButton: Button? = view.findViewById(R.id.email_sign_in_button)
+
         val emailEditText: EditText? = view.findViewById(R.id.email_edit_text)
         val passwordEditText: EditText? = view.findViewById(R.id.password_edit_text)
 
-        signInButton?.setOnClickListener {
-            Log.d("EnteredFragment", "Google Sign-In button clicked")
-            signInWithGoogle()
+        view.findViewById<Button>(R.id.email_sign_in_button).setOnClickListener {
+            val email = emailEditText?.text.toString().trim()
+            val password = passwordEditText?.text.toString().trim()
+
+            if (email.isEmpty() || password.isEmpty()) {
+                showToast("Введите email и пароль")
+                return@setOnClickListener
+            }
+            checkEmailAndLogin(email, password)
         }
 
-        anonymousSignInButton?.setOnClickListener {
-            Log.d("EnteredFragment", "Anonymous Sign-In button clicked")
+        view.findViewById<Button>(R.id.anonymous_sign_in_button).setOnClickListener {
             signInAnonymously()
         }
 
-        emailSignInButton?.setOnClickListener {
-            val email = emailEditText?.text.toString()
-            val password = passwordEditText?.text.toString()
-            fetchUserCredentialsAndSignIn(email, password)
+        view.findViewById<SignInButton>(R.id.sign_in_button).setOnClickListener {
+            signInWithGoogle()
         }
     }
 
-    @SuppressLint("LongLogTag")
+    // ====================== EMAIL + PASSWORD ======================
+    private fun checkEmailAndLogin(email: String, password: String) {
+        REF_DATABASE_ROOT.child(NODE_USERS)
+            .orderByChild("email")
+            .equalTo(email)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        // Почта уже есть в базе → проверяем пароль
+                        val userMap = snapshot.children.firstOrNull()?.value as? Map<*, *>
+                        val savedPassword = userMap?.get("password")?.toString() ?: ""
+
+                        if (savedPassword == password) {
+                            loginWithFirebaseAuth(email, password)
+                        } else {
+                            showToast("Неверный пароль")
+                        }
+                    } else {
+                        // Почты нет → создаём новую учётку
+                        registerNewUser(email, password)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    showToast("Ошибка сервера")
+                }
+            })
+    }
+
+    private fun loginWithFirebaseAuth(email: String, password: String) {
+        AUTH.signInWithEmailAndPassword(email, password)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    createOrUpdateUserProfile()
+                } else {
+                    showToast("Ошибка входа: ${task.exception?.message}")
+                }
+            }
+    }
+
+    private fun registerNewUser(email: String, password: String) {
+        AUTH.createUserWithEmailAndPassword(email, password)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    createOrUpdateUserProfile()
+                } else {
+                    showToast("Не удалось создать аккаунт: ${task.exception?.message}")
+                }
+            }
+    }
+
+    // ====================== GOOGLE ======================
     private fun signInWithGoogle() {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
+
         val googleSignInClient = GoogleSignIn.getClient(requireActivity(), gso)
-        val signInIntent = googleSignInClient.signInIntent
-        Log.d("EnteredFragment", "Starting Google Sign-In intent")
-        startActivityForResult(signInIntent, RC_SIGN_IN)
+        startActivityForResult(googleSignInClient.signInIntent, RC_SIGN_IN)
     }
 
-    @SuppressLint("LongLogTag")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-
         if (requestCode == RC_SIGN_IN) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
             try {
                 val account = task.getResult(ApiException::class.java)
-                Log.d("EnteredFragment", "Google Sign-In successful, account: ${account?.email}")
                 firebaseAuthWithGoogle(account)
             } catch (e: ApiException) {
-                Log.e("EnteredFragment", "Google Sign-In failed", e)
                 showToast(getString(R.string.auth_failed))
             }
         }
     }
 
-    @SuppressLint("LongLogTag")
     private fun firebaseAuthWithGoogle(acct: GoogleSignInAccount?) {
         val credential = GoogleAuthProvider.getCredential(acct?.idToken, null)
-        FirebaseAuth.getInstance().signInWithCredential(credential).addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                Log.d("EnteredFragment", "Firebase authentication with Google successful")
-
-                // Get user details
-                val user = FirebaseAuth.getInstance().currentUser
-                val uid = user?.uid ?: ""
-                val email = user?.email ?: ""
-                val randomUsername = generateRandomUsername()
-                val randomFullname = generateRandomFullname()
-
-                // Create user model
-                val userModel = UserModel(id = uid, username = randomUsername, fullname = randomFullname, email = email)
-
-                // Save user to database
-                REF_DATABASE_ROOT.child(NODE_USERS).child(uid).setValue(userModel)
-                    .addOnSuccessListener {
-                        showToast(getString(R.string.welcome))
-                        navigateToMainActivity()
-                    }
-                    .addOnFailureListener {
-                        showToast(it.message.toString())
-                    }
-            } else {
-                Log.e("EnteredFragment", "Firebase authentication with Google failed", task.exception)
-                showToast(task.exception?.message.toString())
-            }
+        AUTH.signInWithCredential(credential).addOnCompleteListener { task ->
+            if (task.isSuccessful) createOrUpdateUserProfile()
+            else showToast(getString(R.string.auth_failed))
         }
     }
 
-    @SuppressLint("LongLogTag")
+    // ====================== ANONYMOUS ======================
     private fun signInAnonymously() {
         AUTH.signInAnonymously().addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                Log.d("EnteredFragment", "Anonymous sign-in successful")
-                val randomUsername = generateRandomUsername()
-                val randomFullname = generateRandomFullname()
-
-                val uid = AUTH.currentUser?.uid ?: ""
-                val user = UserModel(id = uid, username = randomUsername, fullname = randomFullname)
-
-                REF_DATABASE_ROOT.child(NODE_USERS).child(uid).setValue(user)
-                    .addOnSuccessListener {
-                        showToast(getString(R.string.welcome))
-                        navigateToMainActivity()
-                    }
-                    .addOnFailureListener {
-                        showToast(it.message.toString())
-                    }
-            } else {
-                Log.e("EnteredFragment", "Anonymous sign-in failed", task.exception)
-                showToast(task.exception?.message.toString())
-            }
+            if (task.isSuccessful) createOrUpdateUserProfile()
+            else showToast(getString(R.string.auth_failed))
         }
     }
 
-    @SuppressLint("LongLogTag")
-    private fun fetchUserCredentialsAndSignIn(email: String, password: String) {
-        REF_DATABASE_ROOT.child(NODE_USERS).orderByChild("email").equalTo(email).addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    for (userSnapshot in dataSnapshot.children) {
-                        val userModel = userSnapshot.getValue(UserModel::class.java)
-                        if (userModel?.email == email && userModel.password == password) {
-                            signInWithEmail(email, password)
-                            return
-                        }
-                    }
-                    showToast(getString(R.string.auth_failed))
-                } else {
-                    showToast(getString(R.string.auth_failed))
-                }
+    // ====================== СОЗДАНИЕ/ОБНОВЛЕНИЕ ПРОФИЛЯ ======================
+    private fun createOrUpdateUserProfile() {
+        val uid = AUTH.currentUser?.uid ?: return
+        val email = AUTH.currentUser?.email ?: ""
+
+        val userModel = UserModel(
+            id = uid,
+            username = generateRandomUsername(),
+            fullname = generateRandomFullname(),
+            email = email
+        )
+
+        REF_DATABASE_ROOT.child(NODE_USERS).child(uid).setValue(userModel)
+            .addOnSuccessListener {
+                showToast(getString(R.string.welcome))
+                navigateToMainActivity()
             }
-
-            override fun onCancelled(databaseError: DatabaseError) {
-                Log.e("EnteredFragment", "Database error: ${databaseError.message}")
-                showToast(getString(R.string.auth_failed))
-            }
-        })
-    }
-
-    @SuppressLint("LongLogTag")
-    private fun signInWithEmail(email: String, password: String) {
-        AUTH.signInWithEmailAndPassword(email, password).addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                Log.d("EnteredFragment", "Email sign-in successful")
-
-                // Get user details
-                val user = FirebaseAuth.getInstance().currentUser
-                val uid = user?.uid ?: ""
-                val randomUsername = generateRandomUsername()
-                val randomFullname = generateRandomFullname()
-
-                // Create user model
-                val userModel = UserModel(id = uid, username = randomUsername, fullname = randomFullname, email = email)
-
-                // Save user to database
-                REF_DATABASE_ROOT.child(NODE_USERS).child(uid).setValue(userModel)
-                    .addOnSuccessListener {
-                        showToast(getString(R.string.welcome))
-                        navigateToMainActivity()
-                    }
-                    .addOnFailureListener {
-                        showToast(it.message.toString())
-                    }
-            } else {
-                Log.e("EnteredFragment", "Email sign-in failed", task.exception)
-                showToast(task.exception?.message.toString())
-            }
-        }
+            .addOnFailureListener { showToast(it.message.toString()) }
     }
 
     private fun navigateToMainActivity() {

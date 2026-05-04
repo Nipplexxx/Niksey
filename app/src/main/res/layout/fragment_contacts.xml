@@ -4,13 +4,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF"
+    android:background="?android:attr/colorBackground"
     tools:context=".ui.screens.phone_book.ContactsFragment">
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/contacts_recycle_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="?android:attr/colorBackground"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         tools:listitem="@layout/contact_item" />
 

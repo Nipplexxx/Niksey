@@ -6,10 +6,13 @@ import com.example.niksey.models.CommonModel
 import com.example.niksey.models.UserModel
 import com.example.niksey.utillits.APP_ACTIVITY
 import com.example.niksey.utillits.AppValueEventListener
+import com.example.niksey.utillits.ChatEncryptionManager
+import com.example.niksey.utillits.EncryptionUtils
 import com.example.niksey.utillits.TYPE_GROUP
 import com.example.niksey.utillits.showToast
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import com.google.firebase.storage.FirebaseStorage
@@ -52,11 +55,10 @@ const val CHILD_TIMESTAMP = "timeStamp"
 // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
 lateinit var AUTH: FirebaseAuth
 lateinit var CURRENT_UID: String
-lateinit var REF_DATABASE_ROOT: com.google.firebase.database.DatabaseReference
+lateinit var REF_DATABASE_ROOT: DatabaseReference
 lateinit var REF_STORAGE_ROOT: StorageReference
 lateinit var USER: UserModel
 
-// Кэшированные пути (убрали private — это исправляет ошибку)
 val USER_PATH get() = "$NODE_USERS/$CURRENT_UID"
 val MAIN_LIST_PATH get() = "$NODE_MAIN_LIST/$CURRENT_UID"
 
@@ -77,12 +79,34 @@ inline fun putFileToStorage(uri: Uri, path: StorageReference, crossinline functi
         .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_loading, it.message)) }
 }
 
-inline fun initUser(crossinline function: () -> Unit) {
-    REF_DATABASE_ROOT.child(USER_PATH)
-        .addListenerForSingleValueEvent(AppValueEventListener {
-            USER = it.getValue(UserModel::class.java) ?: UserModel()
-            if (USER.username.isEmpty()) USER.username = CURRENT_UID
-            function()
+fun initUser(function: () -> Unit) {
+    REF_DATABASE_ROOT.child(NODE_USERS).child(CURRENT_UID)
+        .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
+            USER = snapshot.getUserModel()
+
+            // === ГАРАНТИРОВАННОЕ СОЗДАНИЕ КЛЮЧЕЙ ШИФРОВАНИЯ ===
+            if (USER.publicKey.isBlank()) {
+                try {
+                    val keyPair = EncryptionUtils.generateUserKeyPair()
+                    val publicKeyBase64 = EncryptionUtils.publicKeyToBase64(keyPair.public)
+
+                    REF_DATABASE_ROOT.child("$NODE_USERS/$CURRENT_UID/publicKey")
+                        .setValue(publicKeyBase64)
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                USER.publicKey = publicKeyBase64
+                            } else {
+                                showToast("Не удалось сохранить ключ шифрования")
+                            }
+                            function()
+                        }
+                } catch (e: Exception) {
+                    showToast("Ошибка генерации ключей: ${e.message}")
+                    function()
+                }
+            } else {
+                function()
+            }
         })
 }
 
@@ -107,30 +131,86 @@ fun updatePhonesToDatabase(arrayContacts: ArrayList<CommonModel>) {
         })
 }
 
+// ==================== ОТПРАВКА СООБЩЕНИЙ (С ШИФРОВАНИЕМ) ====================
+
 fun sendMessage(message: String, receivingUserID: String, typeText: String, function: () -> Unit) {
     if (message.isBlank()) {
         showToast(APP_ACTIVITY.getString(R.string.message_cannot_be_empty))
         return
     }
 
-    val messageKey = REF_DATABASE_ROOT.child("$NODE_MESSAGES/$CURRENT_UID/$receivingUserID").push().key ?: return
+    // Получаем ключ чата (с автоматической логикой currentChatPartnerId)
+    val chatKey = ChatEncryptionManager.getChatKey(receivingUserID)
+    if (chatKey == null) {
+        showToast("Невозможно отправить: у пользователя нет ключа шифрования")
+        return
+    }
 
-    val messageData = mapOf(
-        CHILD_FROM to CURRENT_UID,
-        CHILD_TYPE to typeText,
-        CHILD_TEXT to message,
-        CHILD_ID to messageKey,
-        CHILD_TIMESTAMP to ServerValue.TIMESTAMP
-    )
+    try {
+        val encryptedMessage = EncryptionUtils.encryptMessage(message, chatKey)
 
-    REF_DATABASE_ROOT.updateChildren(
-        mapOf(
-            "$NODE_MESSAGES/$CURRENT_UID/$receivingUserID/$messageKey" to messageData,
-            "$NODE_MESSAGES/$receivingUserID/$CURRENT_UID/$messageKey" to messageData
+        val messageKey = REF_DATABASE_ROOT.child("$NODE_MESSAGES/$CURRENT_UID/$receivingUserID").push().key ?: return
+
+        val messageData = mapOf(
+            CHILD_FROM to CURRENT_UID,
+            CHILD_TYPE to typeText,
+            CHILD_TEXT to encryptedMessage,
+            CHILD_ID to messageKey,
+            CHILD_TIMESTAMP to ServerValue.TIMESTAMP
         )
-    ).addOnSuccessListener { function() }
-        .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_sending, it.message)) }
+
+        REF_DATABASE_ROOT.updateChildren(
+            mapOf(
+                "$NODE_MESSAGES/$CURRENT_UID/$receivingUserID/$messageKey" to messageData,
+                "$NODE_MESSAGES/$receivingUserID/$CURRENT_UID/$messageKey" to messageData
+            )
+        ).addOnSuccessListener { function() }
+            .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_sending, it.message)) }
+
+    } catch (e: Exception) {
+        showToast("Ошибка шифрования: ${e.message}")
+    }
 }
+
+// ==================== ОТПРАВКА В ГРУППУ ====================
+
+fun sendMessageToGroup(message: String, groupID: String, typeText: String, function: () -> Unit) {
+    if (message.isBlank()) {
+        showToast(APP_ACTIVITY.getString(R.string.message_cannot_be_empty))
+        return
+    }
+
+    // Для групп пока используем ключ текущего пользователя (можно улучшить позже)
+    val chatKey = ChatEncryptionManager.getChatKey(CURRENT_UID)
+    if (chatKey == null) {
+        showToast("Ошибка шифрования в группе")
+        return
+    }
+
+    try {
+        val encryptedMessage = EncryptionUtils.encryptMessage(message, chatKey)
+
+        val messageKey = REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupID/$NODE_MESSAGES").push().key ?: return
+
+        val messageData = mapOf(
+            CHILD_FROM to CURRENT_UID,
+            CHILD_TYPE to typeText,
+            CHILD_TEXT to encryptedMessage,
+            CHILD_ID to messageKey,
+            CHILD_TIMESTAMP to ServerValue.TIMESTAMP
+        )
+
+        REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupID/$NODE_MESSAGES/$messageKey")
+            .updateChildren(messageData)
+            .addOnSuccessListener { function() }
+            .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_sending_to_group, it.message)) }
+
+    } catch (e: Exception) {
+        showToast("Ошибка шифрования: ${e.message}")
+    }
+}
+
+// ==================== ОСТАЛЬНЫЕ ФУНКЦИИ ====================
 
 fun updateCurrentUsername(newUserName: String) {
     if (newUserName.isBlank()) {
@@ -369,30 +449,29 @@ fun removeChatGroup(id: String, function: () -> Unit) {
         .addOnSuccessListener { function() }
 }
 
-fun sendMessageToGroup(message: String, groupID: String, typeText: String, function: () -> Unit) {
-    if (message.isBlank()) {
-        showToast(APP_ACTIVITY.getString(R.string.message_cannot_be_empty))
-        return
-    }
-
-    val messageKey = REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupID/$NODE_MESSAGES").push().key ?: return
-
-    val messageData = mapOf(
-        CHILD_FROM to CURRENT_UID,
-        CHILD_TYPE to typeText,
-        CHILD_TEXT to message,
-        CHILD_ID to messageKey,
-        CHILD_TIMESTAMP to ServerValue.TIMESTAMP
-    )
-
-    REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupID/$NODE_MESSAGES/$messageKey")
-        .updateChildren(messageData)
-        .addOnSuccessListener { function() }
-        .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_sending_to_group, it.message)) }
-}
-
 fun DataSnapshot.getCommonModel(): CommonModel = getValue(CommonModel::class.java) ?: CommonModel()
-fun DataSnapshot.getUserModel(): UserModel = getValue(UserModel::class.java) ?: UserModel()
+
+fun DataSnapshot.getUserModel(): UserModel {
+    return try {
+        getValue(UserModel::class.java) ?: UserModel()
+    } catch (e: Exception) {
+        val map = getValue(object : com.google.firebase.database.GenericTypeIndicator<Map<String, Any>>() {})
+            ?: return UserModel()
+
+        UserModel(
+            id = map["id"] as? String ?: "",
+            username = map["username"] as? String ?: "",
+            bio = map["bio"] as? String ?: "",
+            fullname = map["fullname"] as? String ?: "",
+            state = map["state"] ?: "",
+            phone = map["phone"] as? String ?: "",
+            photoUrl = map["photoUrl"] as? String ?: "empty",
+            email = map["email"] as? String ?: "",
+            password = map["password"] as? String ?: "",
+            publicKey = map["publicKey"] as? String ?: ""
+        )
+    }
+}
 
 fun generateRandomUsername(): String = "user${UUID.randomUUID().toString().substring(0, 8)}"
 

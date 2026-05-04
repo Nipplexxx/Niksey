@@ -1,12 +1,9 @@
 package com.example.niksey
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
 import android.os.Bundle
-import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.biometric.BiometricManager
@@ -22,6 +19,8 @@ import com.example.niksey.ui.screens.main_list.MainListFragment
 import com.example.niksey.ui.screens.register.EnteredFragment
 import com.example.niksey.utillits.APP_ACTIVITY
 import com.example.niksey.utillits.AppStates
+import com.example.niksey.utillits.ChatEncryptionManager
+import com.example.niksey.utillits.ChatKeyCache
 import com.example.niksey.utillits.initContacts
 import com.example.niksey.utillits.replaceFragment
 import kotlinx.coroutines.Dispatchers
@@ -39,18 +38,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var promptInfo: BiometricPrompt.PromptInfo
     private var isAppLocked = false
     private var lastPauseTime = 0L
-    private var isBiometricEnabled = true
-
-    private val requestPermissionsLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val allGranted = permissions.values.all { it }
-        if (allGranted) {
-            initAppAfterPermissions()
-        } else {
-            Toast.makeText(this, getString(R.string.permission_denied), Toast.LENGTH_SHORT).show()
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,20 +45,24 @@ class MainActivity : AppCompatActivity() {
         setContentView(mBinding.root)
 
         APP_ACTIVITY = this
+        ChatEncryptionManager.init(this)
         initFirebase()
-        checkBiometricAndInit()
+
+        if (AUTH.currentUser != null) {
+            checkBiometricAndInit()
+        } else {
+            replaceFragment(EnteredFragment(), false)
+        }
     }
 
+    // ==================== БИОМЕТРИЯ ====================
     private fun checkBiometricAndInit() {
         val biometricManager = BiometricManager.from(this)
+
         when (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)) {
             BiometricManager.BIOMETRIC_SUCCESS -> {
                 setupBiometricPrompt()
-                if (isBiometricEnabled) {
-                    showBiometricPrompt { initUser { initApp() } }
-                } else {
-                    initUser { initApp() }
-                }
+                showBiometricPrompt()
             }
             else -> {
                 initUser { initApp() }
@@ -111,90 +102,37 @@ class MainActivity : AppCompatActivity() {
             .build()
     }
 
-    private fun showBiometricPrompt(onSuccess: () -> Unit) {
+    private fun showBiometricPrompt() {
         isAppLocked = true
         biometricPrompt.authenticate(promptInfo)
     }
+    // ====================================================
 
     private fun initApp() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            initContacts()
-        }
         initFields()
         initFunc()
         AppStates.updateState(AppStates.ONLINE)
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
-        setSmartStatus()
-    }
 
-    private fun setSmartStatus() {
-        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-        if (hour in 9..17) {
-            mToolbar.setNavigationIcon(android.R.drawable.ic_menu_agenda)
-            mToolbar.setNavigationContentDescription(getString(R.string.smart_status_meeting))
+        lifecycleScope.launch(Dispatchers.IO) {
+            initContacts()
         }
     }
 
     private fun initFunc() {
         setSupportActionBar(mToolbar)
-        if (AUTH.currentUser != null) {
-            mAppDrawer.create()
+        mAppDrawer.create()
+
+        // === ГЛАВНЫЙ ФИКС ДЛЯ ЭМУЛЯТОРА ===
+        // Без этой задержки на эмуляторе фрагмент часто не успевает отрисоваться
+        mBinding.root.postDelayed({
             replaceFragment(MainListFragment(), false)
-        } else {
-            replaceFragment(EnteredFragment(), false)
-        }
+        }, 180)
     }
 
     private fun initFields() {
         mToolbar = mBinding.mainToolbar
         mAppDrawer = AppDrawer()
-    }
-
-    fun showAIQuickReplies(onReplySelected: (String) -> Unit) {
-        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
-        val view = layoutInflater.inflate(R.layout.bottom_sheet_ai_replies, null)
-        bottomSheet.setContentView(view)
-
-        val reply1 = view.findViewById<TextView>(R.id.reply_1)
-        val reply2 = view.findViewById<TextView>(R.id.reply_2)
-        val reply3 = view.findViewById<TextView>(R.id.reply_3)
-        val reply4 = view.findViewById<TextView>(R.id.reply_4)
-
-        val replies = listOf(
-            getString(R.string.ai_reply_thanks),
-            getString(R.string.ai_reply_ok),
-            getString(R.string.ai_reply_later),
-            getString(R.string.ai_reply_call_me)
-        )
-
-        reply1.setOnClickListener {
-            onReplySelected(replies[0])
-            bottomSheet.dismiss()
-        }
-
-        reply2.setOnClickListener {
-            onReplySelected(replies[1])
-            bottomSheet.dismiss()
-        }
-
-        reply3.setOnClickListener {
-            onReplySelected(replies[2])
-            bottomSheet.dismiss()
-        }
-
-        reply4.setOnClickListener {
-            onReplySelected(replies[3])
-            bottomSheet.dismiss()
-        }
-
-        bottomSheet.show()
-    }
-
-    private fun initAppAfterPermissions() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            initContacts()
-        }
-        initUser { initApp() }
     }
 
     override fun onStop() {
@@ -207,12 +145,13 @@ class MainActivity : AppCompatActivity() {
         super.onStart()
         AppStates.updateState(AppStates.ONLINE)
 
-        if (isBiometricEnabled && isAppLocked && System.currentTimeMillis() - lastPauseTime > 60000) {
-            showBiometricPrompt {}
+        if (isAppLocked && System.currentTimeMillis() - lastPauseTime > 60000) {
+            showBiometricPrompt()
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        ChatKeyCache.clear()
     }
 }

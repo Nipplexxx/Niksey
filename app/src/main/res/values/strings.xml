@@ -135,4 +135,8 @@
     <!-- Permissions -->
     <string name="permission_denied">Permission denied</string>
 
+
+    <string name="open_drawer">Open navigation drawer</string>
+    <string name="close_drawer">Close navigation drawer</string>
+
 </resources>
