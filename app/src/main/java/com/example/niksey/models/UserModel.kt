@@ -13,7 +13,21 @@ data class UserModel(
     var photoUrl: String = "empty",
     var email: String = "",
     var password: String = "",
-    var publicKey: String = ""
+
+    // ==================== КЛАССИЧЕСКИЕ КЛЮЧИ (ECDH) ====================
+    var publicKey: String = "",           // ECDH публичный ключ (P-256)
+
+    // ==================== ПОСТ-КВАНТОВЫЕ КЛЮЧИ (ML-KEM / Kyber) ====================
+    var kyberPublicKey: String = "",      // ML-KEM-768 публичный ключ (пост-квантовый)
+    var kyberPrivateKeyRef: String = "",  // Ссылка на приватный ключ в Keystore (не храним в Firebase!)
+
+    // ==================== X3DH КЛЮЧИ (для Signal-подобного протокола) ====================
+    var signedPreKey: String = "",        // Signed PreKey (для X3DH)
+    var oneTimePreKeys: List<String> = emptyList(), // One-Time PreKeys
+
+    // ==================== МЕТАДАННЫЕ ====================
+    var encryptionVersion: Int = 2,       // 1 = старое AES, 2 = гибридное пост-квантовое
+    var lastKeyUpdate: Long = 0           // Время последнего обновления ключей
 ) {
 
     fun isOnline(): Boolean {

@@ -3,6 +3,7 @@ package com.example.niksey.ui.screens.groups_messages
 
 import android.Manifest.permission.RECORD_AUDIO
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -11,6 +12,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -48,6 +50,7 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
     private lateinit var mAppVoiceRecorder: AppVoiceRecorder
     private lateinit var mBottomSheetBehavior: BottomSheetBehavior<*>
     private lateinit var cropImageLauncher: ActivityResultLauncher<CropImageContractOptions>
+    private lateinit var pickFileLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,6 +63,16 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
                 mSmoothScrollToPosition = true
             } else {
                 showToast(getString(R.string.error_cropping_image))
+            }
+        }
+
+        pickFileLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val uri = result.data?.data ?: return@registerForActivityResult
+                val messageKey = getMessageKeyGroup(group.id)
+                val filename = getFilenameFromUri(uri)
+                uploadFileToStorageGroup(uri, messageKey, group.id, TYPE_MESSAGE_FILE, filename)
+                mSmoothScrollToPosition = true
             }
         }
     }
@@ -97,7 +110,9 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
         requireView().findViewById<ImageView>(R.id.chat_btn_attach)?.setOnClickListener { attach() }
 
         requireView().findViewById<ImageView>(R.id.chat_btn_send_message)?.setOnLongClickListener {
-            showAIQuickRepliesLocal()
+            APP_ACTIVITY.showAIQuickReplies { reply ->
+                requireView().findViewById<EditText>(R.id.chat_input_message)?.setText(reply)
+            }
             true
         }
 
@@ -139,7 +154,7 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
 
     private fun attachFile() {
         val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "*/*" }
-        startActivityForResult(intent, PICK_FILE_REQUEST_CODE)
+        pickFileLauncher.launch(intent)
     }
 
     private fun attachImage() {
@@ -223,12 +238,8 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
         mRefUser = REF_DATABASE_ROOT.child(NODE_USERS).child(group.id)
         mRefUser.addValueEventListener(mListenerInfoToolbar)
 
-        // === ШИФРОВАНИЕ ДЛЯ ГРУПП ===
-        if (USER.publicKey.isNotEmpty()) {
-            ChatEncryptionManager.cachePublicKey(CURRENT_UID, USER.publicKey)
-        }
+        // Предзагрузка публичных ключей участников группы (ECDH + Kyber)
         preloadGroupMembersPublicKeys()
-        // ============================
 
         requireView().findViewById<ImageView>(R.id.chat_btn_send_message)?.setOnClickListener {
             mSmoothScrollToPosition = true
@@ -236,25 +247,45 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
             if (message.isEmpty()) {
                 showToast(getString(R.string.enter_a_message))
             } else {
-                sendMessageToGroup(message, group.id, TYPE_TEXT) {
-                    requireView().findViewById<EditText>(R.id.chat_input_message)?.setText("")
-                }
+                safeSendGroupMessage(message)
             }
         }
     }
 
-    /** Исправленная предзагрузка ключей для групп */
+    /** Предзагрузка публичных ключей участников группы */
     private fun preloadGroupMembersPublicKeys() {
         REF_DATABASE_ROOT.child("$NODE_GROUPS/${group.id}/$NODE_MEMBERS")
             .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
                 snapshot.children.forEach { member ->
                     val memberId = member.key ?: return@forEach
                     if (memberId != CURRENT_UID) {
-                        // Предзагружаем ключ через существующий метод
-                        ChatEncryptionManager.getChatKey(memberId)
+                        ChatEncryptionManager.getOtherUserPublicKey(memberId) { publicKey ->
+                            if (!publicKey.isNullOrEmpty()) {
+                                ChatEncryptionManager.cachePublicKey(memberId, publicKey)
+                            }
+                        }
+                        ChatEncryptionManager.getOtherUserKyberPublicKey(memberId) { kyberKey ->
+                            if (!kyberKey.isNullOrEmpty()) {
+                                ChatEncryptionManager.cacheKyberPublicKey(memberId, kyberKey)
+                            }
+                        }
                     }
                 }
             })
+    }
+
+    /**
+     * Исправленная отправка в группу.
+     * Теперь передаём ЧИСТЫЙ текст — шифрование происходит внутри sendMessageToGroup()
+     */
+    private fun safeSendGroupMessage(message: String) {
+        try {
+            sendMessageToGroup(message, group.id, TYPE_TEXT) {
+                requireView().findViewById<EditText>(R.id.chat_input_message)?.setText("")
+            }
+        } catch (e: Exception) {
+            showToast("Ошибка отправки: ${e.message}")
+        }
     }
 
     private fun initInfoToolbar() {
@@ -262,18 +293,6 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
         mToolbarInfo.findViewById<TextView>(R.id.toolbar_chat_fullname).text = fullname
         mToolbarInfo.findViewById<ImageView>(R.id.toolbar_chat_image).downloadAndSetImage(group.photoUrl)
         mToolbarInfo.findViewById<TextView>(R.id.toolbar_chat_status).text = mReceivingUser.getStateText()
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (data?.data != null && requestCode == PICK_FILE_REQUEST_CODE) {
-            val uri = data.data!!
-            val messageKey = getMessageKeyGroup(group.id)
-            val filename = getFilenameFromUri(uri)
-            uploadFileToStorageGroup(uri, messageKey, group.id, TYPE_MESSAGE_FILE, filename)
-            mSmoothScrollToPosition = true
-        }
     }
 
     override fun onPause() {
@@ -311,42 +330,5 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
             }
         }
         return true
-    }
-
-    private fun showAIQuickRepliesLocal() {
-        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
-        val view = layoutInflater.inflate(R.layout.bottom_sheet_ai_replies, null)
-        bottomSheet.setContentView(view)
-
-        val reply1 = view.findViewById<TextView>(R.id.reply_1)
-        val reply2 = view.findViewById<TextView>(R.id.reply_2)
-        val reply3 = view.findViewById<TextView>(R.id.reply_3)
-        val reply4 = view.findViewById<TextView>(R.id.reply_4)
-
-        val replies = listOf(
-            getString(R.string.ai_reply_thanks),
-            getString(R.string.ai_reply_ok),
-            getString(R.string.ai_reply_later),
-            getString(R.string.ai_reply_call_me)
-        )
-
-        reply1.setOnClickListener {
-            requireView().findViewById<EditText>(R.id.chat_input_message)?.setText(replies[0])
-            bottomSheet.dismiss()
-        }
-        reply2.setOnClickListener {
-            requireView().findViewById<EditText>(R.id.chat_input_message)?.setText(replies[1])
-            bottomSheet.dismiss()
-        }
-        reply3.setOnClickListener {
-            requireView().findViewById<EditText>(R.id.chat_input_message)?.setText(replies[2])
-            bottomSheet.dismiss()
-        }
-        reply4.setOnClickListener {
-            requireView().findViewById<EditText>(R.id.chat_input_message)?.setText(replies[3])
-            bottomSheet.dismiss()
-        }
-
-        bottomSheet.show()
     }
 }

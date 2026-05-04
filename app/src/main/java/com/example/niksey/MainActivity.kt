@@ -20,7 +20,7 @@ import com.example.niksey.ui.screens.register.EnteredFragment
 import com.example.niksey.utillits.APP_ACTIVITY
 import com.example.niksey.utillits.AppStates
 import com.example.niksey.utillits.ChatEncryptionManager
-import com.example.niksey.utillits.ChatKeyCache
+import com.example.niksey.utillits.PostQuantumKeyManager
 import com.example.niksey.utillits.initContacts
 import com.example.niksey.utillits.replaceFragment
 import kotlinx.coroutines.Dispatchers
@@ -37,7 +37,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var biometricPrompt: BiometricPrompt
     private lateinit var promptInfo: BiometricPrompt.PromptInfo
     private var isAppLocked = false
-    private var lastPauseTime = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,7 +44,11 @@ class MainActivity : AppCompatActivity() {
         setContentView(mBinding.root)
 
         APP_ACTIVITY = this
+
+        // Инициализируем новую систему шифрования (пост-квантовое)
         ChatEncryptionManager.init(this)
+        PostQuantumKeyManager.generateECDHKeyPair() // Генерируем ECDH ключ при первом запуске
+
         initFirebase()
 
         if (AUTH.currentUser != null) {
@@ -111,7 +114,6 @@ class MainActivity : AppCompatActivity() {
     private fun initApp() {
         initFields()
         initFunc()
-        AppStates.updateState(AppStates.ONLINE)
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
 
         lifecycleScope.launch(Dispatchers.IO) {
@@ -123,8 +125,7 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(mToolbar)
         mAppDrawer.create()
 
-        // === ГЛАВНЫЙ ФИКС ДЛЯ ЭМУЛЯТОРА ===
-        // Без этой задержки на эмуляторе фрагмент часто не успевает отрисоваться
+        // Небольшая задержка для стабильности на эмуляторе
         mBinding.root.postDelayed({
             replaceFragment(MainListFragment(), false)
         }, 180)
@@ -135,23 +136,64 @@ class MainActivity : AppCompatActivity() {
         mAppDrawer = AppDrawer()
     }
 
-    override fun onStop() {
-        super.onStop()
-        AppStates.updateState(AppStates.OFFLINE)
-        lastPauseTime = System.currentTimeMillis()
+    // ==================== AI Quick Reply ====================
+    fun showAIQuickReplies(onReplySelected: (String) -> Unit) {
+        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_ai_replies, null)
+        bottomSheet.setContentView(view)
+
+        val reply1 = view.findViewById<android.widget.TextView>(R.id.reply_1)
+        val reply2 = view.findViewById<android.widget.TextView>(R.id.reply_2)
+        val reply3 = view.findViewById<android.widget.TextView>(R.id.reply_3)
+        val reply4 = view.findViewById<android.widget.TextView>(R.id.reply_4)
+
+        val replies = listOf(
+            getString(R.string.ai_reply_thanks),
+            getString(R.string.ai_reply_ok),
+            getString(R.string.ai_reply_later),
+            getString(R.string.ai_reply_call_me)
+        )
+
+        reply1.setOnClickListener {
+            onReplySelected(replies[0])
+            bottomSheet.dismiss()
+        }
+        reply2.setOnClickListener {
+            onReplySelected(replies[1])
+            bottomSheet.dismiss()
+        }
+        reply3.setOnClickListener {
+            onReplySelected(replies[2])
+            bottomSheet.dismiss()
+        }
+        reply4.setOnClickListener {
+            onReplySelected(replies[3])
+            bottomSheet.dismiss()
+        }
+
+        bottomSheet.show()
     }
+    // ====================================================
 
     override fun onStart() {
         super.onStart()
+        // Пользователь вернулся в приложение — ставим ONLINE
         AppStates.updateState(AppStates.ONLINE)
+    }
 
-        if (isAppLocked && System.currentTimeMillis() - lastPauseTime > 60000) {
-            showBiometricPrompt()
+    override fun onStop() {
+        super.onStop()
+        // Только если не поворот экрана и не переход в другое Activity
+        if (!isChangingConfigurations) {
+            AppStates.updateState(AppStates.OFFLINE)
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        ChatKeyCache.clear()
+        // Очищаем кэш шифрования при полном выходе из приложения
+        if (isFinishing) {
+            ChatEncryptionManager.clear()
+        }
     }
 }

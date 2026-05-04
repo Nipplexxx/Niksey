@@ -13,7 +13,11 @@ import com.example.niksey.database.REF_DATABASE_ROOT
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageHolder
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 import com.example.niksey.utillits.APP_ACTIVITY
+import com.example.niksey.database.CHILD_PUBLIC_KEY
+import com.example.niksey.database.NODE_USERS
+import com.example.niksey.database.REF_DATABASE_ROOT
 import com.example.niksey.utillits.ChatEncryptionManager
+import com.example.niksey.utillits.EncryptionUtils
 import com.example.niksey.utillits.asTime
 import com.example.niksey.utillits.showToast
 import com.google.android.material.card.MaterialCardView
@@ -30,6 +34,7 @@ class HolderTextMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
 
     override fun drawMessage(view: MessageView) {
         val text = decryptText(view)
+        android.util.Log.d("DRAW", "from=${view.from}, text=${text.take(40)}...")
 
         if (view.from == CURRENT_UID) {
             blocUserMessage.visibility = View.VISIBLE
@@ -47,15 +52,59 @@ class HolderTextMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
     private fun decryptText(view: MessageView): String {
         if (view.text.isBlank()) return ""
 
-        try {
-            val key = ChatEncryptionManager.getChatKey(view.from)
-            if (key != null) {
-                return ChatEncryptionManager.decryptMessage(view.text, key)
+        val chatPartnerId = view.from
+
+        // Принудительно загружаем публичный ключ, если его нет в кэше
+        if (ChatEncryptionManager.publicKeyCache[chatPartnerId].isNullOrEmpty()) {
+            try {
+                val userRef = REF_DATABASE_ROOT.child(NODE_USERS).child(chatPartnerId)
+                val snapshot = userRef.child(CHILD_PUBLIC_KEY).get().result
+                val key = snapshot.getValue(String::class.java)
+                if (!key.isNullOrEmpty()) {
+                    ChatEncryptionManager.publicKeyCache[chatPartnerId] = key
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("DECRYPT", "Failed to load public key: ${e.message}")
             }
-        } catch (e: Exception) {
-            // ничего не делаем
         }
-        return "🔒 " + view.text.take(20) + "..."
+
+        val originalText = view.text
+
+        // Всегда пытаемся загрузить ключ асинхронно
+        REF_DATABASE_ROOT.child(NODE_USERS)
+            .child(chatPartnerId)
+            .child(CHILD_PUBLIC_KEY)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val publicKeyBase64 = snapshot.getValue(String::class.java)
+                if (!publicKeyBase64.isNullOrEmpty()) {
+                    ChatEncryptionManager.publicKeyCache[chatPartnerId] = publicKeyBase64
+
+                    try {
+                        val chatKey = EncryptionUtils.deriveChatKey(publicKeyBase64)
+                        val decrypted = EncryptionUtils.decryptMessage(originalText, chatKey)
+
+                        itemView.post {
+                            if (originalText == view.text) {
+                                if (view.from == CURRENT_UID) {
+                                    chatUserMessage.text = decrypted
+                                } else {
+                                    chatReceivedMessage.text = decrypted
+                                }
+                            }
+                        }
+                        android.util.Log.d("DECRYPT", "SUCCESS: ${decrypted.take(30)}...")
+                    } catch (e: Exception) {
+                        android.util.Log.e("DECRYPT", "FAILED: ${e.javaClass.simpleName}: ${e.message}")
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.e("DECRYPT", "Failed to load public key: ${e.message}")
+            }
+
+        // Пока загружается — показываем часть Base64
+        return originalText.take(30) + "..."
     }
 
     // long click остаётся

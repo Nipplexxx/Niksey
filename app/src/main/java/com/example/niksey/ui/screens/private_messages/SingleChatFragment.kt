@@ -33,11 +33,9 @@ import com.example.niksey.utillits.*
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.firebase.database.DatabaseReference
 import de.hdodenhof.circleimageview.CircleImageView
-import com.example.niksey.utillits.ChatEncryptionManager
 
 class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layout.fragment_chat) {
 
-    // ====================== View references ======================
     private lateinit var mChatInputMessage: EditText
     private lateinit var mChatBtnSendMessage: ImageView
     private lateinit var mChatBtnAttach: ImageView
@@ -47,7 +45,6 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
     private lateinit var mBtnAttachImage: View
     private lateinit var mBtnAttachClose: View
 
-    // ====================== Firebase & listeners ======================
     private lateinit var mListenerInfoToolbar: AppValueEventListener
     private lateinit var mReceivingUser: UserModel
     private var mToolbarInfo: View? = null
@@ -57,25 +54,21 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
     private lateinit var mRecyclerView: RecyclerView
     private lateinit var mMessagesListener: AppChildEventListener
 
-    // ====================== State ======================
     private var mCountMessages = 10
     private var mIsScrolling = false
     private var mSmoothScrollToPosition = true
 
-    // ====================== UI components ======================
     private lateinit var mSwipeRefreshLayout: SwipeRefreshLayout
     private lateinit var mLayoutManager: LinearLayoutManager
     private lateinit var mAppVoiceRecorder: AppVoiceRecorder
     private lateinit var mBottomSheetBehavior: BottomSheetBehavior<*>
 
-    // ====================== Activity Result Launchers ======================
     private lateinit var cropImageLauncher: ActivityResultLauncher<CropImageContractOptions>
     private lateinit var pickFileLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // === Crop Image ===
         cropImageLauncher = registerForActivityResult(CropImageContract()) { result ->
             if (result.isSuccessful) {
                 val uri = result.uriContent ?: return@registerForActivityResult
@@ -87,7 +80,6 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
             }
         }
 
-        // === Pick File ===
         pickFileLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 val uri = result.data?.data ?: return@registerForActivityResult
@@ -124,7 +116,6 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
         mAppVoiceRecorder = AppVoiceRecorder()
         mLayoutManager = LinearLayoutManager(requireContext())
 
-        // TextWatcher
         mChatInputMessage.addTextChangedListener(AppTextWatcher {
             val text = mChatInputMessage.text.toString()
             val isEmptyOrRecording = text.isEmpty() || text == getString(R.string.record)
@@ -136,7 +127,6 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
 
         mChatBtnAttach.setOnClickListener { attach() }
 
-        // === Отправка сообщения с обработкой ошибок ===
         mChatBtnSendMessage.setOnClickListener {
             mSmoothScrollToPosition = true
             val message = mChatInputMessage.text.toString().trim()
@@ -144,11 +134,9 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
                 showToast(getString(R.string.enter_a_message))
                 return@setOnClickListener
             }
-
             safeSendMessage(message)
         }
 
-        // Голосовое сообщение
         mChatBtnVoice.setOnTouchListener { _, event ->
             if (checkPermission(RECORD_AUDIO)) {
                 when (event.action) {
@@ -172,7 +160,10 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
         }
     }
 
-    // === Безопасная отправка сообщения с обработкой ошибок ===
+    /**
+     * Исправленная отправка сообщения.
+     * Теперь передаём ЧИСТЫЙ текст — шифрование происходит внутри sendMessage()
+     */
     private fun safeSendMessage(message: String) {
         try {
             sendMessage(message, contact.id, TYPE_TEXT) {
@@ -223,6 +214,7 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
         cropImageLauncher.launch(options)
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 1001 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -290,24 +282,28 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
         initViews()
         initFields()
 
+        // Устанавливаем текущего собеседника (для правильной работы кэша)
         ChatEncryptionManager.currentChatPartnerId = contact.id
 
-        // Временно упрощённая загрузка ключа (прямо из Firebase)
-        REF_DATABASE_ROOT.child("users/${contact.id}/publicKey")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val key = snapshot.value as? String
-                if (!key.isNullOrEmpty()) {
-                    ChatEncryptionManager.cachePublicKey(contact.id, key)
-                }
+        // Предзагружаем публичные ключи (ECDH + Kyber)
+        ChatEncryptionManager.getOtherUserPublicKey(contact.id) { publicKey ->
+            if (!publicKey.isNullOrEmpty()) {
+                ChatEncryptionManager.cachePublicKey(contact.id, publicKey)
             }
+        }
+
+        ChatEncryptionManager.getOtherUserKyberPublicKey(contact.id) { kyberKey ->
+            if (!kyberKey.isNullOrEmpty()) {
+                ChatEncryptionManager.cacheKyberPublicKey(contact.id, kyberKey)
+            }
+        }
 
         initToolbar()
         initRecycleView()
     }
 
     private fun initToolbar() {
-        val toolbar = APP_ACTIVITY.mToolbar ?: return
+        val toolbar = APP_ACTIVITY.mToolbar
         mToolbarInfo = toolbar.findViewById(R.id.toolbar_info)
 
         if (mToolbarInfo == null) {
@@ -317,18 +313,19 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
 
         mToolbarInfo?.visibility = View.VISIBLE
 
-        // Сразу показываем данные
         val fullname = contact.fullname.ifEmpty { contact.username }
         mToolbarInfo?.findViewById<TextView>(R.id.toolbar_chat_fullname)?.text = fullname
         mToolbarInfo?.findViewById<CircleImageView>(R.id.toolbar_chat_image)
             ?.downloadAndSetImage(contact.photoUrl)
 
-        // Подписка на обновления
         mListenerInfoToolbar = AppValueEventListener {
             mReceivingUser = it.getUserModel()
 
             if (mReceivingUser.publicKey.isNotEmpty()) {
                 ChatEncryptionManager.cachePublicKey(contact.id, mReceivingUser.publicKey)
+            }
+            if (mReceivingUser.kyberPublicKey.isNotEmpty()) {
+                ChatEncryptionManager.cacheKyberPublicKey(contact.id, mReceivingUser.kyberPublicKey)
             }
 
             initInfoToolbar()
@@ -340,7 +337,7 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
 
     private fun initInfoToolbar() {
         mToolbarInfo?.let { toolbar ->
-            val fullname = if (mReceivingUser.fullname.isEmpty()) contact.fullname else mReceivingUser.fullname
+            val fullname = mReceivingUser.fullname.ifEmpty { contact.fullname }
 
             toolbar.findViewById<TextView>(R.id.toolbar_chat_fullname)?.text = fullname
             toolbar.findViewById<CircleImageView>(R.id.toolbar_chat_image)
@@ -402,30 +399,5 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
             }
         }
         return true
-    }
-
-    private fun showAIQuickRepliesLocal() {
-        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
-        val view = layoutInflater.inflate(R.layout.bottom_sheet_ai_replies, null)
-        bottomSheet.setContentView(view)
-
-        val reply1 = view.findViewById<TextView>(R.id.reply_1)
-        val reply2 = view.findViewById<TextView>(R.id.reply_2)
-        val reply3 = view.findViewById<TextView>(R.id.reply_3)
-        val reply4 = view.findViewById<TextView>(R.id.reply_4)
-
-        val replies = listOf(
-            getString(R.string.ai_reply_thanks),
-            getString(R.string.ai_reply_ok),
-            getString(R.string.ai_reply_later),
-            getString(R.string.ai_reply_call_me)
-        )
-
-        reply1.setOnClickListener { mChatInputMessage.setText(replies[0]); bottomSheet.dismiss() }
-        reply2.setOnClickListener { mChatInputMessage.setText(replies[1]); bottomSheet.dismiss() }
-        reply3.setOnClickListener { mChatInputMessage.setText(replies[2]); bottomSheet.dismiss() }
-        reply4.setOnClickListener { mChatInputMessage.setText(replies[3]); bottomSheet.dismiss() }
-
-        bottomSheet.show()
     }
 }

@@ -126,18 +126,22 @@ class MainListFragment : Fragment(R.layout.fragment_main_list) {
     }
 
     private fun decryptLastMessage(msg: CommonModel, chatId: String): String {
+        if (msg.text.isBlank()) return "Нет сообщений"
+
         val type = msg.type.lowercase()
         return when {
-            type == TYPE_MESSAGE_VOICE.lowercase() || type.contains("voice") -> "🎤 Голосовое сообщение"
-            type == TYPE_MESSAGE_IMAGE.lowercase() || type.contains("image") || type.contains("photo") -> "🖼️ Изображение"
-            type == TYPE_MESSAGE_FILE.lowercase() || type.contains("file") -> "📎 Файл"
+            type.contains("voice") -> "🎤 Голосовое сообщение"
+            type.contains("image") || type.contains("photo") -> "🖼️ Изображение"
+            type.contains("file") -> "📎 Файл"
             else -> {
-                if (msg.text.isBlank()) return "Нет сообщений"
+                if (msg.decryptedText.isNotEmpty()) return msg.decryptedText
                 try {
-                    val chatKey = ChatEncryptionManager.getChatKey(chatId)
-                    if (chatKey != null) ChatEncryptionManager.decryptMessage(msg.text, chatKey) else msg.text
+                    val chatKey = ChatEncryptionManager.getOrCreateChatKey(chatId)
+                    val decrypted = ChatEncryptionManager.decryptMessage(msg.text, chatKey)
+                    msg.decryptedText = decrypted  // сохраняем
+                    if (decrypted.length > 50) decrypted.take(50) + "..." else decrypted
                 } catch (e: Exception) {
-                    msg.text
+                    msg.text.take(30) + "..."
                 }
             }
         }
