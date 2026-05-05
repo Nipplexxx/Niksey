@@ -154,19 +154,41 @@ class EnteredFragment : Fragment(R.layout.fragment_entered) {
         val uid = AUTH.currentUser?.uid ?: return
         val email = AUTH.currentUser?.email ?: ""
 
-        val userModel = UserModel(
-            id = uid,
-            username = generateRandomUsername(),
-            fullname = generateRandomFullname(),
-            email = email
-        )
+        // Проверяем, существует ли уже профиль
+        REF_DATABASE_ROOT.child(NODE_USERS).child(uid)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        // Профиль уже есть → загружаем его
+                        val existingUser = snapshot.getValue(UserModel::class.java) ?: UserModel()
+                        // Обновляем только email, если он изменился
+                        if (existingUser.email != email) {
+                            existingUser.email = email
+                            REF_DATABASE_ROOT.child(NODE_USERS).child(uid).setValue(existingUser)
+                        }
+                        showToast(getString(R.string.welcome))
+                        navigateToMainActivity()
+                    } else {
+                        // Профиля нет → создаём новый
+                        val newUser = UserModel(
+                            id = uid,
+                            username = generateRandomUsername(),
+                            fullname = generateRandomFullname(),
+                            email = email
+                        )
+                        REF_DATABASE_ROOT.child(NODE_USERS).child(uid).setValue(newUser)
+                            .addOnSuccessListener {
+                                showToast(getString(R.string.welcome))
+                                navigateToMainActivity()
+                            }
+                            .addOnFailureListener { showToast(it.message.toString()) }
+                    }
+                }
 
-        REF_DATABASE_ROOT.child(NODE_USERS).child(uid).setValue(userModel)
-            .addOnSuccessListener {
-                showToast(getString(R.string.welcome))
-                navigateToMainActivity()
-            }
-            .addOnFailureListener { showToast(it.message.toString()) }
+                override fun onCancelled(error: DatabaseError) {
+                    showToast("Ошибка загрузки профиля")
+                }
+            })
     }
 
     private fun navigateToMainActivity() {

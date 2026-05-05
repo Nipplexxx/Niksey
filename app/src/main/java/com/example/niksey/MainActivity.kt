@@ -9,6 +9,7 @@ import androidx.appcompat.widget.Toolbar
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.niksey.database.AUTH
 import com.example.niksey.database.initFirebase
@@ -21,6 +22,7 @@ import com.example.niksey.utillits.APP_ACTIVITY
 import com.example.niksey.utillits.AppStates
 import com.example.niksey.utillits.ChatEncryptionManager
 import com.example.niksey.utillits.PostQuantumKeyManager
+import com.example.niksey.utillits.UserDataManager
 import com.example.niksey.utillits.initContacts
 import com.example.niksey.utillits.replaceFragment
 import kotlinx.coroutines.Dispatchers
@@ -37,11 +39,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var biometricPrompt: BiometricPrompt
     private lateinit var promptInfo: BiometricPrompt.PromptInfo
     private var isAppLocked = false
+    private var lastPauseTime = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         mBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(mBinding.root)
+
+        // Фикс для статус-бара и клавиатуры (Android 12+)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         APP_ACTIVITY = this
 
@@ -191,9 +197,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Очищаем кэш шифрования при полном выходе из приложения
+        // Очищаем кэш шифрования и данные пользователя при полном выходе из приложения
         if (isFinishing) {
             ChatEncryptionManager.clear()
+            UserDataManager.clearUser(this)
         }
     }
 }

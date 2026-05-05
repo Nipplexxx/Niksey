@@ -6,6 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="?attr/actionBarSize"
     android:background="@color/black_100"
+    android:windowSoftInputMode="adjustResize"
     android:elevation="8dp">
 
     <!-- Glassmorphic эффект (тонкая обводка) -->

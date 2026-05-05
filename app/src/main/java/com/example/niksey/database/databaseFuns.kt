@@ -9,6 +9,7 @@ import com.example.niksey.utillits.AppValueEventListener
 import com.example.niksey.utillits.ChatEncryptionManager
 import com.example.niksey.utillits.EncryptionUtils
 import com.example.niksey.utillits.TYPE_GROUP
+import com.example.niksey.utillits.UserDataManager
 import com.example.niksey.utillits.showToast
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -74,10 +75,11 @@ fun initFirebase() {
 // ==================== END-TO-END ШИФРОВАНИЕ ====================
 
 /**
- * Генерирует ECDH-ключ (и кэширует его).
- * Kyber-ключ генерируется отдельно (в PostQuantumKeyManager).
+ * Вызывается при первой инициализации пользователя.
+ * Генерирует ECDH ключевую пару (базовое шифрование).
  */
 fun ensureUserEncryptionKey() {
+    // Принудительно генерируем ключ, если его нет в Firebase
     if (USER.publicKey.isBlank()) {
         try {
             val ecdhPublicKey = EncryptionUtils.generateUserKeyPair()
@@ -112,10 +114,27 @@ inline fun putFileToStorage(uri: Uri, path: StorageReference, crossinline functi
 inline fun initUser(crossinline function: () -> Unit) {
     REF_DATABASE_ROOT.child(USER_PATH)
         .addListenerForSingleValueEvent(AppValueEventListener {
-            USER = it.getValue(UserModel::class.java) ?: UserModel()
-            if (USER.username.isEmpty()) USER.username = CURRENT_UID
+            val firebaseUser = it.getValue(UserModel::class.java)
 
+            if (firebaseUser != null && firebaseUser.username.isNotEmpty()) {
+                USER = firebaseUser
+                // Сохраняем данные пользователя локально
+                UserDataManager.saveUser(APP_ACTIVITY, USER)
+            } else {
+                // Если Firebase не вернул данные — загружаем из SharedPreferences
+                val savedUser = UserDataManager.loadUser(APP_ACTIVITY)
+                if (savedUser != null) {
+                    USER = savedUser
+                } else {
+                    USER = UserModel()
+                    if (USER.username.isEmpty()) USER.username = CURRENT_UID
+                }
+            }
+
+            // === END-TO-END ШИФРОВАНИЕ ===
             ensureUserEncryptionKey()
+            // ============================
+
             function()
         })
 }
@@ -143,69 +162,42 @@ fun updatePhonesToDatabase(arrayContacts: ArrayList<CommonModel>) {
 
 // ==================== ОТПРАВКА СООБЩЕНИЙ (С ШИФРОВАНИЕМ) ====================
 
-/**
- * Улучшенная отправка сообщения с поддержкой гибридного пост-квантового шифрования.
- * Загружает оба публичных ключа (ECDH + Kyber) и использует getOrCreateChatKey.
- */
 fun sendMessage(message: String, receivingUserID: String, typeText: String, function: () -> Unit) {
     if (message.isBlank()) {
         showToast(APP_ACTIVITY.getString(R.string.message_cannot_be_empty))
         return
     }
 
-    // Загружаем оба ключа параллельно
-    var ecdhKey: String? = null
-    var kyberKey: String? = null
-    var loaded = 0
-
-    val onKeyLoaded = {
-        loaded++
-        if (loaded == 2) {
-            performEncryptedSend(message, receivingUserID, typeText, function)
+    ChatEncryptionManager.getOtherUserPublicKey(receivingUserID) { otherPublicKeyBase64 ->
+        if (otherPublicKeyBase64.isNullOrEmpty()) {
+            showToast("Ошибка шифрования: у пользователя $receivingUserID нет публичного ключа. Попросите его зайти в приложение (чтобы сгенерировался ключ).")
+            return@getOtherUserPublicKey
         }
-    }
 
-    ChatEncryptionManager.getOtherUserPublicKey(receivingUserID) { key ->
-        ecdhKey = key
-        onKeyLoaded()
-    }
+        val chatKey = ChatEncryptionManager.getOrCreateChatKey(receivingUserID)
+        val encryptedMessage = EncryptionUtils.encryptMessage(message, chatKey)
 
-    ChatEncryptionManager.getOtherUserKyberPublicKey(receivingUserID) { key ->
-        kyberKey = key
-        onKeyLoaded()
-    }
-}
+        val messageKey = REF_DATABASE_ROOT.child("$NODE_MESSAGES/$CURRENT_UID/$receivingUserID").push().key ?: return@getOtherUserPublicKey
 
-private fun performEncryptedSend(
-    message: String,
-    receivingUserID: String,
-    typeText: String,
-    function: () -> Unit
-) {
-    val chatKey = ChatEncryptionManager.getOrCreateChatKey(receivingUserID)
-    val encryptedMessage = EncryptionUtils.encryptMessage(message, chatKey)
-
-    val messageKey = REF_DATABASE_ROOT.child("$NODE_MESSAGES/$CURRENT_UID/$receivingUserID").push().key
-        ?: return
-
-    val messageData = mapOf(
-        CHILD_FROM to CURRENT_UID,
-        CHILD_TYPE to typeText,
-        CHILD_TEXT to encryptedMessage,
-        CHILD_ID to messageKey,
-        CHILD_TIMESTAMP to ServerValue.TIMESTAMP
-    )
-
-    REF_DATABASE_ROOT.updateChildren(
-        mapOf(
-            "$NODE_MESSAGES/$CURRENT_UID/$receivingUserID/$messageKey" to messageData,
-            "$NODE_MESSAGES/$receivingUserID/$CURRENT_UID/$messageKey" to messageData
+        val messageData = mapOf(
+            CHILD_FROM to CURRENT_UID,
+            CHILD_TYPE to typeText,
+            CHILD_TEXT to encryptedMessage,
+            CHILD_ID to messageKey,
+            CHILD_TIMESTAMP to ServerValue.TIMESTAMP
         )
-    ).addOnSuccessListener { function() }
-        .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_sending, it.message)) }
+
+        REF_DATABASE_ROOT.updateChildren(
+            mapOf(
+                "$NODE_MESSAGES/$CURRENT_UID/$receivingUserID/$messageKey" to messageData,
+                "$NODE_MESSAGES/$receivingUserID/$CURRENT_UID/$messageKey" to messageData
+            )
+        ).addOnSuccessListener { function() }
+            .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_sending, it.message)) }
+    }
 }
 
-// ==================== ОТПРАВКА В ГРУППУ ====================
+// ==================== ОТПРАВКА В ГРУППУ (ПРОСТОЕ ШИФРОВАНИЕ) ====================
 
 fun sendMessageToGroup(message: String, groupID: String, typeText: String, function: () -> Unit) {
     if (message.isBlank()) {
@@ -213,7 +205,7 @@ fun sendMessageToGroup(message: String, groupID: String, typeText: String, funct
         return
     }
 
-    // Для групп используем тот же надёжный getOrCreateChatKey (поддерживает hybrid)
+    // Для групп используем упрощённое шифрование
     val chatKey = ChatEncryptionManager.getOrCreateChatKey(groupID)
     val encryptedMessage = EncryptionUtils.encryptMessage(message, chatKey)
 
@@ -233,7 +225,7 @@ fun sendMessageToGroup(message: String, groupID: String, typeText: String, funct
         .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_sending_to_group, it.message)) }
 }
 
-// ==================== ОСТАЛЬНЫЕ ФУНКЦИИ (без изменений) ====================
+// ==================== ОСТАЛЬНЫЕ ФУНКЦИИ (БЕЗ ИЗМЕНЕНИЙ) ====================
 
 fun updateCurrentUsername(newUserName: String) {
     if (newUserName.isBlank()) {
@@ -473,7 +465,6 @@ fun removeChatGroup(id: String, function: () -> Unit) {
 }
 
 fun DataSnapshot.getCommonModel(): CommonModel = getValue(CommonModel::class.java) ?: CommonModel()
-
 fun DataSnapshot.getUserModel(): UserModel {
     return try {
         getValue(UserModel::class.java) ?: UserModel()
@@ -501,7 +492,12 @@ fun DataSnapshot.getUserModel(): UserModel {
 fun generateRandomUsername(): String = "user${UUID.randomUUID().toString().substring(0, 8)}"
 
 fun generateRandomFullname(): String {
-    val names = listOf("John", "Jane", "Alex", "Chris", "Sam", "Taylor", "Jordan", "Pat")
-    val surnames = listOf("Smith", "Doe", "Johnson", "Brown", "Williams", "Jones")
-    return "${names.random()} ${surnames.random()}"
+    val prefixes = listOf(
+        "Shadow", "Ghost", "Neon", "Cyber", "Phantom", "Vortex", "Nebula", "Echo",
+        "Nova", "Pulse", "Raven", "Hawk", "Wolf", "Fox", "Dragon", "Phoenix", "Cobra", "Tiger"
+    )
+    val suffixes = listOf(
+        "42", "93", "17", "88", "X", "Z", "Pro", "Elite", "Dark", "Void", "Storm", "Blade", "Nova"
+    )
+    return "${prefixes.random()}${suffixes.random()}"
 }

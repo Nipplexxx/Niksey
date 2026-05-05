@@ -6,6 +6,7 @@
     android:orientation="vertical"
     android:background="@color/ghost_card_bg"
     android:padding="24dp"
+    android:windowSoftInputMode="adjustResize"
     android:elevation="16dp">
 
     <!-- Заголовок -->
