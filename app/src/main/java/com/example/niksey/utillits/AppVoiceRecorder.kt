@@ -3,6 +3,7 @@ package com.example.niksey.utillits
 import android.media.MediaRecorder
 import java.io.File
 
+@Suppress("DEPRECATION")
 class AppVoiceRecorder {
 
 

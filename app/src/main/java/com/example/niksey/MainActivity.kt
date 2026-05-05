@@ -11,7 +11,6 @@ import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
-import com.example.niksey.database.AUTH
 import com.example.niksey.database.initFirebase
 import com.example.niksey.database.initUser
 import com.example.niksey.databinding.ActivityMainBinding
@@ -22,7 +21,8 @@ import com.example.niksey.utillits.APP_ACTIVITY
 import com.example.niksey.utillits.AppStates
 import com.example.niksey.utillits.ChatEncryptionManager
 import com.example.niksey.utillits.PostQuantumKeyManager
-import com.example.niksey.utillits.UserDataManager
+import com.example.niksey.models.UserDataManager
+import com.example.niksey.utillits.AUTH
 import com.example.niksey.utillits.initContacts
 import com.example.niksey.utillits.replaceFragment
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +39,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var biometricPrompt: BiometricPrompt
     private lateinit var promptInfo: BiometricPrompt.PromptInfo
     private var isAppLocked = false
-    private var lastPauseTime = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -141,45 +140,6 @@ class MainActivity : AppCompatActivity() {
         mToolbar = mBinding.mainToolbar
         mAppDrawer = AppDrawer()
     }
-
-    // ==================== AI Quick Reply ====================
-    fun showAIQuickReplies(onReplySelected: (String) -> Unit) {
-        val bottomSheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
-        val view = layoutInflater.inflate(R.layout.bottom_sheet_ai_replies, null)
-        bottomSheet.setContentView(view)
-
-        val reply1 = view.findViewById<android.widget.TextView>(R.id.reply_1)
-        val reply2 = view.findViewById<android.widget.TextView>(R.id.reply_2)
-        val reply3 = view.findViewById<android.widget.TextView>(R.id.reply_3)
-        val reply4 = view.findViewById<android.widget.TextView>(R.id.reply_4)
-
-        val replies = listOf(
-            getString(R.string.ai_reply_thanks),
-            getString(R.string.ai_reply_ok),
-            getString(R.string.ai_reply_later),
-            getString(R.string.ai_reply_call_me)
-        )
-
-        reply1.setOnClickListener {
-            onReplySelected(replies[0])
-            bottomSheet.dismiss()
-        }
-        reply2.setOnClickListener {
-            onReplySelected(replies[1])
-            bottomSheet.dismiss()
-        }
-        reply3.setOnClickListener {
-            onReplySelected(replies[2])
-            bottomSheet.dismiss()
-        }
-        reply4.setOnClickListener {
-            onReplySelected(replies[3])
-            bottomSheet.dismiss()
-        }
-
-        bottomSheet.show()
-    }
-    // ====================================================
 
     override fun onStart() {
         super.onStart()

@@ -66,7 +66,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-database-ktx:21.0.0'
     implementation 'com.google.firebase:firebase-storage-ktx:21.0.2'
     implementation 'com.google.firebase:firebase-auth-ktx:23.2.1'
-    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    implementation 'androidx.security:security-crypto:1.1.0'
 
     implementation 'com.google.android.gms:play-services-auth:21.5.1'
 
@@ -78,6 +78,9 @@ dependencies {
     implementation 'com.github.bumptech.glide:glide:5.0.7'
     kapt 'com.github.bumptech.glide:compiler:5.0.7'
     implementation 'com.github.chrisbanes:PhotoView:2.3.0'
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0"
+    implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.10.0"
+    implementation "androidx.fragment:fragment-ktx:1.8.9"
 
     // Новые правильные артефакты (замена старых)
     implementation 'com.vanniktech:android-image-cropper:4.7.0'

@@ -1,18 +1,17 @@
 package com.example.niksey.ui.objects
 
-import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import com.example.niksey.R
-import com.example.niksey.database.USER
 import com.example.niksey.ui.screens.groups_messages.AddContactsFragment
 import com.example.niksey.ui.screens.other_fragment.InformationFragment
 import com.example.niksey.ui.screens.phone_book.ContactsFragment
 import com.example.niksey.ui.screens.settings.SettingsFragment
 import com.example.niksey.utillits.APP_ACTIVITY
+import com.example.niksey.utillits.USER
 import com.example.niksey.utillits.downloadAndSetImage
 import com.example.niksey.utillits.replaceFragment
 import com.google.android.material.navigation.NavigationView
@@ -30,6 +29,9 @@ class AppDrawer {
         setupHeader()
         setupMenu()
         setupToggle()
+
+        // Обновляем данные при создании (на случай, если они изменились)
+        updateHeader()
     }
 
     private fun setupToggle() {
@@ -78,7 +80,12 @@ class AppDrawer {
 
         nameTextView.text = USER.fullname.ifEmpty { "Пользователь" }
         phoneTextView.text = USER.phone.ifEmpty { "Нет номера" }
-        avatarImageView.downloadAndSetImage(USER.photoUrl)
+
+        if (USER.photoUrl.isNotEmpty()) {
+            avatarImageView.downloadAndSetImage(USER.photoUrl)
+        } else {
+            avatarImageView.setImageResource(R.drawable.default_photo)
+        }
     }
 
     fun updateHeader() {
@@ -90,7 +97,12 @@ class AppDrawer {
 
         nameTextView.text = USER.fullname.ifEmpty { "Пользователь" }
         phoneTextView.text = USER.phone.ifEmpty { "Нет номера" }
-        avatarImageView.downloadAndSetImage(USER.photoUrl)
+
+        if (USER.photoUrl.isNotEmpty()) {
+            avatarImageView.downloadAndSetImage(USER.photoUrl)
+        } else {
+            avatarImageView.setImageResource(R.drawable.default_photo)
+        }
     }
 
     private fun setupMenu() {

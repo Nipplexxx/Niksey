@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.example.niksey.ui.screens.main_list
 
 import android.os.Bundle
@@ -27,7 +29,7 @@ class MainListFragment : Fragment(R.layout.fragment_main_list) {
 
     override fun onResume() {
         super.onResume()
-        APP_ACTIVITY.mToolbar?.title = getString(R.string.app_name)
+        APP_ACTIVITY.mToolbar.title = getString(R.string.app_name)
         APP_ACTIVITY.mAppDrawer.enableDrawer()
     }
 
@@ -50,13 +52,21 @@ class MainListFragment : Fragment(R.layout.fragment_main_list) {
         val mRefMainList = REF_DATABASE_ROOT.child(NODE_MAIN_LIST).child(CURRENT_UID)
 
         mRefMainList.addListenerForSingleValueEvent(AppValueEventListener { dataSnapshot ->
+            val chatIds = mutableListOf<String>()
+
             dataSnapshot.children.forEach { snapshot ->
                 val model = snapshot.getCommonModel()
+                chatIds.add(model.id)
 
                 when (model.type) {
                     TYPE_CHAT -> loadChatWithLastMessage(model)
                     TYPE_GROUP -> loadGroupWithLastMessage(model)
                 }
+            }
+
+            // Предзагружаем все публичные ключи сразу
+            chatIds.forEach { chatId ->
+                ChatEncryptionManager.getOtherUserPublicKey(chatId) { /* кэшируем */ }
             }
         })
     }
@@ -71,17 +81,21 @@ class MainListFragment : Fragment(R.layout.fragment_main_list) {
                         val lastMsg = snapshot2.children.firstOrNull()?.getCommonModel()
 
                         if (lastMsg != null) {
-                            userModel.lastMessage = decryptLastMessage(lastMsg, model.id)
-                            userModel.timeStamp = lastMsg.timeStamp as? Long ?: 0L
-                            userModel.type = lastMsg.type.ifEmpty { TYPE_CHAT }
+                            decryptLastMessage(lastMsg, model.id) { decryptedText ->
+                                userModel.lastMessage = decryptedText
+                                userModel.timeStamp = lastMsg.timeStamp as? Long ?: 0L
+                                userModel.type = lastMsg.type.ifEmpty { TYPE_CHAT }
+
+                                if (userModel.fullname.isEmpty()) userModel.fullname = userModel.phone
+                                addItemSorted(userModel)
+                            }
                         } else {
                             userModel.lastMessage = getString(R.string.chat_cleared)
                             userModel.timeStamp = 0L
                             userModel.type = TYPE_CHAT
+                            if (userModel.fullname.isEmpty()) userModel.fullname = userModel.phone
+                            addItemSorted(userModel)
                         }
-
-                        if (userModel.fullname.isEmpty()) userModel.fullname = userModel.phone
-                        addItemSorted(userModel)
                     })
             })
     }
@@ -97,16 +111,18 @@ class MainListFragment : Fragment(R.layout.fragment_main_list) {
                         val lastMsg = snapshot2.children.firstOrNull()?.getCommonModel()
 
                         if (lastMsg != null) {
-                            groupModel.lastMessage = decryptLastMessage(lastMsg, model.id)
-                            groupModel.timeStamp = lastMsg.timeStamp as? Long ?: 0L
-                            groupModel.type = lastMsg.type.ifEmpty { TYPE_GROUP }
+                            decryptLastMessage(lastMsg, model.id) { decryptedText ->
+                                groupModel.lastMessage = decryptedText
+                                groupModel.timeStamp = lastMsg.timeStamp as? Long ?: 0L
+                                groupModel.type = lastMsg.type.ifEmpty { TYPE_GROUP }
+                                addItemSorted(groupModel)
+                            }
                         } else {
                             groupModel.lastMessage = getString(R.string.chat_cleared)
                             groupModel.timeStamp = 0L
                             groupModel.type = TYPE_GROUP
+                            addItemSorted(groupModel)
                         }
-
-                        addItemSorted(groupModel)
                     })
             })
     }
@@ -125,28 +141,71 @@ class MainListFragment : Fragment(R.layout.fragment_main_list) {
         mAdapter.submitList(filteredList)
     }
 
-    private fun decryptLastMessage(msg: CommonModel, chatId: String): String {
-        if (msg.text.isBlank()) return "Нет сообщений"
-
+    private fun decryptLastMessage(msg: CommonModel, chatId: String, onResult: (String) -> Unit) {
         val type = msg.type.lowercase()
-        return when {
-            type.contains("voice") -> "🎤 Голосовое сообщение"
-            type.contains("image") || type.contains("photo") -> "🖼️ Изображение"
-            type.contains("file") -> "📎 Файл"
-            else -> {
-                if (msg.decryptedText.isNotEmpty()) return msg.decryptedText
+        val fileUrl = msg.fileUrl.lowercase()
+
+        // === ДЛЯ МЕДИА — ВСЕГДА ПОКАЗЫВАЕМ ТИП (даже если text пустой) ===
+        when {
+            type.contains("voice") || fileUrl.contains("voice") -> {
+                onResult("🎤 Голосовое сообщение")
+                return
+            }
+            type.contains("image") || type.contains("photo") || fileUrl.contains("image") || fileUrl.contains("photo") -> {
+                onResult("🖼️ Изображение")
+                return
+            }
+            type.contains("file") || fileUrl.contains("file") -> {
+                onResult("📎 Файл")
+                return
+            }
+        }
+
+        // === ДЛЯ ТЕКСТА ===
+        if (msg.text.isBlank()) {
+            onResult("Нет сообщений")
+            return
+        }
+
+        // Для текста — расшифровываем
+        if (msg.decryptedText.isNotEmpty()) {
+            onResult(msg.decryptedText)
+            return
+        }
+
+        val cachedKey = ChatEncryptionManager.getChatKey(chatId)
+        if (cachedKey != null) {
+            try {
+                val decrypted = ChatEncryptionManager.decryptMessage(msg.text, cachedKey)
+                msg.decryptedText = decrypted
+                onResult(if (decrypted.length > 50) decrypted.take(50) + "..." else decrypted)
+            } catch (_: Exception) {
+                onResult(msg.text.take(30) + "...")
+            }
+            return
+        }
+
+        // Ключа нет — загружаем асинхронно
+        ChatEncryptionManager.getOrCreateChatKeyAsync(chatId) { chatKey ->
+            if (chatKey != null) {
                 try {
-                    val chatKey = ChatEncryptionManager.getOrCreateChatKey(chatId)
                     val decrypted = ChatEncryptionManager.decryptMessage(msg.text, chatKey)
-                    msg.decryptedText = decrypted  // сохраняем
-                    if (decrypted.length > 50) decrypted.take(50) + "..." else decrypted
-                } catch (e: Exception) {
-                    msg.text.take(30) + "..."
+                    msg.decryptedText = decrypted
+
+                    APP_ACTIVITY.runOnUiThread {
+                        onResult(if (decrypted.length > 50) decrypted.take(50) + "..." else decrypted)
+                        mAdapter.submitList(filteredList)
+                    }
+                } catch (_: Exception) {
+                    onResult(msg.text.take(20) + "...")
                 }
+            } else {
+                onResult(msg.text.take(20) + "...")
             }
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.main_list_menu, menu)
 
@@ -183,5 +242,4 @@ class MainListFragment : Fragment(R.layout.fragment_main_list) {
 
     private val mRefUsers = REF_DATABASE_ROOT.child(NODE_USERS)
     private val mRefMessages = REF_DATABASE_ROOT.child(NODE_MESSAGES).child(CURRENT_UID)
-    private val mRefMainList = REF_DATABASE_ROOT.child(NODE_MAIN_LIST).child(CURRENT_UID)
 }

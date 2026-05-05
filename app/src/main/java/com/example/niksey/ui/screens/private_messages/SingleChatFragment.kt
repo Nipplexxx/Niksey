@@ -8,13 +8,18 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
-import android.view.*
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
+import android.view.MotionEvent
+import android.view.View
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -23,18 +28,40 @@ import com.canhub.cropper.CropImageContractOptions
 import com.canhub.cropper.CropImageOptions
 import com.canhub.cropper.CropImageView
 import com.example.niksey.R
-import com.example.niksey.database.*
+import com.example.niksey.database.clearChat
+import com.example.niksey.database.deleteChat
+import com.example.niksey.database.getMessageKey
+import com.example.niksey.database.getUserModel
+import com.example.niksey.database.removeChat
+import com.example.niksey.database.uploadFileToStorage
 import com.example.niksey.models.CommonModel
 import com.example.niksey.models.UserModel
-import com.example.niksey.ui.fragments.message_recycler_view.views.AppViewFactory
 import com.example.niksey.ui.screens.base_fragment.BaseFragment
 import com.example.niksey.ui.screens.main_list.MainListFragment
-import com.example.niksey.utillits.*
+import com.example.niksey.ui.viewmodels.ChatViewModel
+import com.example.niksey.utillits.APP_ACTIVITY
+import com.example.niksey.utillits.AppTextWatcher
+import com.example.niksey.utillits.AppValueEventListener
+import com.example.niksey.utillits.AppVoiceRecorder
+import com.example.niksey.utillits.ChatEncryptionManager
+import com.example.niksey.utillits.NODE_USERS
+import com.example.niksey.utillits.RECORD_AUDIO
+import com.example.niksey.utillits.REF_DATABASE_ROOT
+import com.example.niksey.utillits.TYPE_MESSAGE_FILE
+import com.example.niksey.utillits.TYPE_MESSAGE_IMAGE
+import com.example.niksey.utillits.TYPE_MESSAGE_VOICE
+import com.example.niksey.utillits.checkPermission
+import com.example.niksey.utillits.downloadAndSetImage
+import com.example.niksey.utillits.getFilenameFromUri
+import com.example.niksey.utillits.replaceFragment
+import com.example.niksey.utillits.showToast
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.firebase.database.DatabaseReference
 import de.hdodenhof.circleimageview.CircleImageView
 
 class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layout.fragment_chat) {
+
+    private val viewModel: ChatViewModel by viewModels()
 
     private lateinit var mChatInputMessage: EditText
     private lateinit var mChatBtnSendMessage: ImageView
@@ -49,15 +76,8 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
     private lateinit var mReceivingUser: UserModel
     private var mToolbarInfo: View? = null
     private lateinit var mRefUser: DatabaseReference
-    private lateinit var mRefMessages: DatabaseReference
     private lateinit var mAdapter: SingleChatAdapter
     private lateinit var mRecyclerView: RecyclerView
-    private lateinit var mMessagesListener: AppChildEventListener
-
-    private var mCountMessages = 10
-    private var mIsScrolling = false
-    private var mSmoothScrollToPosition = true
-
     private lateinit var mSwipeRefreshLayout: SwipeRefreshLayout
     private lateinit var mLayoutManager: LinearLayoutManager
     private lateinit var mAppVoiceRecorder: AppVoiceRecorder
@@ -73,8 +93,9 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
             if (result.isSuccessful) {
                 val uri = result.uriContent ?: return@registerForActivityResult
                 val messageKey = getMessageKey(contact.id)
-                uploadFileToStorage(uri, messageKey, contact.id, TYPE_MESSAGE_IMAGE)
-                mSmoothScrollToPosition = true
+                uploadFileToStorage(uri, messageKey, contact.id, TYPE_MESSAGE_IMAGE) {
+                    viewModel.reloadMessages()
+                }
             } else {
                 showToast(getString(R.string.error_cropping_image))
             }
@@ -85,8 +106,9 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
                 val uri = result.data?.data ?: return@registerForActivityResult
                 val messageKey = getMessageKey(contact.id)
                 val filename = getFilenameFromUri(uri)
-                uploadFileToStorage(uri, messageKey, contact.id, TYPE_MESSAGE_FILE, filename)
-                mSmoothScrollToPosition = true
+                uploadFileToStorage(uri, messageKey, contact.id, TYPE_MESSAGE_FILE, filename) {
+                    viewModel.reloadMessages()
+                }
             }
         }
     }
@@ -128,13 +150,12 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
         mChatBtnAttach.setOnClickListener { attach() }
 
         mChatBtnSendMessage.setOnClickListener {
-            mSmoothScrollToPosition = true
             val message = mChatInputMessage.text.toString().trim()
-            if (message.isEmpty()) {
-                showToast(getString(R.string.enter_a_message))
-                return@setOnClickListener
+            if (message.isNotEmpty()) {
+                viewModel.sendMessage(message) {
+                    mChatInputMessage.setText("")
+                }
             }
-            safeSendMessage(message)
         }
 
         mChatBtnVoice.setOnTouchListener { _, event ->
@@ -150,28 +171,14 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
                         mChatInputMessage.setText("")
                         mChatBtnVoice.colorFilter = null
                         mAppVoiceRecorder.stopRecord { file, messageKey ->
-                            uploadFileToStorage(Uri.fromFile(file), messageKey, contact.id, TYPE_MESSAGE_VOICE)
-                            mSmoothScrollToPosition = true
+                            uploadFileToStorage(Uri.fromFile(file), messageKey, contact.id, TYPE_MESSAGE_VOICE) {
+                                viewModel.reloadMessages()
+                            }
                         }
                     }
                 }
             }
             true
-        }
-    }
-
-    /**
-     * Исправленная отправка сообщения.
-     * Теперь передаём ЧИСТЫЙ текст — шифрование происходит внутри sendMessage()
-     */
-    private fun safeSendMessage(message: String) {
-        try {
-            sendMessage(message, contact.id, TYPE_TEXT) {
-                saveToMainList(contact.id, TYPE_CHAT)
-                mChatInputMessage.setText("")
-            }
-        } catch (e: Exception) {
-            showToast("Ошибка отправки: ${e.message}")
         }
     }
 
@@ -226,8 +233,6 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
 
     private fun initRecycleView() {
         mAdapter = SingleChatAdapter()
-        mRefMessages = REF_DATABASE_ROOT.child(NODE_MESSAGES).child(CURRENT_UID).child(contact.id)
-
         mRecyclerView.apply {
             adapter = mAdapter
             setHasFixedSize(true)
@@ -235,46 +240,28 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
             layoutManager = mLayoutManager
         }
 
-        mMessagesListener = AppChildEventListener {
-            val message = it.getCommonModel()
-            val viewMessage = AppViewFactory.getView(message)
-
-            if (mSmoothScrollToPosition) {
-                mAdapter.addItemToBottom(viewMessage) {
-                    mRecyclerView.smoothScrollToPosition(mAdapter.itemCount)
-                }
-            } else {
-                mAdapter.addItemToTop(viewMessage) {
-                    mSwipeRefreshLayout.isRefreshing = false
-                }
+        // Наблюдаем за сообщениями из ViewModel
+        viewModel.messages.observe(viewLifecycleOwner) { messages ->
+            mAdapter.submitList(messages)
+            if (messages.isNotEmpty()) {
+                mRecyclerView.smoothScrollToPosition(messages.size - 1)
             }
         }
 
-        mRefMessages.limitToLast(mCountMessages).addChildEventListener(mMessagesListener)
+        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+            mSwipeRefreshLayout.isRefreshing = isLoading
+        }
 
-        mRecyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                super.onScrolled(recyclerView, dx, dy)
-                if (mIsScrolling && dy < 0 && mLayoutManager.findFirstVisibleItemPosition() <= 3) {
-                    updateData()
-                }
+        viewModel.error.observe(viewLifecycleOwner) { error ->
+            error?.let {
+                showToast(it)
+                viewModel.clearError()
             }
+        }
 
-            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                super.onScrollStateChanged(recyclerView, newState)
-                mIsScrolling = newState == RecyclerView.SCROLL_STATE_DRAGGING
-            }
-        })
-
-        mSwipeRefreshLayout.setOnRefreshListener { updateData() }
-    }
-
-    private fun updateData() {
-        mSmoothScrollToPosition = false
-        mIsScrolling = false
-        mCountMessages += 10
-        mRefMessages.removeEventListener(mMessagesListener)
-        mRefMessages.limitToLast(mCountMessages).addChildEventListener(mMessagesListener)
+        mSwipeRefreshLayout.setOnRefreshListener {
+            viewModel.loadMoreMessages()
+        }
     }
 
     override fun onResume() {
@@ -282,10 +269,10 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
         initViews()
         initFields()
 
-        // Устанавливаем текущего собеседника (для правильной работы кэша)
-        ChatEncryptionManager.currentChatPartnerId = contact.id
+        // Инициализируем ViewModel
+        viewModel.initChat(contact.id, isGroup = false)
 
-        // Предзагружаем публичные ключи (ECDH + Kyber)
+        // Предзагружаем публичные ключи
         ChatEncryptionManager.getOtherUserPublicKey(contact.id) { publicKey ->
             if (!publicKey.isNullOrEmpty()) {
                 ChatEncryptionManager.cachePublicKey(contact.id, publicKey)
@@ -350,14 +337,10 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
         super.onPause()
         try {
             mToolbarInfo?.visibility = View.GONE
-            APP_ACTIVITY.mToolbar?.title = getString(R.string.app_name)
+            APP_ACTIVITY.mToolbar.title = getString(R.string.app_name)
 
             if (::mRefUser.isInitialized && ::mListenerInfoToolbar.isInitialized) {
                 mRefUser.removeEventListener(mListenerInfoToolbar)
-            }
-
-            if (::mRefMessages.isInitialized && ::mMessagesListener.isInitialized) {
-                mRefMessages.removeEventListener(mMessagesListener)
             }
 
             ChatEncryptionManager.currentChatPartnerId = null

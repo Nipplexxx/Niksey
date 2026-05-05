@@ -1,10 +1,8 @@
-package com.example.niksey.ui.fragments.message_recycler_view.views
+package com.example.niksey.ui.fragments.message_recycler_view.view_holders
 
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 
-    /**
-        * Интерфейс для всех ViewHolder'ов сообщений в чате.
-    */
+/** Интерфейс для всех ViewHolder'ов сообщений в чате. */
 interface MessageHolder {
 
     fun drawMessage(view: MessageView)
@@ -19,10 +17,6 @@ interface MessageHolder {
 
     fun onRecycled() {
         // Пустая реализация по умолчанию
-    }
-
-    fun onLongClick(view: MessageView): Boolean {
-        return false
     }
 
     fun getMessageType(): String = "unknown"

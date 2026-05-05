@@ -9,7 +9,37 @@ import com.example.niksey.utillits.AppValueEventListener
 import com.example.niksey.utillits.ChatEncryptionManager
 import com.example.niksey.utillits.EncryptionUtils
 import com.example.niksey.utillits.TYPE_GROUP
-import com.example.niksey.utillits.UserDataManager
+import com.example.niksey.models.UserDataManager
+import com.example.niksey.utillits.AUTH
+import com.example.niksey.utillits.CHILD_BIO
+import com.example.niksey.utillits.CHILD_EMAIL
+import com.example.niksey.utillits.CHILD_FILE_URL
+import com.example.niksey.utillits.CHILD_FROM
+import com.example.niksey.utillits.CHILD_FULLNAME
+import com.example.niksey.utillits.CHILD_ID
+import com.example.niksey.utillits.CHILD_PASSWORD
+import com.example.niksey.utillits.CHILD_PHONE
+import com.example.niksey.utillits.CHILD_PHOTO_URL
+import com.example.niksey.utillits.CHILD_TEXT
+import com.example.niksey.utillits.CHILD_TIMESTAMP
+import com.example.niksey.utillits.CHILD_TYPE
+import com.example.niksey.utillits.CHILD_USERNAME
+import com.example.niksey.utillits.CURRENT_UID
+import com.example.niksey.utillits.FOLDER_FILES
+import com.example.niksey.utillits.FOLDER_GROUPS_IMAGE
+import com.example.niksey.utillits.NODE_GROUPS
+import com.example.niksey.utillits.NODE_MAIN_LIST
+import com.example.niksey.utillits.NODE_MEMBERS
+import com.example.niksey.utillits.NODE_MESSAGES
+import com.example.niksey.utillits.NODE_PHONES
+import com.example.niksey.utillits.NODE_PHONES_CONTACTS
+import com.example.niksey.utillits.NODE_USERNAMES
+import com.example.niksey.utillits.NODE_USERS
+import com.example.niksey.utillits.REF_DATABASE_ROOT
+import com.example.niksey.utillits.REF_STORAGE_ROOT
+import com.example.niksey.utillits.USER
+import com.example.niksey.utillits.USER_CREATOR
+import com.example.niksey.utillits.USER_MEMBER
 import com.example.niksey.utillits.showToast
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -17,51 +47,10 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
-import com.squareup.picasso.Picasso
-import de.hdodenhof.circleimageview.CircleImageView
 import java.io.File
 import java.util.UUID
 
-// ==================== КОНСТАНТЫ ====================
-const val NODE_USERS = "users"
-const val NODE_MAIN_LIST = "main_list"
-const val NODE_PHONES_CONTACTS = "phone_book"
-const val NODE_PHONES = "phones_and_uid"
-const val NODE_MESSAGES = "private_messages"
-const val NODE_GROUPS = "groups_messages"
-const val CHILD_PUBLIC_KEY = "publicKey"
-const val NODE_USERNAMES = "usernames"
-const val FOLDER_PROFILE_IMAGE = "profile_image"
-const val CHILD_ID = "id"
-const val CHILD_USERNAME = "username"
-const val CHILD_PHONE = "phone"
-const val CHILD_FULLNAME = "fullname"
-const val CHILD_BIO = "bio"
-const val CHILD_EMAIL = "email"
-const val CHILD_PASSWORD = "password"
-const val CHILD_PHOTO_URL = "photoUrl"
-const val FOLDER_FILES = "messages_files"
-const val CHILD_STATE = "state"
-const val USER_MEMBER = "member"
-const val USER_CREATOR = "creator"
-const val CHILD_FILE_URL = "fileUrl"
-const val FOLDER_GROUPS_IMAGE = "groups_image"
-const val NODE_MEMBERS = "members"
-const val TYPE_TEXT = "text"
-const val CHILD_TEXT = "text"
-const val CHILD_TYPE = "type"
-const val CHILD_FROM = "from"
-const val CHILD_TIMESTAMP = "timeStamp"
-
-// ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
-lateinit var AUTH: FirebaseAuth
-lateinit var CURRENT_UID: String
-lateinit var REF_DATABASE_ROOT: com.google.firebase.database.DatabaseReference
-lateinit var REF_STORAGE_ROOT: StorageReference
-lateinit var USER: UserModel
-
 val USER_PATH get() = "$NODE_USERS/$CURRENT_UID"
-val MAIN_LIST_PATH get() = "$NODE_MAIN_LIST/$CURRENT_UID"
 
 // ==================== ИНИЦИАЛИЗАЦИЯ ====================
 fun initFirebase() {
@@ -73,33 +62,33 @@ fun initFirebase() {
 }
 
 // ==================== END-TO-END ШИФРОВАНИЕ ====================
-
-/**
- * Вызывается при первой инициализации пользователя.
- * Генерирует ECDH ключевую пару (базовое шифрование).
- */
-fun ensureUserEncryptionKey() {
-    // Принудительно генерируем ключ, если его нет в Firebase
-    if (USER.publicKey.isBlank()) {
-        try {
-            val ecdhPublicKey = EncryptionUtils.generateUserKeyPair()
-            val ecdhPublicKeyBase64 = EncryptionUtils.publicKeyToBase64(ecdhPublicKey)
-
-            REF_DATABASE_ROOT.child("$NODE_USERS/$CURRENT_UID/publicKey")
-                .setValue(ecdhPublicKeyBase64)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        USER.publicKey = ecdhPublicKeyBase64
-                        ChatEncryptionManager.cachePublicKey(CURRENT_UID, ecdhPublicKeyBase64)
-                    } else {
-                        showToast("Не удалось сохранить ключ шифрования")
-                    }
-                }
-        } catch (e: Exception) {
-            showToast("Ошибка генерации ключа: ${e.message}")
-        }
-    } else {
+fun ensureUserEncryptionKey(onComplete: (() -> Unit)? = null) {
+    if (USER.publicKey.isNotBlank()) {
+        // Ключ уже есть — просто кэшируем
         ChatEncryptionManager.cachePublicKey(CURRENT_UID, USER.publicKey)
+        onComplete?.invoke()
+        return
+    }
+
+    // Ключа нет — генерируем новый
+    try {
+        val ecdhPublicKey = EncryptionUtils.generateUserKeyPair()
+        val ecdhPublicKeyBase64 = EncryptionUtils.publicKeyToBase64(ecdhPublicKey)
+
+        REF_DATABASE_ROOT.child("$NODE_USERS/$CURRENT_UID/publicKey")
+            .setValue(ecdhPublicKeyBase64)
+            .addOnSuccessListener {
+                USER.publicKey = ecdhPublicKeyBase64
+                ChatEncryptionManager.cachePublicKey(CURRENT_UID, ecdhPublicKeyBase64)
+                onComplete?.invoke()
+            }
+            .addOnFailureListener {
+                showToast("Не удалось сохранить ключ шифрования")
+                onComplete?.invoke()
+            }
+    } catch (e: Exception) {
+        showToast("Ошибка генерации ключа: ${e.message}")
+        onComplete?.invoke()
     }
 }
 
@@ -130,12 +119,9 @@ inline fun initUser(crossinline function: () -> Unit) {
                     if (USER.username.isEmpty()) USER.username = CURRENT_UID
                 }
             }
-
-            // === END-TO-END ШИФРОВАНИЕ ===
-            ensureUserEncryptionKey()
-            // ============================
-
-            function()
+            ensureUserEncryptionKey {
+                function()
+            }
         })
 }
 
@@ -174,10 +160,53 @@ fun sendMessage(message: String, receivingUserID: String, typeText: String, func
             return@getOtherUserPublicKey
         }
 
-        val chatKey = ChatEncryptionManager.getOrCreateChatKey(receivingUserID)
+        ChatEncryptionManager.getOrCreateChatKeyAsync(receivingUserID) { chatKey ->
+            if (chatKey == null) {
+                showToast("Ошибка шифрования: не удалось получить ключ чата")
+                return@getOrCreateChatKeyAsync
+            }
+
+            val encryptedMessage = EncryptionUtils.encryptMessage(message, chatKey)
+
+            val messageKey = REF_DATABASE_ROOT.child("$NODE_MESSAGES/$CURRENT_UID/$receivingUserID").push().key ?: return@getOrCreateChatKeyAsync
+
+            val messageData = mapOf(
+                CHILD_FROM to CURRENT_UID,
+                CHILD_TYPE to typeText,
+                CHILD_TEXT to encryptedMessage,
+                CHILD_ID to messageKey,
+                CHILD_TIMESTAMP to ServerValue.TIMESTAMP
+            )
+
+            REF_DATABASE_ROOT.updateChildren(
+                mapOf(
+                    "$NODE_MESSAGES/$CURRENT_UID/$receivingUserID/$messageKey" to messageData,
+                    "$NODE_MESSAGES/$receivingUserID/$CURRENT_UID/$messageKey" to messageData
+                )
+            ).addOnSuccessListener { function() }
+                .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_sending, it.message)) }
+        }
+    }
+}
+
+// ==================== ОТПРАВКА В ГРУППУ (ШИФРОВАНИЕ) ====================
+
+fun sendMessageToGroup(message: String, groupID: String, typeText: String, function: () -> Unit) {
+    if (message.isBlank()) {
+        showToast(APP_ACTIVITY.getString(R.string.message_cannot_be_empty))
+        return
+    }
+
+    // Получаем или создаём ключ группы
+    ChatEncryptionManager.getOrCreateChatKeyAsync(groupID) { chatKey ->
+        if (chatKey == null) {
+            showToast("Ошибка шифрования: не удалось получить ключ группы")
+            return@getOrCreateChatKeyAsync
+        }
+
         val encryptedMessage = EncryptionUtils.encryptMessage(message, chatKey)
 
-        val messageKey = REF_DATABASE_ROOT.child("$NODE_MESSAGES/$CURRENT_UID/$receivingUserID").push().key ?: return@getOtherUserPublicKey
+        val messageKey = REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupID/$NODE_MESSAGES").push().key ?: return@getOrCreateChatKeyAsync
 
         val messageData = mapOf(
             CHILD_FROM to CURRENT_UID,
@@ -187,42 +216,11 @@ fun sendMessage(message: String, receivingUserID: String, typeText: String, func
             CHILD_TIMESTAMP to ServerValue.TIMESTAMP
         )
 
-        REF_DATABASE_ROOT.updateChildren(
-            mapOf(
-                "$NODE_MESSAGES/$CURRENT_UID/$receivingUserID/$messageKey" to messageData,
-                "$NODE_MESSAGES/$receivingUserID/$CURRENT_UID/$messageKey" to messageData
-            )
-        ).addOnSuccessListener { function() }
-            .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_sending, it.message)) }
+        REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupID/$NODE_MESSAGES/$messageKey")
+            .updateChildren(messageData)
+            .addOnSuccessListener { function() }
+            .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_sending_to_group)) }
     }
-}
-
-// ==================== ОТПРАВКА В ГРУППУ (ПРОСТОЕ ШИФРОВАНИЕ) ====================
-
-fun sendMessageToGroup(message: String, groupID: String, typeText: String, function: () -> Unit) {
-    if (message.isBlank()) {
-        showToast(APP_ACTIVITY.getString(R.string.message_cannot_be_empty))
-        return
-    }
-
-    // Для групп используем упрощённое шифрование
-    val chatKey = ChatEncryptionManager.getOrCreateChatKey(groupID)
-    val encryptedMessage = EncryptionUtils.encryptMessage(message, chatKey)
-
-    val messageKey = REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupID/$NODE_MESSAGES").push().key ?: return
-
-    val messageData = mapOf(
-        CHILD_FROM to CURRENT_UID,
-        CHILD_TYPE to typeText,
-        CHILD_TEXT to encryptedMessage,
-        CHILD_ID to messageKey,
-        CHILD_TIMESTAMP to ServerValue.TIMESTAMP
-    )
-
-    REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupID/$NODE_MESSAGES/$messageKey")
-        .updateChildren(messageData)
-        .addOnSuccessListener { function() }
-        .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_sending_to_group, it.message)) }
 }
 
 // ==================== ОСТАЛЬНЫЕ ФУНКЦИИ (БЕЗ ИЗМЕНЕНИЙ) ====================
@@ -251,10 +249,10 @@ private fun deleteOldUsername(newUserName: String) {
         .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_generic, it.message)) }
 }
 
-fun setBioToDatabase(newBio: String) = updateUserField(CHILD_BIO, newBio) { USER.bio = newBio }
-fun setEmailToDatabase(newEmail: String) = updateUserField(CHILD_EMAIL, newEmail) { USER.email = newEmail }
-fun setPasswordToDatabase(newPassword: String) = updateUserField(CHILD_PASSWORD, newPassword) { USER.password = newPassword }
-fun setPhoneToDatabase(newPhone: String) = updateUserField(CHILD_PHONE, newPhone) { USER.phone = newPhone }
+fun setBioToDatabase(newBio: String) = updateUserField(CHILD_BIO, newBio) { USER.bio = newBio; APP_ACTIVITY.mAppDrawer.updateHeader() }
+fun setEmailToDatabase(newEmail: String) = updateUserField(CHILD_EMAIL, newEmail) { USER.email = newEmail; APP_ACTIVITY.mAppDrawer.updateHeader() }
+fun setPasswordToDatabase(newPassword: String) = updateUserField(CHILD_PASSWORD, newPassword) { USER.password = newPassword; APP_ACTIVITY.mAppDrawer.updateHeader() }
+fun setPhoneToDatabase(newPhone: String) = updateUserField(CHILD_PHONE, newPhone) { USER.phone = newPhone; APP_ACTIVITY.mAppDrawer.updateHeader() }
 
 fun setNameToDatabase(fullname: String) {
     if (fullname.isBlank()) {
@@ -284,14 +282,14 @@ fun removePhotoUser(@Suppress("UNUSED_PARAMETER") function1: String, function: (
         .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_deleting_photo, it.message)) }
 }
 
-fun CircleImageView.donwloadAndSetImage(url: String) {
-    Picasso.get().load(url).placeholder(R.drawable.default_photo).into(this)
-}
-
 inline fun putUrlToDatabase(url: String, crossinline function: () -> Unit) {
     REF_DATABASE_ROOT.child("$USER_PATH/$CHILD_PHOTO_URL")
         .setValue(url)
-        .addOnSuccessListener { function() }
+        .addOnSuccessListener {
+            USER.photoUrl = url
+            APP_ACTIVITY.mAppDrawer.updateHeader()
+            function()
+        }
         .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_generic, it.message)) }
 }
 
@@ -308,7 +306,6 @@ inline fun putImageToStorage(uri: Uri, path: StorageReference, crossinline funct
 }
 
 fun getMessageKey(id: String) = REF_DATABASE_ROOT.child("$NODE_MESSAGES/$CURRENT_UID/$id").push().key.toString()
-fun getMessageKeyPrivate(id: String) = getMessageKey(id)
 fun getMessageKeyGroup(id: String) = REF_DATABASE_ROOT.child("$NODE_GROUPS/$id/$NODE_MESSAGES").push().key.toString()
 
 fun getFileFromStorage(mFile: File, fileUrl: String, function: () -> Unit) {
@@ -318,17 +315,23 @@ fun getFileFromStorage(mFile: File, fileUrl: String, function: () -> Unit) {
         .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_generic, it.message)) }
 }
 
-fun uploadFileToStorage(uri: Uri, messageKey: String, receivedID: String, typeMessage: String, filename: String = "") {
+fun uploadFileToStorage(uri: Uri, messageKey: String, receivedID: String, typeMessage: String, filename: String = "", onComplete: () -> Unit = {}) {
     val path = REF_STORAGE_ROOT.child("$FOLDER_FILES/$messageKey")
     putFileToStorage(uri, path) {
-        getUrlFromStorage(path) { url -> sendMessageAsFile(receivedID, url, messageKey, typeMessage, filename) }
+        getUrlFromStorage(path) { url ->
+            sendMessageAsFile(receivedID, url, messageKey, typeMessage, filename)
+            onComplete()
+        }
     }
 }
 
-fun uploadFileToStorageGroup(uri: Uri, messageKey: String, groupID: String, typeMessage: String, filename: String = "") {
+fun uploadFileToStorageGroup(uri: Uri, messageKey: String, groupID: String, typeMessage: String, filename: String = "", onComplete: () -> Unit = {}) {
     val path = REF_STORAGE_ROOT.child("$FOLDER_FILES/$messageKey")
     putFileToStorage(uri, path) {
-        getUrlFromStorage(path) { url -> sendMessageAsFileGroup(groupID, url, messageKey, typeMessage, filename) }
+        getUrlFromStorage(path) { url ->
+            sendMessageAsFileGroup(groupID, url, messageKey, typeMessage, filename)
+            onComplete()
+        }
     }
 }
 
@@ -383,6 +386,9 @@ fun createGroupToDatabase(nameGroup: String, uri: Uri, listContacts: List<Common
     )
 
     groupPath.updateChildren(groupData).addOnSuccessListener {
+        // Создаём ключ шифрования для группы
+        ChatEncryptionManager.getOrCreateChatKeyAsync(groupId) { _ -> }
+
         if (uri != Uri.EMPTY) {
             putFileToStorage(uri, storagePath) {
                 getUrlFromStorage(storagePath) { url ->
@@ -468,7 +474,7 @@ fun DataSnapshot.getCommonModel(): CommonModel = getValue(CommonModel::class.jav
 fun DataSnapshot.getUserModel(): UserModel {
     return try {
         getValue(UserModel::class.java) ?: UserModel()
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         val map = getValue(object : com.google.firebase.database.GenericTypeIndicator<Map<String, Any>>() {})
             ?: return UserModel()
 

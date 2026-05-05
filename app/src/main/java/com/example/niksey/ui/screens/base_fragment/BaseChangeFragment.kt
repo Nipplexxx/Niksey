@@ -9,6 +9,7 @@ import com.example.niksey.R
 import com.mikepenz.materialize.util.KeyboardUtil.hideKeyboard
 
 /* Базовый фрагмент, от него наследуются фрагменты где происходит изменение данных о пользователе. */
+@Suppress("DEPRECATION")
 open class BaseChangeFragment (layout:Int): Fragment(layout) {
     override fun onStart() {
         super.onStart()
@@ -21,11 +22,13 @@ open class BaseChangeFragment (layout:Int): Fragment(layout) {
         super.onStop()
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         /* Создание выпадающего меню*/
         (activity as MainActivity).menuInflater.inflate(R.menu.settings_menu_confirm, menu)
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         /* Слушатель выбора пункта выпадающего меню */
         when (item.itemId) {

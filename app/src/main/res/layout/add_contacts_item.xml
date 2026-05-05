@@ -38,8 +38,7 @@
             android:layout_height="20dp"
             android:src="@drawable/ic_lock_encrypted"
             app:layout_constraintEnd_toEndOf="@id/add_contacts_item_photo"
-            app:layout_constraintBottom_toBottomOf="@id/add_contacts_item_photo"
-            app:tint="@color/purple_300" />
+            app:layout_constraintBottom_toBottomOf="@id/add_contacts_item_photo"/>
 
         <!-- Чек выбора -->
         <de.hdodenhof.circleimageview.CircleImageView

@@ -1,11 +1,9 @@
-package com.example.niksey.utillits
+package com.example.niksey.models
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.example.niksey.models.UserModel
 
 object UserDataManager {
-
     private const val PREFS_NAME = "user_data_prefs"
     private const val KEY_ID = "user_id"
     private const val KEY_USERNAME = "username"

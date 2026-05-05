@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.example.niksey.ui.screens.settings
 
 import android.os.Bundle
@@ -15,8 +17,13 @@ import com.example.niksey.R
 import com.example.niksey.database.*
 import com.example.niksey.ui.screens.base_fragment.BaseFragment
 import com.example.niksey.utillits.APP_ACTIVITY
+import com.example.niksey.utillits.AUTH
 import com.example.niksey.utillits.AppStates
+import com.example.niksey.utillits.CURRENT_UID
 import com.example.niksey.utillits.ChatEncryptionManager
+import com.example.niksey.utillits.FOLDER_PROFILE_IMAGE
+import com.example.niksey.utillits.REF_STORAGE_ROOT
+import com.example.niksey.utillits.USER
 import com.example.niksey.utillits.downloadAndSetImage
 import com.example.niksey.utillits.replaceFragment
 import com.example.niksey.utillits.restartActivity
@@ -24,6 +31,7 @@ import com.example.niksey.utillits.showToast
 import com.mikepenz.materialize.util.KeyboardUtil
 import de.hdodenhof.circleimageview.CircleImageView
 
+@Suppress("DEPRECATION")
 class SettingsFragment : BaseFragment(R.layout.fragment_settings) {
 
     private lateinit var cropImageLauncher: ActivityResultLauncher<CropImageContractOptions>
@@ -118,10 +126,12 @@ class SettingsFragment : BaseFragment(R.layout.fragment_settings) {
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         activity?.menuInflater?.inflate(R.menu.settings_actions_menu, menu)
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.settings_menu_delete_photo -> {

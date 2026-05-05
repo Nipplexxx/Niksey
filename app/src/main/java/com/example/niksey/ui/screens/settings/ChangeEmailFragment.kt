@@ -2,9 +2,9 @@ package com.example.niksey.ui.screens.settings
 
 import android.widget.EditText
 import com.example.niksey.R
-import com.example.niksey.database.USER
 import com.example.niksey.database.setEmailToDatabase
 import com.example.niksey.ui.screens.base_fragment.BaseChangeFragment
+import com.example.niksey.utillits.USER
 
 @Suppress("DEPRECATION")
 class ChangeEmailFragment : BaseChangeFragment(R.layout.fragment_change_email) {

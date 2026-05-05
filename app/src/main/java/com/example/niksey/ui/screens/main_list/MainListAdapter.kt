@@ -66,12 +66,6 @@ class MainListAdapter : RecyclerView.Adapter<MainListAdapter.MainListHolder>() {
         }
     }
 
-    // Добавляет один элемент
-    fun updateListItems(item: CommonModel) {
-        listItems.add(item)
-        notifyItemInserted(listItems.size - 1)
-    }
-
     // Полностью заменяет список (для сортировки и поиска)
     fun submitList(newList: List<CommonModel>) {
         listItems.clear()

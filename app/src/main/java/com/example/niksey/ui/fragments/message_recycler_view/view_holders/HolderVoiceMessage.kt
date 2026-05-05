@@ -12,12 +12,12 @@ import android.widget.SeekBar
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
-import com.example.niksey.database.CURRENT_UID
-import com.example.niksey.ui.fragments.message_recycler_view.views.MessageHolder
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
+import com.example.niksey.utillits.CURRENT_UID
 import com.example.niksey.utillits.ChatEncryptionManager
 import com.example.niksey.utillits.asTime
 import com.google.android.material.card.MaterialCardView
+import kotlin.math.sin
 
 class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHolder {
 
@@ -298,7 +298,7 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
             addUpdateListener { animator ->
                 val progress = animator.animatedFraction
                 bars.forEachIndexed { index, bar ->
-                    val scale = 0.4f + (Math.sin((progress + index) * 3.0) * 0.6f).toFloat()
+                    val scale = 0.4f + (sin((progress + index) * 3.0) * 0.6f).toFloat()
                     bar.scaleY = scale.coerceIn(0.4f, 1f)
                 }
             }

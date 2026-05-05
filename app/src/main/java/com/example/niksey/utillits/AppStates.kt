@@ -1,12 +1,5 @@
 package com.example.niksey.utillits
 
-import com.example.niksey.database.AUTH
-import com.example.niksey.database.CHILD_STATE
-import com.example.niksey.database.CURRENT_UID
-import com.example.niksey.database.NODE_USERS
-import com.example.niksey.database.REF_DATABASE_ROOT
-import com.example.niksey.database.USER
-
 enum class AppStates(val state: String) {
     ONLINE("online"),
     OFFLINE("offline"),

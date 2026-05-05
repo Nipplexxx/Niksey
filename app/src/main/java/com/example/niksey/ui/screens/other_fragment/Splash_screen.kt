@@ -10,12 +10,13 @@ import android.view.View
 import com.example.niksey.MainActivity
 import com.example.niksey.R
 
+@Suppress("DEPRECATION")
 class splash_screen : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_splash_screen)
         /*Отключение автоповорота*/
-        setRequestedOrientation (ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+        setRequestedOrientation (ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED)
         /*Отключение автоповорота*/
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY

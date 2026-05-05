@@ -8,16 +8,14 @@ import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
-import com.example.niksey.database.CURRENT_UID
-import com.example.niksey.database.REF_DATABASE_ROOT
-import com.example.niksey.ui.fragments.message_recycler_view.views.MessageHolder
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 import com.example.niksey.utillits.APP_ACTIVITY
-import com.example.niksey.database.CHILD_PUBLIC_KEY
-import com.example.niksey.database.NODE_USERS
-import com.example.niksey.database.REF_DATABASE_ROOT
+import com.example.niksey.utillits.CHILD_PUBLIC_KEY
+import com.example.niksey.utillits.CURRENT_UID
 import com.example.niksey.utillits.ChatEncryptionManager
 import com.example.niksey.utillits.EncryptionUtils
+import com.example.niksey.utillits.NODE_USERS
+import com.example.niksey.utillits.REF_DATABASE_ROOT
 import com.example.niksey.utillits.asTime
 import com.example.niksey.utillits.showToast
 import com.google.android.material.card.MaterialCardView
@@ -53,24 +51,30 @@ class HolderTextMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
         if (view.text.isBlank()) return ""
 
         val chatPartnerId = view.from
+        val originalText = view.text
 
-        // Принудительно загружаем публичный ключ, если его нет в кэше
-        if (ChatEncryptionManager.publicKeyCache[chatPartnerId].isNullOrEmpty()) {
-            try {
-                val userRef = REF_DATABASE_ROOT.child(NODE_USERS).child(chatPartnerId)
-                val snapshot = userRef.child(CHILD_PUBLIC_KEY).get().result
-                val key = snapshot.getValue(String::class.java)
-                if (!key.isNullOrEmpty()) {
-                    ChatEncryptionManager.publicKeyCache[chatPartnerId] = key
-                }
+        // === 1. Если уже расшифровано — сразу возвращаем ===
+        if (view.decryptedText.isNotEmpty()) {
+            return view.decryptedText
+        }
+
+        // === 2. Проверяем кэш публичного ключа ===
+        val cachedPublicKey = ChatEncryptionManager.publicKeyCache[chatPartnerId]
+
+        if (!cachedPublicKey.isNullOrEmpty()) {
+            // Ключ есть — сразу расшифровываем
+            return try {
+                val chatKey = EncryptionUtils.deriveChatKey(cachedPublicKey)
+                val decrypted = EncryptionUtils.decryptMessage(originalText, chatKey)
+                view.decryptedText = decrypted  // кэшируем результат
+                decrypted
             } catch (e: Exception) {
-                android.util.Log.e("DECRYPT", "Failed to load public key: ${e.message}")
+                android.util.Log.e("DECRYPT", "Decryption failed: ${e.message}")
+                originalText.take(30) + "..."
             }
         }
 
-        val originalText = view.text
-
-        // Всегда пытаемся загрузить ключ асинхронно
+        // === 3. Ключа нет в кэше — загружаем ОДИН РАЗ ===
         REF_DATABASE_ROOT.child(NODE_USERS)
             .child(chatPartnerId)
             .child(CHILD_PUBLIC_KEY)
@@ -84,8 +88,10 @@ class HolderTextMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
                         val chatKey = EncryptionUtils.deriveChatKey(publicKeyBase64)
                         val decrypted = EncryptionUtils.decryptMessage(originalText, chatKey)
 
+                        view.decryptedText = decrypted  // кэшируем
+
                         itemView.post {
-                            if (originalText == view.text) {
+                            if (originalText == view.text && view.decryptedText.isNotEmpty()) {
                                 if (view.from == CURRENT_UID) {
                                     chatUserMessage.text = decrypted
                                 } else {
@@ -93,9 +99,9 @@ class HolderTextMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
                                 }
                             }
                         }
-                        android.util.Log.d("DECRYPT", "SUCCESS: ${decrypted.take(30)}...")
+                        android.util.Log.d("DECRYPT", "SUCCESS (loaded): ${decrypted.take(30)}...")
                     } catch (e: Exception) {
-                        android.util.Log.e("DECRYPT", "FAILED: ${e.javaClass.simpleName}: ${e.message}")
+                        android.util.Log.e("DECRYPT", "FAILED: ${e.message}")
                     }
                 }
             }
@@ -103,8 +109,8 @@ class HolderTextMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
                 android.util.Log.e("DECRYPT", "Failed to load public key: ${e.message}")
             }
 
-        // Пока загружается — показываем часть Base64
-        return originalText.take(30) + "..."
+        // Пока загружается — показываем заглушку
+        return originalText.take(25) + "..."
     }
 
     // long click остаётся
@@ -137,8 +143,8 @@ class HolderTextMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
         showToast("Скопировано")
     }
 
-    private fun deleteMessage(view: MessageView) { /* TODO */ }
-    private fun replyToMessage(view: MessageView) { /* TODO */ }
+    private fun deleteMessage(view: MessageView) = /* TODO */Unit
+    private fun replyToMessage(view: MessageView) = /* TODO */Unit
 
     override fun onDetach() {
         chatUserMessage.setOnLongClickListener(null)

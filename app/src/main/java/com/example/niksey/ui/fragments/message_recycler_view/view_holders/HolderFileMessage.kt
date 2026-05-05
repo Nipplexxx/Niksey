@@ -12,11 +12,10 @@ import android.widget.TextView
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
-import com.example.niksey.database.CURRENT_UID
 import com.example.niksey.database.getFileFromStorage
-import com.example.niksey.ui.fragments.message_recycler_view.views.MessageHolder
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 import com.example.niksey.utillits.APP_ACTIVITY
+import com.example.niksey.utillits.CURRENT_UID
 import com.example.niksey.utillits.ChatEncryptionManager
 import com.example.niksey.utillits.asTime
 import com.example.niksey.utillits.showToast
@@ -84,7 +83,7 @@ class HolderFileMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
                 // Если ключа нет — показываем оригинальное имя файла
                 view.text.ifEmpty { "Файл" }
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             view.text.ifEmpty { "Файл" }
         }
     }
@@ -138,7 +137,7 @@ class HolderFileMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
         val isUser = messageView.from == CURRENT_UID
         showProgress(isUser)
 
-        val fileName = messageView.text ?: "file_${System.currentTimeMillis()}"
+        val fileName = messageView.text
         val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         val file = File(downloadsDir, fileName)
 

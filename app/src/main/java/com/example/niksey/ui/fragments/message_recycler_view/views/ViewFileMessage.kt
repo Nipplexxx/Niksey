@@ -7,10 +7,11 @@ data class ViewFileMessage(
     override val fileUrl: String,
     override val text: String = ""
 ) : MessageView {
+    override var decryptedText: String = ""
 
     override fun getTypeView(): Int = MessageView.MESSAGE_FILE
 
-    override fun isFromCurrentUser(): Boolean = from == com.example.niksey.database.CURRENT_UID
+    override fun isFromCurrentUser(): Boolean = from == com.example.niksey.utillits.CURRENT_UID
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

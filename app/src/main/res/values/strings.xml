@@ -138,5 +138,12 @@
 
     <string name="open_drawer">Open navigation drawer</string>
     <string name="close_drawer">Close navigation drawer</string>
+    <string name="group_name">Название группы</string>
+    <string name="save">Сохранить</string>
+    <string name="add_participants">Добавить участников</string>
+    <string name="group_settings">Настройки группы</string>
+    <string name="participant_removed">Участник удалён</string>
+    <string name="cannot_remove_self">Нельзя удалить себя</string>
+    <string name="group_name_updated">Название группы обновлено</string>
 
 </resources>

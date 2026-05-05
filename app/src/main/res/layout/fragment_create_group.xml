@@ -44,8 +44,7 @@
                 android:layout_height="26dp"
                 android:src="@drawable/ic_lock_encrypted"
                 app:layout_constraintEnd_toEndOf="@id/create_group_photo"
-                app:layout_constraintBottom_toBottomOf="@id/create_group_photo"
-                app:tint="@color/purple_300" />
+                app:layout_constraintBottom_toBottomOf="@id/create_group_photo"/>
 
             <!-- Поле названия группы -->
             <com.google.android.material.textfield.TextInputLayout

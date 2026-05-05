@@ -17,6 +17,7 @@ import com.firebase.ui.database.FirebaseRecyclerOptions
 import com.google.firebase.database.DatabaseReference
 import de.hdodenhof.circleimageview.CircleImageView
 
+@Suppress("DEPRECATION")
 class ContactsFragment : BaseFragment(R.layout.fragment_contacts) {
 
     private lateinit var mRecyclerView: RecyclerView
@@ -31,7 +32,7 @@ class ContactsFragment : BaseFragment(R.layout.fragment_contacts) {
 
     override fun onResume() {
         super.onResume()
-        APP_ACTIVITY.mToolbar?.title = getString(R.string.contacts)
+        APP_ACTIVITY.mToolbar.title = getString(R.string.contacts)
         initRecycleView()
         hideKeyboard()
     }
@@ -70,6 +71,7 @@ class ContactsFragment : BaseFragment(R.layout.fragment_contacts) {
         mAdapter.startListening()
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.contacts_menu, menu)
         val searchItem = menu.findItem(R.id.action_search)

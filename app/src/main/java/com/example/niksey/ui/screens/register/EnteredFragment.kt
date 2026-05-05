@@ -1,33 +1,33 @@
+@file:Suppress("DEPRECATION")
+
 package com.example.niksey.ui.screens.register
 
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import androidx.fragment.app.Fragment
 import com.example.niksey.MainActivity
 import com.example.niksey.R
-import com.example.niksey.database.AUTH
-import com.example.niksey.database.NODE_USERS
-import com.example.niksey.database.REF_DATABASE_ROOT
 import com.example.niksey.database.generateRandomFullname
 import com.example.niksey.database.generateRandomUsername
 import com.example.niksey.models.UserModel
+import com.example.niksey.utillits.AUTH
+import com.example.niksey.utillits.NODE_USERS
+import com.example.niksey.utillits.REF_DATABASE_ROOT
 import com.example.niksey.utillits.showToast
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.SignInButton
 import com.google.android.gms.common.api.ApiException
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
 
+@Suppress("DEPRECATION")
 class EnteredFragment : Fragment(R.layout.fragment_entered) {
     private val RC_SIGN_IN = 9001
 
@@ -120,6 +120,7 @@ class EnteredFragment : Fragment(R.layout.fragment_entered) {
         startActivityForResult(googleSignInClient.signInIntent, RC_SIGN_IN)
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == RC_SIGN_IN) {
@@ -127,7 +128,7 @@ class EnteredFragment : Fragment(R.layout.fragment_entered) {
             try {
                 val account = task.getResult(ApiException::class.java)
                 firebaseAuthWithGoogle(account)
-            } catch (e: ApiException) {
+            } catch (_: ApiException) {
                 showToast(getString(R.string.auth_failed))
             }
         }

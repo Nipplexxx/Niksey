@@ -10,6 +10,7 @@ import com.example.niksey.models.CommonModel
 import com.example.niksey.utillits.downloadAndSetImage
 import de.hdodenhof.circleimageview.CircleImageView
 
+@Suppress("DEPRECATION")
 class AddContactsAdapter : RecyclerView.Adapter<AddContactsAdapter.AddContactsHolder>() {
 
     private val listItems = mutableListOf<CommonModel>()
@@ -52,7 +53,13 @@ class AddContactsAdapter : RecyclerView.Adapter<AddContactsAdapter.AddContactsHo
     }
 
     fun updateListItems(item: CommonModel) {
-        listItems.add(item)
-        notifyItemInserted(listItems.lastIndex)
+        if (!listItems.contains(item)) {
+            listItems.add(item)
+            notifyItemInserted(listItems.lastIndex)
+        }
     }
+
+    // ПОИСК
+    private var originalList = mutableListOf<CommonModel>()
+
 }

@@ -29,14 +29,14 @@
             <!-- Аватарка с неоновым бордером -->
             <de.hdodenhof.circleimageview.CircleImageView
                 android:id="@+id/contact_photo"
-                android:layout_width="58dp"
-                android:layout_height="58dp"
+                android:layout_width="59dp"
+                android:layout_height="60dp"
                 android:src="@drawable/default_photo"
-                app:civ_border_width="2.5dp"
                 app:civ_border_color="@color/purple_300"
+                app:civ_border_width="2.5dp"
+                app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent" />
+                app:layout_constraintTop_toTopOf="parent" />
 
             <!-- Имя контакта -->
             <TextView
@@ -61,6 +61,18 @@
                 app:layout_constraintTop_toBottomOf="@id/contact_fullname"
                 android:layout_marginStart="16dp"
                 tools:text="в сети" />
+
+            <!-- Галочка выбора -->
+            <ImageView
+                android:id="@+id/contact_checkmark"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/img_confirm_change"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                android:layout_marginEnd="12dp"
+                android:layout_marginTop="12dp" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.card.MaterialCardView>

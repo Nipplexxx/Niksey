@@ -6,12 +6,11 @@ import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
-import com.example.niksey.database.CURRENT_UID
-import com.example.niksey.database.REF_DATABASE_ROOT
-import com.example.niksey.ui.fragments.message_recycler_view.views.MessageHolder
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 import com.example.niksey.ui.screens.fullscreen.ImagePreviewBottomSheet
 import com.example.niksey.utillits.APP_ACTIVITY
+import com.example.niksey.utillits.CURRENT_UID
+import com.example.niksey.utillits.REF_DATABASE_ROOT
 import com.example.niksey.utillits.asTime
 import com.example.niksey.utillits.downloadAndSetImage
 import com.example.niksey.utillits.showToast
