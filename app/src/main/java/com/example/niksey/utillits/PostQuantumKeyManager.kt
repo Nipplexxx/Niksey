@@ -1,8 +1,10 @@
 package com.example.niksey.utillits
 
+import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import androidx.annotation.RequiresApi
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.KeyStore
@@ -31,6 +33,7 @@ object PostQuantumKeyManager {
 
     // ==================== ГЕНЕРАЦИЯ КЛЮЧЕЙ ====================
 
+    @RequiresApi(Build.VERSION_CODES.S)
     fun generateECDHKeyPair(): PublicKey {
         if (keyStore.containsAlias(USER_ECDH_KEY_ALIAS)) {
             return getECDHPublicKey()
@@ -110,29 +113,5 @@ object PostQuantumKeyManager {
         hmac.update(info)
         hmac.update(0x01.toByte())
         return hmac.doFinal().copyOf(length)
-    }
-
-    // ==================== ШИФРОВАНИЕ ====================
-
-    fun encryptMessage(plainText: String, key: SecretKey): String {
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, key)
-        val iv = cipher.iv
-        val encrypted = cipher.doFinal(plainText.toByteArray())
-
-        val result = ByteArray(iv.size + encrypted.size)
-        System.arraycopy(iv, 0, result, 0, iv.size)
-        System.arraycopy(encrypted, 0, result, iv.size, encrypted.size)
-        return Base64.encodeToString(result, Base64.DEFAULT)
-    }
-
-    fun decryptMessage(encryptedText: String, key: SecretKey): String {
-        val combined = Base64.decode(encryptedText, Base64.DEFAULT)
-        val iv = combined.copyOfRange(0, 12)
-        val encrypted = combined.copyOfRange(12, combined.size)
-
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, iv))
-        return String(cipher.doFinal(encrypted), Charsets.UTF_8)
     }
 }

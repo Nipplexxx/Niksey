@@ -9,7 +9,6 @@ import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 class AppHolderFactory {
 
     companion object {
-
         fun getHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             return when (viewType) {
                 MessageView.MESSAGE_TEXT -> {

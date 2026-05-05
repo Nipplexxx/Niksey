@@ -1,8 +1,10 @@
 package com.example.niksey.utillits
 
+import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import androidx.annotation.RequiresApi
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.KeyStore
@@ -37,6 +39,7 @@ object EncryptionUtils {
 
     // ==================== ГЕНЕРАЦИЯ КЛЮЧЕЙ ====================
 
+    @RequiresApi(Build.VERSION_CODES.S)
     fun generateUserKeyPair(): PublicKey {
         if (keyStore.containsAlias(USER_KEY_ALIAS)) {
             return getUserPublicKey()!!
@@ -46,13 +49,17 @@ object EncryptionUtils {
             "EC", ANDROID_KEYSTORE
         )
 
-        val spec = KeyGenParameterSpec.Builder(
-            USER_KEY_ALIAS,
-            KeyProperties.PURPOSE_AGREE_KEY
-        )
-            .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
-            .setDigests(KeyProperties.DIGEST_SHA256)
-            .build()
+        val spec = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            KeyGenParameterSpec.Builder(
+                USER_KEY_ALIAS,
+                KeyProperties.PURPOSE_AGREE_KEY
+            )
+                .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
+                .setDigests(KeyProperties.DIGEST_SHA256)
+                .build()
+        } else {
+            TODO("VERSION.SDK_INT < S")
+        }
 
         keyPairGenerator.initialize(spec)
         return keyPairGenerator.generateKeyPair().public

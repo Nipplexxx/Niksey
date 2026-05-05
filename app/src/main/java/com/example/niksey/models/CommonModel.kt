@@ -17,20 +17,15 @@ data class CommonModel(
     var decryptedText: String = "",
     var choice: Boolean = false
 ) {
-
-    // equals и hashCode только по id
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
         other as CommonModel
         return id == other.id
     }
-
     override fun hashCode(): Int {
         return id.hashCode()
     }
-
-    // Полезный toString для отладки
     override fun toString(): String {
         return "CommonModel(id='$id', username='$username', fullname='$fullname', type='$type')"
     }

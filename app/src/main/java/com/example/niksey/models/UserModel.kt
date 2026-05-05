@@ -8,7 +8,7 @@ data class UserModel(
     var username: String = "",
     var bio: String = "",
     var fullname: String = "",
-    var state: Any = "",           // ← Any — принимает Long и String
+    var state: Any = "",
     var phone: String = "",
     var photoUrl: String = "empty",
     var email: String = "",
@@ -29,32 +29,13 @@ data class UserModel(
     var encryptionVersion: Int = 2,       // 1 = старое AES, 2 = гибридное пост-квантовое
     var lastKeyUpdate: Long = 0           // Время последнего обновления ключей
 ) {
-
-    fun isOnline(): Boolean {
-        val s = state
-        return when (s) {
-            is String -> s.lowercase() == "online" || s == "В сети"
-            else -> false
-        }
-    }
-
-    fun getDisplayName(): String {
-        return fullname.ifBlank { username.ifBlank { phone.ifBlank { id } } }
-    }
-
-    fun getShortName(): String {
-        return fullname.ifBlank { username }.take(20)
-    }
-
     fun getStateText(): String {
-        val s = state
-        return when (s) {
+        return when (val s = state) {
             is String -> s
             is Long -> "был(а) недавно"
             else -> "offline"
         }
     }
-
     override fun toString(): String {
         return "UserModel(id='$id', username='$username', fullname='$fullname', state='$state')"
     }
