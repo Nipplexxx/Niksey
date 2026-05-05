@@ -21,6 +21,7 @@ import com.example.niksey.utillits.APP_ACTIVITY
 import com.example.niksey.utillits.AppStates
 import com.example.niksey.utillits.ChatEncryptionManager
 import com.example.niksey.utillits.PostQuantumKeyManager
+import com.example.niksey.utillits.UserDataManager
 import com.example.niksey.utillits.initContacts
 import com.example.niksey.utillits.replaceFragment
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +38,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var biometricPrompt: BiometricPrompt
     private lateinit var promptInfo: BiometricPrompt.PromptInfo
     private var isAppLocked = false
+    private var lastPauseTime = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -191,9 +193,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Очищаем кэш шифрования при полном выходе из приложения
+        // Очищаем кэш шифрования и данные пользователя при полном выходе из приложения
         if (isFinishing) {
             ChatEncryptionManager.clear()
+            UserDataManager.clearUser(this)
         }
     }
 }
