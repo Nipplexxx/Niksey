@@ -6,143 +6,152 @@
     <string name="welcome">Добро пожаловать</string>
 
     <!-- ==================== AUTH & REGISTER ==================== -->
-    <string name="auth_failed">Не удалось выполнить проверку подлинности</string>
-    <string name="register_title_your_phone">Ваш телефон</string>
-    <string name="register_text_we_sent">Мы отправили смс с кодом проверки на Ваш телефон</string>
-    <string name="register_text_enter_code">Введите код</string>
-    <string name="register_toast_enter_phone">Введите номер телефона</string>
-    <string name="number_phone">+71234567890</string>
-    <string name="btn_text_next">Далее</string>
-    <string name="cd_register_img">cd_register_img</string>
-    <string name="anonymous_sign_in">Anonymous</string>
+    <string name="anonymous">Анонимно</string>
+    <string name="auth_failed">Ошибка аутентификации</string>
+    <string name="enter_code">Введите код</string>
+    <string name="enter_phone">Введите номер телефона</string>
+    <string name="next">Далее</string>
+    <string name="phone_hint">+7 123 456 78 90</string>
+    <string name="sms_sent">Мы отправили SMS с кодом подтверждения на ваш телефон</string>
+    <string name="your_phone_number">Ваш номер телефона</string>
 
     <!-- ==================== SETTINGS ==================== -->
-    <string name="personal_account">Личный кабинет</string>
-    <string name="settings_text_account">Аккаунт</string>
-
-    <!-- Default values -->
-    <string name="settings_default_username">Андрей Петров</string>
-    <string name="settings_default_status">В сети</string>
-    <string name="settings_default_namber">89633699669</string>
-    <string name="settings_default_number">+1 123 456-78-90</string>
-    <string name="settings_default_login">andreypetrov</string>
-    <string name="settings_default_bio">Текст о себе</string>
-    <string name="settings_default_email">Почта</string>
-    <string name="settings_default_password">Пароль</string>
-
-    <!-- Labels and hints -->
-    <string name="settings_label_phone_number">Ваш номер телефона</string>
-    <string name="settings_label_login">Имя пользователя</string>
-    <string name="settings_label_bio">Напишите немного о себе</string>
-    <string name="settings_hint_name">Имя</string>
-    <string name="settings_hint_surname">Фамилия</string>
-    <string name="settings_hint_input_username">имя пользователя</string>
-    <string name="settings_input_bio">Информация о себе</string>
-
-    <!-- Menu -->
-    <string name="settings_menu_change_name">Изменить имя</string>
-    <string name="settings_menu_delete_photo">Удалить аватарку</string>
-    <string name="settings_menu_exit">Выход</string>
-
-    <!-- Toasts and messages -->
-    <string name="settings_toast_name_is_empty">Имя не может быть пустым</string>
-    <string name="settings_data_update">Данные обновлены</string>
-    <string name="toast_data_update">Данные обновлены</string>
+    <string name="about_me">О себе</string>
+    <string name="account">Аккаунт</string>
+    <string name="avatar_deleted">Аватар удалён</string>
+    <string name="bio_example">Расскажите немного о себе</string>
+    <string name="change_name">Изменить имя</string>
     <string name="data_updated">Данные обновлены</string>
-    <string name="remove_photo_user">Аватарка удалена</string>
+    <string name="delete_avatar">Удалить аватар</string>
+    <string name="enter_new_email">Введите новый email</string>
+    <string name="enter_new_password">Введите новый пароль</string>
+    <string name="enter_new_phone_number">Введите новый номер телефона</string>
+    <string name="exit">Выход</string>
+    <string name="fullname_example">Андрей Петров</string>
+    <string name="name">Имя</string>
+    <string name="name_and_surname">Имя и фамилия</string>
+    <string name="new_email">Новый email</string>
+    <string name="new_password">Новый пароль</string>
+    <string name="new_phone_number">Новый номер телефона</string>
+    <string name="new_username">Новое имя пользователя</string>
+    <string name="online">Онлайн</string>
+    <string name="password">Пароль</string>
+    <string name="personal_account">Личный кабинет</string>
+    <string name="phone_number">Номер телефона</string>
+    <string name="surname">Фамилия</string>
+    <string name="username_example">andreypetrov</string>
+    <string name="username_hint">имя_пользователя</string>
+    <string name="write_about_yourself">Напишите немного о себе</string>
 
     <!-- ==================== CHAT ==================== -->
+    <string name="chat_cleared">Чат очищен</string>
+    <string name="chat_deleted">Чат удалён</string>
+    <string name="clear_chat">Очистить чат</string>
+    <string name="delete_chat">Удалить чат</string>
     <string name="enter_a_message">Введите сообщение</string>
-    <string name="record">Запись</string>
-    <string name="voice_message">голосовое сообщение</string>
-    <string name="voice_saved">Голосовое сообщение сохранено в Загрузки</string>
-    <string name="voice_deleted">Голосовое сообщение удалено</string>
-    <string name="voice_reply_text">Голосовое сообщение</string>
+    <string name="leave_chat">Покинуть чат</string>
     <string name="message_copied">Сообщение скопировано</string>
     <string name="message_deleted">Сообщение удалено</string>
+    <string name="record">Запись</string>
+    <string name="remove_chat">Удалить чат</string>
     <string name="reply_mode_activated">Режим ответа активирован</string>
     <string name="reply_mode_failed">Не удалось активировать ответ</string>
-
-    <!-- Chat actions -->
-    <string name="clear_chat">Очистить чат</string>
-    <string name="remove_chat">Убрать чат</string>
-    <string name="delete_chat">Удалить чат</string>
-    <string name="out_chat">Выйти из чата</string>
-    <string name="chat_cleared">Чат очищен</string>
-    <string name="chat_deleted">Чат удален</string>
-    <string name="chat_remove">Чат убран</string>
+    <string name="voice_deleted">Голосовое сообщение удалено</string>
+    <string name="voice_message">Голосовое сообщение</string>
+    <string name="voice_saved">Голосовое сообщение сохранено в Загрузки</string>
 
     <!-- ==================== GROUPS & CONTACTS ==================== -->
-    <string name="contacts">Контакты</string>
-    <string name="my_contacts">Контакты пользователей</string>
     <string name="add_a_participant">Добавить участника</string>
-    <string name="add_participant">Добавьте участника</string>
+    <string name="add_contacts">Добавить контакты</string>
+    <string name="add_participant">Добавить участника</string>
+    <string name="add_participants">Добавить участников</string>
+    <string name="cannot_remove_self">Вы не можете удалить себя</string>
+    <string name="chat_remove">Чат удалён</string>
+    <string name="clear_encryption_cache">Очистить кэш шифрования</string>
+    <string name="contacts">Контакты</string>
     <string name="create_group">Создать группу</string>
-    <string name="create_a_group">Создать группу</string>
-    <string name="enter_a_name">Введите имя</string>
-    <string name="information">Информация</string>
+    <string name="create_new_group">Новая группа</string>
+    <string name="enter_a_name">Введите название</string>
+    <string name="example_contact_name">ghost_niksey</string>
+    <string name="example_last_message">Последнее эхо • 2 мин назад</string>
+    <string name="example_status_online">онлайн</string>
+    <string name="group_name">Название группы</string>
+    <string name="group_name_updated">Название группы обновлено</string>
+    <string name="group_settings">Настройки группы</string>
+    <string name="participant_removed">Участник удалён</string>
+    <string name="save">Сохранить</string>
+
+    <!-- ==================== BOTTOM SHEET & ATTACH ==================== -->
+    <string name="attach">Прикрепить</string>
+    <string name="attach_file">Файл</string>
+    <string name="attach_image">Изображение</string>
+    <string name="close">Закрыть</string>
+
+    <!-- ==================== SPLASH & INFO ==================== -->
+    <string name="brand_name">VOID</string>
+    <string name="developed_with_privacy_respect">\n\nРазработано с уважением к вашей приватности.</string>
+    <string name="end_to_end_encrypted">● СКВОЗНОЕ ШИФРОВАНИЕ</string>
+    <string name="messenger_of_absolute_anonymity">Мессенджер абсолютной анонимности</string>
+    <string name="niksey_description">Niksey — полностью зашифрованный мессенджер, созданный для тех, кто по-настоящему ценит свободу общения.\n\nБез слежки. Без рекламы. Без сбора данных.\n\nВы можете отправлять текстовые сообщения, изображения, голосовые сообщения и создавать приватные группы.\n\nВсе сообщения защищены сквозным шифрованием.</string>
+    <string name="splash_subtitle">Мессенджер абсолютной анонимности</string>
+    <string name="version_info">Версия 6.11.0 Alpha</string>
+    <string name="void_title">VOID</string>
+
+    <!-- ==================== LOGIN & AUTH ==================== -->
+    <string name="phone_auth_title">Вход по номеру телефона</string>
+    <string name="sign_in_with_email">Войти по Email</string>
+    <string name="anonymous_sign_in">Анонимный вход</string>
+    <string name="sign_in_with_phone">Войти по телефону</string>
+    <string name="email">Email</string>
+    <string name="verify_code">Подтвердить код</string>
+    <string name="resend_code">Отправить код повторно</string>
+
+    <!-- ==================== CHATS ==================== -->
+    <string name="chats">Чаты</string>
+
+    <!-- ==================== SETTINGS MENU ==================== -->
+    <string name="change_username">Имя пользователя</string>
 
     <!-- ==================== ERRORS & VALIDATION ==================== -->
-    <string name="error_loading">Ошибка загрузки: %s</string>
-    <string name="error_deleting_message">Ошибка удаления: %s</string>
-    <string name="error_deleting_photo">Ошибка удаления фото: %s</string>
-    <string name="error_deleting_voice">Ошибка удаления: %s</string>
-    <string name="error_saving_voice">Ошибка сохранения: %s</string>
-    <string name="error_cropping_image">Ошибка обрезки: %s</string>
-    <string name="error_creating_group">Ошибка создания группы: %s</string>
-    <string name="error_sending_to_group">Ошибка отправки в группу: %s</string>
-    <string name="error_sending">Ошибка отправки: %s</string>
+    <string name="error_creating_group">Ошибка создания группы</string>
+    <string name="error_cropping_image">Ошибка обрезки изображения</string>
+    <string name="error_deleting_message">Ошибка удаления сообщения</string>
+    <string name="error_deleting_photo">Ошибка удаления фото</string>
     <string name="error_generic">Ошибка: %s</string>
-    <string name="unknown_error">неизвестная ошибка</string>
-
-    <string name="message_cannot_be_empty">Сообщение не может быть пустым</string>
-    <string name="username_cannot_be_empty">Имя пользователя не может быть пустым</string>
-    <string name="name_cannot_be_empty">Имя не может быть пустым</string>
+    <string name="error_loading">Ошибка загрузки: %s</string>
+    <string name="error_sending">Ошибка отправки</string>
+    <string name="error_sending_to_group">Ошибка отправки в группу</string>
     <string name="group_name_cannot_be_empty">Название группы не может быть пустым</string>
+    <string name="loading_error">Ошибка загрузки: %s</string>
+    <string name="message_cannot_be_empty">Сообщение не может быть пустым</string>
+    <string name="name_cannot_be_empty">Имя не может быть пустым</string>
+    <string name="settings_toast_name_is_empty">Имя не может быть пустым</string>
+    <string name="unknown_error">Неизвестная ошибка</string>
+    <string name="username_cannot_be_empty">Имя пользователя не может быть пустым</string>
 
     <!-- ==================== OTHER ==================== -->
-    <string name="switching_to_another_window">Переключение на другое окно</string>
-    <string name="text_123456">123456</string>
-    <string name="hello_blank_fragment">Привет, пустой фрагмент</string>
-    <string name="default_web_client_id">638294860369-862bfmfda32r9f4ou0qgasf5jq0edvvj.apps.googleusercontent.com</string>
+    <string name="cancel">Отмена</string>
+    <string name="information">Информация</string>
+    <string name="remove_photo_user">Аватар удалён</string>
+    <string name="toast_data_update">Данные обновлены</string>
     <string name="todo" translatable="false">TODO</string>
 
+    <!-- Biometric -->
+    <string name="biometric_error">Ошибка биометрии</string>
+    <string name="biometric_failed">Биометрия не распознана</string>
+    <string name="biometric_subtitle">Используйте отпечаток пальца или лицо</string>
+    <string name="biometric_title">Разблокировать Niksey</string>
+
+    <!-- Drawer -->
+    <string name="close_drawer">Закрыть меню</string>
+    <string name="open_drawer">Открыть меню</string>
+
     <!-- ==================== PLURALS ==================== -->
-    <plurals name="count_members">
+    <plurals name="participants_count">
         <item quantity="one">%d участник</item>
         <item quantity="few">%d участника</item>
         <item quantity="many">%d участников</item>
         <item quantity="other">%d участников</item>
     </plurals>
 
-    <!-- Biometric App Lock -->
-    <string name="biometric_title">Разблокировка Niksey</string>
-    <string name="biometric_subtitle">Используйте отпечаток или лицо</string>
-    <string name="biometric_error">Ошибка биометрии</string>
-    <string name="biometric_failed">Биометрия не распознана</string>
-    <string name="cancel">Отмена</string>
-
-    <!-- Smart Status -->
-    <string name="smart_status_meeting">Встреча</string>
-
-    <!-- AI Quick Replies -->
-    <string name="ai_reply_thanks">Спасибо!</string>
-    <string name="ai_reply_ok">Хорошо</string>
-    <string name="ai_reply_later">Напишу позже</string>
-    <string name="ai_reply_call_me">Позвони мне</string>
-    <string name="ai_replies_coming_soon">AI-ответы скоро появятся!</string>
-
-    <!-- Permissions -->
-    <string name="permission_denied">Разрешение отклонено</string>
-
-
-    <string name="open_drawer">Открыть меню</string>
-    <string name="close_drawer">Закрыть меню</string>
-    <string name="group_name">Название группы</string>
-    <string name="save">Сохранить</string>
-    <string name="add_participants">Добавить участников</string>
-    <string name="group_settings">Настройки группы</string>
-    <string name="participant_removed">Участник удалён</string>
-    <string name="cannot_remove_self">Нельзя удалить себя</string>
-    <string name="group_name_updated">Название группы обновлено</string>
 </resources>

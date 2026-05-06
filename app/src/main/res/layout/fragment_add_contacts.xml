@@ -1,45 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/black_100"
-    tools:context=".ui.screens.phone_book.ContactsFragment">
+    android:background="@color/background_dark"
+    android:padding="16dp">
 
-    <!-- RecyclerView -->
+    <!-- Заголовок -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:text="@string/add_contacts"
+        android:textColor="@color/text_primary"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Список контактов -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/add_contacts_recycle_view"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:clipToPadding="false"
-        android:paddingHorizontal="8dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="90dp"
-        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        tools:listitem="@layout/add_contacts_item" />
+        android:layout_marginTop="16dp"
+        app:layout_constraintBottom_toTopOf="@id/add_contacts_btn_next"
+        app:layout_constraintTop_toBottomOf="@id/add_contacts_btn_next" />
 
-    <!-- Кнопка "Далее" в стиле VOID GHOST -->
+    <!-- Кнопка "Далее" -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/add_contacts_btn_next"
-        android:layout_width="wrap_content"
-        android:layout_height="56dp"
-        android:layout_margin="24dp"
-        android:text="@string/btn_text_next"
-        android:textColor="@color/white_100"
-        android:textSize="16.5sp"
-        android:textStyle="bold"
-        app:backgroundTint="@color/purple_300"
-        app:cornerRadius="28dp"
-        app:elevation="8dp"
-        app:iconGravity="textEnd"
-        app:iconPadding="12dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        style="@style/GlassButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/next"
+        app:layout_constraintBottom_toBottomOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

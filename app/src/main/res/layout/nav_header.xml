@@ -1,41 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="@style/GlassCardMenu"
     android:layout_width="match_parent"
-    android:layout_height="180dp"
-    android:background="@color/purple_300"
-    android:padding="24dp">
+    android:layout_height="wrap_content"
+    app:cardBackgroundColor="@color/accent_purple"
+    app:cardCornerRadius="0dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/glass_border"
+    app:strokeWidth="1dp">
 
-    <!-- Аватарка -->
-    <de.hdodenhof.circleimageview.CircleImageView
-        android:id="@+id/header_avatar"
-        android:layout_width="72dp"
-        android:layout_height="72dp"
-        android:src="@drawable/ic_person"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginStart="25dp"
+        android:background="@color/accent_purple"
+        android:orientation="vertical">
 
-    <!-- Имя -->
-    <TextView
-        android:id="@+id/header_name"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:textColor="@color/white_100"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/header_avatar" />
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/header_avatar"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:layout_marginBottom="12dp"
+            app:civ_border_color="@color/accent_purple"
+            app:civ_border_width="2.5dp" />
 
-    <!-- Телефон -->
-    <TextView
-        android:id="@+id/header_phone"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:textColor="@color/purple_0"
-        android:textSize="14sp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/header_name" />
+        <TextView
+            android:id="@+id/header_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <TextView
+            android:id="@+id/header_phone"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

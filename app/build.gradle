@@ -67,6 +67,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-storage-ktx:21.0.2'
     implementation 'com.google.firebase:firebase-auth-ktx:23.2.1'
     implementation 'androidx.security:security-crypto:1.1.0'
+    implementation 'com.otaliastudios:cameraview:2.7.2'
 
     implementation 'com.google.android.gms:play-services-auth:21.5.1'
 
@@ -76,12 +77,17 @@ dependencies {
     implementation 'com.firebaseui:firebase-ui-database:9.1.1'
     implementation 'com.fredporciuncula:phonemoji:1.5.2'
     implementation 'com.github.bumptech.glide:glide:5.0.7'
+    implementation 'com.google.ar.sceneform:filament-android:1.17.1'
+    implementation 'com.google.firebase:firebase-database:22.0.1'
     kapt 'com.github.bumptech.glide:compiler:5.0.7'
     implementation 'com.github.chrisbanes:PhotoView:2.3.0'
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0"
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.10.0"
     implementation "androidx.fragment:fragment-ktx:1.8.9"
     implementation 'com.hbb20:ccp:2.7.3'
+    implementation 'androidx.media3:media3-exoplayer:1.2.1'
+    implementation 'androidx.media3:media3-ui:1.2.1'
+    implementation 'androidx.media3:media3-exoplayer-dash:1.2.1'
 
     // Новые правильные артефакты (замена старых)
     implementation 'com.vanniktech:android-image-cropper:4.7.0'

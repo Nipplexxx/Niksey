@@ -1,49 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- === GLASS / FROSTED GLASS THEME (Niksey) === -->
 
-    <!-- ==================== ОСНОВНЫЕ ЦВЕТА ==================== -->
-    <color name="purple_0">#F0E8FF</color>
-    <color name="purple_100">#E0D0FF</color>
-    <color name="purple_200">#C8B0FF</color>
+    <!-- Background gradient (dark cyberpunk) -->
+    <color name="bg_gradient_top">#0F172A</color>
+    <color name="bg_gradient_bottom">#020617</color>
+    <color name="background_dark">#020617</color>
+
+    <!-- Glass / Frosted elements -->
+    <color name="glass_bg">#14FFFFFF</color>           <!-- rgba(255,255,255,0.08) -->
+    <color name="glass_border">#1AFFFFFF</color>       <!-- rgba(255,255,255,0.10) -->
+    <color name="glass_card_bg">#1AFFFFFF</color>
+
+    <color name="glass_border_menu">#1AFFFFFF</color>       <!-- rgba(255,255,255,0.10) -->
+    <color name="glass_card_bg_menu">#1AFFFFFF</color>
+
+    <!-- Accent (only one - neon purple) -->
+    <color name="accent_purple">#6C51F7</color>
+    <color name="accent_purple_glow">#4C3BBF</color>   <!-- для свечения -->
+
+    <!-- Text -->
+    <color name="text_primary">#E5E7EB</color>
+    <color name="text_secondary">#9CA3AF</color>
+    <color name="text_hint">#6B7280</color>
+    <color name="text_on_glass">#FFFFFF</color>
+
+    <!-- Success / Error (minimal use) -->
+    <color name="success">#22C55E</color>
+    <color name="error">#EF4444</color>
+
+    <!-- Legacy support (для совместимости) -->
     <color name="purple_300">#6C51F7</color>
-    <color name="green_0">#54ba61</color>
-    <color name="red_300">#FF5252</color>
-
-    <color name="black_0">#F5F6F8</color>
-    <color name="black_10">#E8EAEF</color>
-    <color name="black_80">#1F1F1F</color>
-    <color name="black_100">#111111</color>
-    <color name="white_100">#FFFFFFFF</color>
-
-    <!-- ==================== ЦВЕТА ДЛЯ СТИЛЕЙ ==================== -->
-    <color name="colorMain">#F5F6F8</color>
-
-    <!-- Светлая тема — СДЕЛАЛ ТЕМНЕЕ -->
-    <color name="ghost_card_bg_light">#E5E7ED</color>      <!-- было очень светло -->
-    <color name="text_primary_light">#1F1F1F</color>
-    <color name="text_secondary_light">#4F4F4F</color>
-    <color name="text_hint_light">#6F6F6F</color>
-
-    <!-- Тёмная тема (оставил как было) -->
-    <color name="ghost_card_bg_dark">#1C1C1E</color>
-    <color name="text_primary_dark">#FFFFFF</color>
-    <color name="text_secondary_dark">#B3B3B3</color>
-    <color name="text_hint_dark">#B3FFFFFF</color>
-
-    <!-- Основные (по умолчанию тёмная) -->
-    <color name="ghost_card_bg">@color/ghost_card_bg_dark</color>
-    <color name="text_primary">@color/text_primary_dark</color>
-    <color name="text_secondary">@color/text_secondary_dark</color>
-    <color name="text_hint">@color/text_hint_dark</color>
-
-    <!-- MaterialDrawer -->
-    <color name="material_drawer_background">#F5F6F8</color>
-    <color name="material_drawer_primary_text">@color/black_100</color>
-    <color name="material_drawer_primary_icon">#8A000000</color>
-    <color name="material_drawer_secondary_text">#8A000000</color>
-    <color name="material_drawer_hint_text">#42000000</color>
-    <color name="material_drawer_divider">#1F000000</color>
-    <color name="material_drawer_selected">#1F6C51F7</color>
-    <color name="material_drawer_selected_text">@color/purple_300</color>
-
+    <color name="white_100">#FFFFFF</color>
+    <color name="black_80">#1C1C1E</color>
 </resources>

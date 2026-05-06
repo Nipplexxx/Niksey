@@ -1,5 +1,7 @@
+@file:Suppress("UNCHECKED_CAST", "DEPRECATION")
 package com.example.niksey.database
 
+import android.annotation.SuppressLint
 import android.net.Uri
 import com.example.niksey.R
 import com.example.niksey.models.CommonModel
@@ -52,6 +54,9 @@ import java.util.UUID
 
 val USER_PATH get() = "$NODE_USERS/$CURRENT_UID"
 
+// ==================== КОНСТАНТЫ (добавлены недостающие) ====================
+const val TYPE_MESSAGE_VIDEO = "video"
+
 // ==================== ИНИЦИАЛИЗАЦИЯ ====================
 fun initFirebase() {
     AUTH = FirebaseAuth.getInstance()
@@ -62,15 +67,14 @@ fun initFirebase() {
 }
 
 // ==================== END-TO-END ШИФРОВАНИЕ ====================
+@SuppressLint("NewApi")
 fun ensureUserEncryptionKey(onComplete: (() -> Unit)? = null) {
     if (USER.publicKey.isNotBlank()) {
-        // Ключ уже есть — просто кэшируем
         ChatEncryptionManager.cachePublicKey(CURRENT_UID, USER.publicKey)
         onComplete?.invoke()
         return
     }
 
-    // Ключа нет — генерируем новый
     try {
         val ecdhPublicKey = EncryptionUtils.generateUserKeyPair()
         val ecdhPublicKeyBase64 = EncryptionUtils.publicKeyToBase64(ecdhPublicKey)
@@ -92,7 +96,7 @@ fun ensureUserEncryptionKey(onComplete: (() -> Unit)? = null) {
     }
 }
 
-// ==================== ФУНКЦИИ ====================
+// ==================== ОСНОВНЫЕ ФУНКЦИИ ====================
 
 inline fun putFileToStorage(uri: Uri, path: StorageReference, crossinline function: () -> Unit) {
     path.putFile(uri)
@@ -107,10 +111,8 @@ inline fun initUser(crossinline function: () -> Unit) {
 
             if (firebaseUser != null && firebaseUser.username.isNotEmpty()) {
                 USER = firebaseUser
-                // Сохраняем данные пользователя локально
                 UserDataManager.saveUser(APP_ACTIVITY, USER)
             } else {
-                // Если Firebase не вернул данные — загружаем из SharedPreferences
                 val savedUser = UserDataManager.loadUser(APP_ACTIVITY)
                 if (savedUser != null) {
                     USER = savedUser
@@ -119,9 +121,7 @@ inline fun initUser(crossinline function: () -> Unit) {
                     if (USER.username.isEmpty()) USER.username = CURRENT_UID
                 }
             }
-            ensureUserEncryptionKey {
-                function()
-            }
+            ensureUserEncryptionKey { function() }
         })
 }
 
@@ -146,8 +146,9 @@ fun updatePhonesToDatabase(arrayContacts: ArrayList<CommonModel>) {
         })
 }
 
-// ==================== ОТПРАВКА СООБЩЕНИЙ (С ШИФРОВАНИЕМ) ====================
+// ==================== ОТПРАВКА СООБЩЕНИЙ ====================
 
+@SuppressLint("StringFormatInvalid")
 fun sendMessage(message: String, receivingUserID: String, typeText: String, function: () -> Unit) {
     if (message.isBlank()) {
         showToast(APP_ACTIVITY.getString(R.string.message_cannot_be_empty))
@@ -156,7 +157,7 @@ fun sendMessage(message: String, receivingUserID: String, typeText: String, func
 
     ChatEncryptionManager.getOtherUserPublicKey(receivingUserID) { otherPublicKeyBase64 ->
         if (otherPublicKeyBase64.isNullOrEmpty()) {
-            showToast("Ошибка шифрования: у пользователя $receivingUserID нет публичного ключа. Попросите его зайти в приложение (чтобы сгенерировался ключ).")
+            showToast("Ошибка шифрования: у пользователя нет публичного ключа")
             return@getOtherUserPublicKey
         }
 
@@ -167,7 +168,6 @@ fun sendMessage(message: String, receivingUserID: String, typeText: String, func
             }
 
             val encryptedMessage = EncryptionUtils.encryptMessage(message, chatKey)
-
             val messageKey = REF_DATABASE_ROOT.child("$NODE_MESSAGES/$CURRENT_UID/$receivingUserID").push().key ?: return@getOrCreateChatKeyAsync
 
             val messageData = mapOf(
@@ -189,15 +189,12 @@ fun sendMessage(message: String, receivingUserID: String, typeText: String, func
     }
 }
 
-// ==================== ОТПРАВКА В ГРУППУ (ШИФРОВАНИЕ) ====================
-
 fun sendMessageToGroup(message: String, groupID: String, typeText: String, function: () -> Unit) {
     if (message.isBlank()) {
         showToast(APP_ACTIVITY.getString(R.string.message_cannot_be_empty))
         return
     }
 
-    // Получаем или создаём ключ группы
     ChatEncryptionManager.getOrCreateChatKeyAsync(groupID) { chatKey ->
         if (chatKey == null) {
             showToast("Ошибка шифрования: не удалось получить ключ группы")
@@ -205,7 +202,6 @@ fun sendMessageToGroup(message: String, groupID: String, typeText: String, funct
         }
 
         val encryptedMessage = EncryptionUtils.encryptMessage(message, chatKey)
-
         val messageKey = REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupID/$NODE_MESSAGES").push().key ?: return@getOrCreateChatKeyAsync
 
         val messageData = mapOf(
@@ -223,7 +219,59 @@ fun sendMessageToGroup(message: String, groupID: String, typeText: String, funct
     }
 }
 
-// ==================== ОСТАЛЬНЫЕ ФУНКЦИИ (БЕЗ ИЗМЕНЕНИЙ) ====================
+// ==================== РАБОТА С ФАЙЛАМИ ====================
+
+fun uploadFileToStorage(uri: Uri, messageKey: String, receivedID: String, typeMessage: String, filename: String = "", onComplete: () -> Unit = {}) {
+    val path = REF_STORAGE_ROOT.child("$FOLDER_FILES/$messageKey")
+    putFileToStorage(uri, path) {
+        getUrlFromStorage(path) { url ->
+            sendMessageAsFile(receivedID, url, messageKey, typeMessage, filename)
+            onComplete()
+        }
+    }
+}
+
+fun uploadFileToStorageGroup(uri: Uri, messageKey: String, groupID: String, typeMessage: String, filename: String = "", onComplete: () -> Unit = {}) {
+    val path = REF_STORAGE_ROOT.child("$FOLDER_FILES/$messageKey")
+    putFileToStorage(uri, path) {
+        getUrlFromStorage(path) { url ->
+            sendMessageAsFileGroup(groupID, url, messageKey, typeMessage, filename)
+            onComplete()
+        }
+    }
+}
+
+private fun sendMessageAsFile(receivingUserID: String, fileUrl: String, messageKey: String, typeMessage: String, filename: String) {
+    val messageData = mapOf(
+        CHILD_FROM to CURRENT_UID,
+        CHILD_TYPE to typeMessage,
+        CHILD_ID to messageKey,
+        CHILD_TIMESTAMP to ServerValue.TIMESTAMP,
+        CHILD_FILE_URL to fileUrl,
+        CHILD_TEXT to filename
+    )
+    REF_DATABASE_ROOT.updateChildren(
+        mapOf(
+            "$NODE_MESSAGES/$CURRENT_UID/$receivingUserID/$messageKey" to messageData,
+            "$NODE_MESSAGES/$receivingUserID/$CURRENT_UID/$messageKey" to messageData
+        )
+    )
+}
+
+private fun sendMessageAsFileGroup(groupID: String, fileUrl: String, messageKey: String, typeMessage: String, filename: String) {
+    val messageData = mapOf(
+        CHILD_FROM to CURRENT_UID,
+        CHILD_TYPE to typeMessage,
+        CHILD_ID to messageKey,
+        CHILD_TIMESTAMP to ServerValue.TIMESTAMP,
+        CHILD_FILE_URL to fileUrl,
+        CHILD_TEXT to filename
+    )
+    REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupID/$NODE_MESSAGES/$messageKey")
+        .updateChildren(messageData)
+}
+
+// ==================== РАБОТА С ПОЛЬЗОВАТЕЛЕМ ====================
 
 fun updateCurrentUsername(newUserName: String) {
     if (newUserName.isBlank()) {
@@ -276,7 +324,8 @@ private fun updateUserField(field: String, value: String, onSuccess: () -> Unit)
         .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_generic, it.message)) }
 }
 
-fun removePhotoUser(@Suppress("UNUSED_PARAMETER") function1: String, function: () -> Unit) {
+@SuppressLint("StringFormatInvalid")
+fun removePhotoUser(function: () -> Unit) {
     REF_DATABASE_ROOT.child("$USER_PATH/$CHILD_PHOTO_URL").removeValue()
         .addOnSuccessListener { function() }
         .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_deleting_photo, it.message)) }
@@ -305,6 +354,8 @@ inline fun putImageToStorage(uri: Uri, path: StorageReference, crossinline funct
         .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_generic, it.message)) }
 }
 
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+
 fun getMessageKey(id: String) = REF_DATABASE_ROOT.child("$NODE_MESSAGES/$CURRENT_UID/$id").push().key.toString()
 fun getMessageKeyGroup(id: String) = REF_DATABASE_ROOT.child("$NODE_GROUPS/$id/$NODE_MESSAGES").push().key.toString()
 
@@ -315,56 +366,9 @@ fun getFileFromStorage(mFile: File, fileUrl: String, function: () -> Unit) {
         .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_generic, it.message)) }
 }
 
-fun uploadFileToStorage(uri: Uri, messageKey: String, receivedID: String, typeMessage: String, filename: String = "", onComplete: () -> Unit = {}) {
-    val path = REF_STORAGE_ROOT.child("$FOLDER_FILES/$messageKey")
-    putFileToStorage(uri, path) {
-        getUrlFromStorage(path) { url ->
-            sendMessageAsFile(receivedID, url, messageKey, typeMessage, filename)
-            onComplete()
-        }
-    }
-}
+// ==================== ГРУППЫ ====================
 
-fun uploadFileToStorageGroup(uri: Uri, messageKey: String, groupID: String, typeMessage: String, filename: String = "", onComplete: () -> Unit = {}) {
-    val path = REF_STORAGE_ROOT.child("$FOLDER_FILES/$messageKey")
-    putFileToStorage(uri, path) {
-        getUrlFromStorage(path) { url ->
-            sendMessageAsFileGroup(groupID, url, messageKey, typeMessage, filename)
-            onComplete()
-        }
-    }
-}
-
-private fun sendMessageAsFile(receivingUserID: String, fileUrl: String, messageKey: String, typeMessage: String, filename: String) {
-    val messageData = mapOf(
-        CHILD_FROM to CURRENT_UID,
-        CHILD_TYPE to typeMessage,
-        CHILD_ID to messageKey,
-        CHILD_TIMESTAMP to ServerValue.TIMESTAMP,
-        CHILD_FILE_URL to fileUrl,
-        CHILD_TEXT to filename
-    )
-    REF_DATABASE_ROOT.updateChildren(
-        mapOf(
-            "$NODE_MESSAGES/$CURRENT_UID/$receivingUserID/$messageKey" to messageData,
-            "$NODE_MESSAGES/$receivingUserID/$CURRENT_UID/$messageKey" to messageData
-        )
-    )
-}
-
-private fun sendMessageAsFileGroup(groupID: String, fileUrl: String, messageKey: String, typeMessage: String, filename: String) {
-    val messageData = mapOf(
-        CHILD_FROM to CURRENT_UID,
-        CHILD_TYPE to typeMessage,
-        CHILD_ID to messageKey,
-        CHILD_TIMESTAMP to ServerValue.TIMESTAMP,
-        CHILD_FILE_URL to fileUrl,
-        CHILD_TEXT to filename
-    )
-    REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupID/$NODE_MESSAGES/$messageKey")
-        .updateChildren(messageData)
-}
-
+@SuppressLint("StringFormatInvalid")
 fun createGroupToDatabase(nameGroup: String, uri: Uri, listContacts: List<CommonModel>, function: () -> Unit) {
     if (nameGroup.isBlank()) {
         showToast(APP_ACTIVITY.getString(R.string.group_name_cannot_be_empty))
@@ -386,7 +390,6 @@ fun createGroupToDatabase(nameGroup: String, uri: Uri, listContacts: List<Common
     )
 
     groupPath.updateChildren(groupData).addOnSuccessListener {
-        // Создаём ключ шифрования для группы
         ChatEncryptionManager.getOrCreateChatKeyAsync(groupId) { _ -> }
 
         if (uri != Uri.EMPTY) {
@@ -425,6 +428,8 @@ fun saveToMainList(id: String, type: String) {
         )
     )
 }
+
+// ==================== УДАЛЕНИЕ / ОЧИСТКА ====================
 
 fun deleteChat(id: String, function: () -> Unit) {
     REF_DATABASE_ROOT.updateChildren(
@@ -470,7 +475,10 @@ fun removeChatGroup(id: String, function: () -> Unit) {
         .addOnSuccessListener { function() }
 }
 
+// ==================== ПАРСИНГ ====================
+
 fun DataSnapshot.getCommonModel(): CommonModel = getValue(CommonModel::class.java) ?: CommonModel()
+
 fun DataSnapshot.getUserModel(): UserModel {
     return try {
         getValue(UserModel::class.java) ?: UserModel()
@@ -495,15 +503,12 @@ fun DataSnapshot.getUserModel(): UserModel {
     }
 }
 
+// ==================== ГЕНЕРАТОРЫ ====================
+
 fun generateRandomUsername(): String = "user${UUID.randomUUID().toString().substring(0, 8)}"
 
 fun generateRandomFullname(): String {
-    val prefixes = listOf(
-        "Shadow", "Ghost", "Neon", "Cyber", "Phantom", "Vortex", "Nebula", "Echo",
-        "Nova", "Pulse", "Raven", "Hawk", "Wolf", "Fox", "Dragon", "Phoenix", "Cobra", "Tiger"
-    )
-    val suffixes = listOf(
-        "42", "93", "17", "88", "X", "Z", "Pro", "Elite", "Dark", "Void", "Storm", "Blade", "Nova"
-    )
+    val prefixes = listOf("Shadow", "Ghost", "Neon", "Cyber", "Phantom", "Vortex", "Nebula", "Echo", "Nova", "Pulse", "Raven", "Hawk", "Wolf", "Fox", "Dragon", "Phoenix", "Cobra", "Tiger")
+    val suffixes = listOf("42", "93", "17", "88", "X", "Z", "Pro", "Elite", "Dark", "Void", "Storm", "Blade", "Nova")
     return "${prefixes.random()}${suffixes.random()}"
 }

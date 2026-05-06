@@ -15,7 +15,9 @@ data class CommonModel(
     var fileUrl: String = "empty",
     var lastMessage: String = "",
     var decryptedText: String = "",
-    var choice: Boolean = false
+    var choice: Boolean = false,
+    var replyTo: String? = null,
+    var duration: String? = null
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

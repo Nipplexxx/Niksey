@@ -14,24 +14,25 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 import com.example.niksey.utillits.CURRENT_UID
-import com.example.niksey.utillits.ChatEncryptionManager
 import com.example.niksey.utillits.asTime
 import com.google.android.material.card.MaterialCardView
 import kotlin.math.sin
 
 class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHolder {
 
+    // === ИСХОДЯЩЕЕ ===
     private val blocUserVoice: MaterialCardView = view.findViewById(R.id.bloc_user_voice)
-    private val chatUserVoiceTime: TextView = view.findViewById(R.id.chat_user_voice_time)
     private val chatUserVoicePlay: ImageView = view.findViewById(R.id.chat_user_voice_play)
     private val chatUserVoiceSeekBar: SeekBar = view.findViewById(R.id.chat_user_voice_seekbar)
     private val chatUserVoiceDuration: TextView = view.findViewById(R.id.chat_user_voice_duration)
+    private val chatUserVoiceTime: TextView = view.findViewById(R.id.chat_user_voice_time)
 
+    // === ВХОДЯЩЕЕ ===
     private val blocReceivedVoice: MaterialCardView = view.findViewById(R.id.bloc_received_voice)
-    private val chatReceivedVoiceTime: TextView = view.findViewById(R.id.chat_received_voice_time)
     private val chatReceivedVoicePlay: ImageView = view.findViewById(R.id.chat_received_voice_play)
     private val chatReceivedVoiceSeekBar: SeekBar = view.findViewById(R.id.chat_received_voice_seekbar)
     private val chatReceivedVoiceDuration: TextView = view.findViewById(R.id.chat_received_voice_duration)
+    private val chatReceivedVoiceTime: TextView = view.findViewById(R.id.chat_received_voice_time)
 
     private val userWaveBars = listOf(
         view.findViewById<View>(R.id.user_bar1),
@@ -65,85 +66,27 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
     override fun drawMessage(view: MessageView) {
         if (view.from == CURRENT_UID) {
             showUserVoice(view)
-            preloadInitialWaveform(view.fileUrl, userWaveBars)
-            preloadDuration(view.fileUrl, chatUserVoiceDuration)
         } else {
             showReceivedVoice(view)
-            preloadInitialWaveform(view.fileUrl, receivedWaveBars)
-            preloadDuration(view.fileUrl, chatReceivedVoiceDuration)
         }
     }
 
     private fun showUserVoice(view: MessageView) {
         blocUserVoice.visibility = View.VISIBLE
         blocReceivedVoice.visibility = View.GONE
-        chatUserVoiceTime.text = view.timeStamp.asTime()
         currentUrl = view.fileUrl
+        chatUserVoiceTime.text = view.timeStamp.asTime()
+        preloadDuration(view.fileUrl, chatUserVoiceDuration)
     }
 
     private fun showReceivedVoice(view: MessageView) {
         blocUserVoice.visibility = View.GONE
         blocReceivedVoice.visibility = View.VISIBLE
-        chatReceivedVoiceTime.text = view.timeStamp.asTime()
         currentUrl = view.fileUrl
+        chatReceivedVoiceTime.text = view.timeStamp.asTime()
+        preloadDuration(view.fileUrl, chatReceivedVoiceDuration)
     }
 
-    // ==================== END-TO-END ШИФРОВАНИЕ ====================
-    private fun decryptVoiceText(view: MessageView): String {
-        return try {
-            val chatKey = ChatEncryptionManager.getChatKey(view.from)
-
-            if (chatKey != null) {
-                ChatEncryptionManager.decryptMessage(view.text, chatKey)
-            } else {
-                view.text.ifEmpty { "Голосовое сообщение" }
-            }
-        } catch (e: Exception) {
-            view.text.ifEmpty { "Голосовое сообщение" }
-        }
-    }
-
-    // ==================== ПРЕДПРОСМОТР НАЧАЛА ЗВУКА ====================
-    private fun preloadInitialWaveform(url: String, bars: List<View>) {
-        Thread {
-            try {
-                val tempPlayer = MediaPlayer().apply {
-                    setDataSource(url)
-                    prepare()
-                }
-
-                val tempVisualizer = Visualizer(tempPlayer.audioSessionId).apply {
-                    captureSize = Visualizer.getCaptureSizeRange()[0]
-                    setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
-                        override fun onWaveFormDataCapture(visualizer: Visualizer?, waveform: ByteArray?, samplingRate: Int) {
-                            waveform?.let {
-                                handler.post {
-                                    bars.forEachIndexed { index, bar ->
-                                        val amplitude = (it[index % it.size].toInt() and 0xFF) / 255f
-                                        val targetHeight = (8 + amplitude * 20).toInt()
-                                        bar.layoutParams = bar.layoutParams.apply { height = targetHeight }
-                                        bar.requestLayout()
-                                    }
-                                }
-                            }
-                        }
-                        override fun onFftDataCapture(visualizer: Visualizer?, fft: ByteArray?, samplingRate: Int) {}
-                    }, Visualizer.getMaxCaptureRate() / 2, true, false)
-                    enabled = true
-                }
-
-                Thread.sleep(80)
-                tempVisualizer.enabled = false
-                tempVisualizer.release()
-                tempPlayer.release()
-
-            } catch (e: Exception) {
-                // Оставляем дефолтные высоты
-            }
-        }.start()
-    }
-
-    // ==================== ДЛИТЕЛЬНОСТЬ ====================
     private fun preloadDuration(url: String, durationTextView: TextView) {
         Thread {
             try {
@@ -163,8 +106,12 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
     }
 
     override fun onAttach(view: MessageView) {
-        chatUserVoicePlay.setOnClickListener { togglePlayback(view, chatUserVoicePlay, chatUserVoiceSeekBar) }
-        chatReceivedVoicePlay.setOnClickListener { togglePlayback(view, chatReceivedVoicePlay, chatReceivedVoiceSeekBar) }
+        chatUserVoicePlay.setOnClickListener {
+            togglePlayback(view, chatUserVoicePlay, chatUserVoiceSeekBar, userWaveBars, true)
+        }
+        chatReceivedVoicePlay.setOnClickListener {
+            togglePlayback(view, chatReceivedVoicePlay, chatReceivedVoiceSeekBar, receivedWaveBars, false)
+        }
 
         chatUserVoiceSeekBar.setOnSeekBarChangeListener(seekBarListener)
         chatReceivedVoiceSeekBar.setOnSeekBarChangeListener(seekBarListener)
@@ -172,49 +119,61 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
 
     private val seekBarListener = object : SeekBar.OnSeekBarChangeListener {
         override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-            if (fromUser && mediaPlayer != null) mediaPlayer?.seekTo(progress)
+            if (fromUser && mediaPlayer != null) {
+                mediaPlayer?.seekTo(progress)
+            }
         }
         override fun onStartTrackingTouch(seekBar: SeekBar?) {}
         override fun onStopTrackingTouch(seekBar: SeekBar?) {}
     }
 
-    private fun togglePlayback(messageView: MessageView, playBtn: ImageView, seekBar: SeekBar) {
+    private fun togglePlayback(
+        messageView: MessageView,
+        playBtn: ImageView,
+        seekBar: SeekBar,
+        bars: List<View>,
+        isUser: Boolean
+    ) {
         val url = messageView.fileUrl.takeIf { it.isNotBlank() } ?: return
 
+        // Если уже играет это же сообщение — пауза
         if (mediaPlayer?.isPlaying == true && currentUrl == url) {
             mediaPlayer?.pause()
             isPlaying = false
-            playBtn.setImageResource(R.drawable.ic_play_blue)
-            stopWaveAnimation()
+            playBtn.setImageResource(if (isUser) R.drawable.ic_play_purple else R.drawable.ic_play_blue)
+            stopWaveAnimation(bars)
             stopVisualizer()
             handler.removeCallbacks(updateSeekBar)
             return
         }
 
+        // Останавливаем предыдущее сообщение
         currentPlayingHolder?.let { previous ->
             if (previous != this) previous.pauseCurrentPlayback()
         }
         currentPlayingHolder = this
 
+        // Если новое сообщение или первый запуск
         if (currentUrl != url || mediaPlayer == null) {
             releaseMediaPlayer()
+
             mediaPlayer = MediaPlayer().apply {
                 setDataSource(url)
                 prepareAsync()
                 setOnPreparedListener {
                     start()
                     this@HolderVoiceMessage.isPlaying = true
-                    playBtn.setImageResource(R.drawable.ic_stop_blue)
+                    playBtn.setImageResource(if (isUser) R.drawable.ic_stop_purple else R.drawable.ic_stop_purple)
                     seekBar.max = duration
-                    startWaveAnimation(if (blocUserVoice.visibility == View.VISIBLE) userWaveBars else receivedWaveBars)
-                    startVisualizer(if (blocUserVoice.visibility == View.VISIBLE) userWaveBars else receivedWaveBars)
+                    startWaveAnimation(bars)
+                    startVisualizer(bars)
                     handler.post(updateSeekBar)
                 }
                 setOnCompletionListener {
                     this@HolderVoiceMessage.isPlaying = false
-                    playBtn.setImageResource(R.drawable.ic_play_blue)
+                    playBtn.setImageResource(if (isUser) R.drawable.ic_play_purple else R.drawable.ic_play_blue)
                     seekBar.progress = 0
-                    stopWaveAnimation()
+                    stopWaveAnimation(bars)
                     stopVisualizer()
                     handler.removeCallbacks(updateSeekBar)
                     currentPlayingHolder = null
@@ -223,9 +182,9 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         } else {
             mediaPlayer?.start()
             isPlaying = true
-            playBtn.setImageResource(R.drawable.ic_stop_blue)
-            startWaveAnimation(if (blocUserVoice.visibility == View.VISIBLE) userWaveBars else receivedWaveBars)
-            startVisualizer(if (blocUserVoice.visibility == View.VISIBLE) userWaveBars else receivedWaveBars)
+            playBtn.setImageResource(if (isUser) R.drawable.ic_stop_purple else R.drawable.ic_stop_purple)
+            startWaveAnimation(bars)
+            startVisualizer(bars)
             handler.post(updateSeekBar)
         }
         currentUrl = url
@@ -234,9 +193,10 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
     fun pauseCurrentPlayback() {
         mediaPlayer?.pause()
         isPlaying = false
-        chatUserVoicePlay.setImageResource(R.drawable.ic_play_blue)
+        chatUserVoicePlay.setImageResource(R.drawable.ic_play_purple)
         chatReceivedVoicePlay.setImageResource(R.drawable.ic_play_blue)
-        stopWaveAnimation()
+        stopWaveAnimation(userWaveBars)
+        stopWaveAnimation(receivedWaveBars)
         stopVisualizer()
         handler.removeCallbacks(updateSeekBar)
     }
@@ -280,7 +240,8 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         override fun run() {
             mediaPlayer?.let {
                 if (it.isPlaying) {
-                    val currentSeekBar = if (blocUserVoice.visibility == View.VISIBLE) chatUserVoiceSeekBar else chatReceivedVoiceSeekBar
+                    val currentSeekBar = if (blocUserVoice.visibility == View.VISIBLE)
+                        chatUserVoiceSeekBar else chatReceivedVoiceSeekBar
                     currentSeekBar.progress = it.currentPosition
                     handler.postDelayed(this, 300)
                 }
@@ -289,7 +250,7 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
     }
 
     private fun startWaveAnimation(bars: List<View>) {
-        stopWaveAnimation()
+        stopWaveAnimation(bars)
         waveAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 600
             repeatCount = ValueAnimator.INFINITE
@@ -306,11 +267,10 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         }
     }
 
-    private fun stopWaveAnimation() {
+    private fun stopWaveAnimation(bars: List<View>) {
         waveAnimator?.cancel()
         waveAnimator = null
-        userWaveBars.forEach { it.scaleY = 1f }
-        receivedWaveBars.forEach { it.scaleY = 1f }
+        bars.forEach { it.scaleY = 1f }
     }
 
     private fun releaseMediaPlayer() {
@@ -318,7 +278,8 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         mediaPlayer?.release()
         mediaPlayer = null
         isPlaying = false
-        stopWaveAnimation()
+        stopWaveAnimation(userWaveBars)
+        stopWaveAnimation(receivedWaveBars)
         handler.removeCallbacks(updateSeekBar)
     }
 

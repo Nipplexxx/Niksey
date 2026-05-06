@@ -5,4 +5,7 @@
     <attr name="text_primary" format="color|reference" />
     <attr name="text_secondary" format="color|reference" />
     <attr name="text_hint" format="color|reference" />
-</resources>
+
+    <attr name="glass_card_bg" format="color|reference" />
+    <attr name="glass_border" format="color|reference" />
+    </resources>

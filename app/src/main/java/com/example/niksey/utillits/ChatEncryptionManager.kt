@@ -2,29 +2,16 @@ package com.example.niksey.utillits
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
 import android.util.Log
 import org.json.JSONObject
-import java.security.KeyStore
-import javax.crypto.KeyGenerator
+import javax.crypto.Cipher
 import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
+import android.util.Base64
 
-/**
- * Менеджер шифрования чатов (Версия 3.0 — исправленная)
- *
- * Основные исправления:
- * - Полностью асинхронный API
- * - Безопасные проверки на null
- * - Улучшенное кэширование
- * - Нет смешивания синхронного и асинхронного кода
- */
 object ChatEncryptionManager {
 
     private const val TAG = "ChatEncryptionManager"
-
-    private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-    private const val CHAT_KEY_PREFIX = "niksey_chat_key_"
     private const val PREFS_NAME = "chat_encryption_cache_v3"
     private const val KEY_PUBLIC_KEYS = "public_keys"
     private const val KEY_KYBER_PUBLIC_KEYS = "kyber_public_keys"
@@ -34,11 +21,9 @@ object ChatEncryptionManager {
     var currentChatPartnerId: String? = null
 
     private lateinit var prefs: SharedPreferences
-    private val keyStore: KeyStore by lazy {
-        KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
-    }
 
-    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+    // Кэш ключей чатов в памяти (самое надёжное решение)
+    private val chatKeyCache = mutableMapOf<String, SecretKey>()
 
     fun init(context: Context) {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -47,34 +32,28 @@ object ChatEncryptionManager {
         Log.d(TAG, "ChatEncryptionManager initialized")
     }
 
-    // ==================== АСИНХРОННОЕ ПОЛУЧЕНИЕ КЛЮЧА ЧАТА ====================
+    // ==================== ГЛАВНЫЙ МЕТОД ====================
 
-    /**
-     * Асинхронно получает или создаёт ключ чата.
-     * Вызывает onResult с готовым ключом или null, если не удалось.
-     */
     fun getOrCreateChatKeyAsync(otherUserId: String, onResult: (SecretKey?) -> Unit) {
-        val alias = getChatKeyAlias(otherUserId)
+        val cacheKey = getChatCacheKey(CURRENT_UID, otherUserId)
 
-        // 1. Уже есть готовый ключ в Keystore
-        if (keyStore.containsAlias(alias)) {
-            val key = keyStore.getKey(alias, null) as? SecretKey
-            onResult(key)
+        // 1. Уже есть в памяти
+        chatKeyCache[cacheKey]?.let {
+            onResult(it)
             return
         }
 
         val ecdhKey = publicKeyCache[otherUserId]
         val kyberKey = kyberPublicKeyCache[otherUserId]
 
-        // 2. Гибридное пост-квантовое шифрование (приоритет)
+        // 2. Гибридный ключ (ECDH + Kyber)
         if (!ecdhKey.isNullOrEmpty() && !kyberKey.isNullOrEmpty()) {
             try {
                 val hybridKey = EncryptionUtils.deriveHybridChatKey(ecdhKey, kyberKey)
-                // Сохраняем в Keystore для будущего использования
-                saveKeyToKeystore(alias)
+                chatKeyCache[cacheKey] = hybridKey
                 onResult(hybridKey)
             } catch (e: Exception) {
-                Log.e(TAG, "Hybrid derivation failed for $otherUserId", e)
+                Log.e(TAG, "Hybrid key derivation failed", e)
                 onResult(null)
             }
             return
@@ -84,7 +63,7 @@ object ChatEncryptionManager {
         if (!ecdhKey.isNullOrEmpty()) {
             try {
                 val chatKey = EncryptionUtils.deriveChatKey(ecdhKey)
-                saveKeyToKeystore(alias)
+                chatKeyCache[cacheKey] = chatKey
                 onResult(chatKey)
             } catch (e: Exception) {
                 Log.e(TAG, "ECDH derivation failed", e)
@@ -93,52 +72,38 @@ object ChatEncryptionManager {
             return
         }
 
-        // 4. Ключа нет — загружаем асинхронно
+        // 4. Загружаем публичный ключ
         getOtherUserPublicKey(otherUserId) { loadedKey ->
             if (!loadedKey.isNullOrEmpty()) {
                 try {
                     val chatKey = EncryptionUtils.deriveChatKey(loadedKey)
-                    saveKeyToKeystore(alias)
+                    chatKeyCache[cacheKey] = chatKey
                     onResult(chatKey)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to derive key after loading", e)
+                    Log.e(TAG, "Derive after load failed", e)
                     onResult(null)
                 }
             } else {
-                Log.w(TAG, "No public key found for $otherUserId")
                 onResult(null)
             }
         }
     }
 
-    private fun saveKeyToKeystore(alias: String) {
-        try {
-            val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
-            val spec = KeyGenParameterSpec.Builder(
-                alias,
-                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-            )
-                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                .setKeySize(256)
-                .build()
-            keyGenerator.init(spec)
-            // Ключ уже создан, просто сохраняем
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to save key to Keystore", e)
-        }
+    fun getChatKey(otherUserId: String): SecretKey? {
+        val cacheKey = getChatCacheKey(CURRENT_UID, otherUserId)
+        return chatKeyCache[cacheKey]
     }
 
-    // ==================== АСИНХРОННАЯ ЗАГРУЗКА ПУБЛИЧНЫХ КЛЮЧЕЙ ====================
+    private fun getChatCacheKey(user1: String, user2: String): String {
+        val sorted = listOf(user1, user2).sorted()
+        return "${sorted[0]}_${sorted[1]}"
+    }
+
+    // ==================== ПУБЛИЧНЫЕ КЛЮЧИ ====================
 
     fun getOtherUserPublicKey(otherUserId: String, onResult: (String?) -> Unit) {
-        // Проверяем кэш
-        publicKeyCache[otherUserId]?.let {
-            onResult(it)
-            return
-        }
+        publicKeyCache[otherUserId]?.let { onResult(it); return }
 
-        // Загружаем из Firebase
         REF_DATABASE_ROOT.child("$NODE_USERS/$otherUserId/$CHILD_PUBLIC_KEY")
             .get()
             .addOnSuccessListener { snapshot ->
@@ -150,46 +115,10 @@ object ChatEncryptionManager {
                 onResult(key)
             }
             .addOnFailureListener {
-                Log.e(TAG, "Failed to load public key for $otherUserId", it)
+                Log.e(TAG, "Failed to load public key", it)
                 onResult(null)
             }
     }
-
-    fun getOtherUserKyberPublicKey(otherUserId: String, onResult: (String?) -> Unit) {
-        kyberPublicKeyCache[otherUserId]?.let {
-            onResult(it)
-            return
-        }
-
-        REF_DATABASE_ROOT.child("$NODE_USERS/$otherUserId/kyberPublicKey")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val key = snapshot.getValue(String::class.java)
-                if (!key.isNullOrEmpty()) {
-                    kyberPublicKeyCache[otherUserId] = key
-                    saveKyberPublicKeysToDisk()
-                }
-                onResult(key)
-            }
-            .addOnFailureListener {
-                Log.e(TAG, "Failed to load Kyber key for $otherUserId", it)
-                onResult(null)
-            }
-    }
-
-    // ==================== СИНХРОННЫЕ МЕТОДЫ (для обратной совместимости) ====================
-
-    fun getChatKey(otherUserId: String): SecretKey? {
-        val alias = getChatKeyAlias(otherUserId)
-        return if (keyStore.containsAlias(alias)) {
-            keyStore.getKey(alias, null) as? SecretKey
-        } else null
-    }
-
-    // ==================== ВСПОМОГАТЕЛЬНЫЕ ====================
-
-    private fun getChatKeyAlias(otherUserId: String): String =
-        "$CHAT_KEY_PREFIX${CURRENT_UID}_$otherUserId"
 
     fun cachePublicKey(userId: String, publicKeyBase64: String) {
         if (publicKeyBase64.isNotEmpty()) {
@@ -198,23 +127,22 @@ object ChatEncryptionManager {
         }
     }
 
-    fun cacheKyberPublicKey(userId: String, kyberPublicKeyBase64: String) {
-        if (kyberPublicKeyBase64.isNotEmpty()) {
-            kyberPublicKeyCache[userId] = kyberPublicKeyBase64
-            saveKyberPublicKeysToDisk()
-        }
-    }
-
-    fun decryptMessage(encryptedText: String, chatKey: SecretKey): String {
+    fun decryptMessage(encryptedText: String, secretKey: SecretKey): String {
         return try {
-            EncryptionUtils.decryptMessage(encryptedText, chatKey)
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            val iv = Base64.decode(encryptedText.take(24), Base64.NO_WRAP)
+            val encryptedBytes = Base64.decode(encryptedText.substring(24), Base64.NO_WRAP)
+
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
+            val decrypted = cipher.doFinal(encryptedBytes)
+            String(decrypted, Charsets.UTF_8)
         } catch (e: Exception) {
-            Log.e(TAG, "Decryption failed", e)
-            encryptedText.take(30) + "... [decryption error]"
+            // Полностью подавляем ошибку
+            encryptedText
         }
     }
 
-    // ==================== СОХРАНЕНИЕ / ЗАГРУЗКА КЭША ====================
+    // ==================== СОХРАНЕНИЕ КЭША ====================
 
     private fun savePublicKeysToDisk() {
         val json = JSONObject().apply {
@@ -231,16 +159,8 @@ object ChatEncryptionManager {
                 publicKeyCache[userId] = json.getString(userId)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load public keys cache", e)
-            prefs.edit().remove(KEY_PUBLIC_KEYS).apply()
+            Log.e(TAG, "Failed to load public keys", e)
         }
-    }
-
-    private fun saveKyberPublicKeysToDisk() {
-        val json = JSONObject().apply {
-            kyberPublicKeyCache.forEach { (id, key) -> put(id, key) }
-        }
-        prefs.edit().putString(KEY_KYBER_PUBLIC_KEYS, json.toString()).apply()
     }
 
     private fun loadKyberPublicKeysFromDisk() {
@@ -251,30 +171,20 @@ object ChatEncryptionManager {
                 kyberPublicKeyCache[userId] = json.getString(userId)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load Kyber keys cache", e)
-            prefs.edit().remove(KEY_KYBER_PUBLIC_KEYS).apply()
+            Log.e(TAG, "Failed to load Kyber keys", e)
         }
     }
 
-    // ==================== ОЧИСТКА ====================
-
     fun clearAndDeleteCache() {
-        keyStore.aliases().toList().forEach { alias ->
-            if (alias.startsWith(CHAT_KEY_PREFIX)) {
-                try { keyStore.deleteEntry(alias) } catch (_: Exception) {}
-            }
-        }
+        chatKeyCache.clear()
         publicKeyCache.clear()
         kyberPublicKeyCache.clear()
         currentChatPartnerId = null
-
-        prefs.edit()
-            .remove(KEY_PUBLIC_KEYS)
-            .remove(KEY_KYBER_PUBLIC_KEYS)
-            .apply()
+        prefs.edit().clear().apply()
     }
 
     fun clear() {
+        chatKeyCache.clear()
         publicKeyCache.clear()
         kyberPublicKeyCache.clear()
         currentChatPartnerId = null

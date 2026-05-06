@@ -1,204 +1,198 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground"
-    android:padding="24dp">
+    android:background="@color/background_dark"
+    android:padding="32dp">
 
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/phone_card"
-        android:layout_width="0dp"
+    <!-- Заголовок -->
+    <TextView
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:cardBackgroundColor="@color/ghost_card_bg"
-        app:cardCornerRadius="28dp"
-        app:cardElevation="16dp"
-        app:strokeColor="@color/purple_300"
-        app:strokeWidth="1.5dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginBottom="40dp"
+        android:text="@string/phone_auth_title"
+        android:textColor="@color/text_primary"
+        android:textSize="26sp"
+        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="60dp">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="35dp">
+    <!-- Выбор страны + номер -->
+    <com.hbb20.CountryCodePicker
+        android:id="@+id/ccp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="80dp"
+        app:layout_constraintTop_toTopOf="parent" />
 
-            <TextView
-                android:id="@+id/tv_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/chivo"
-                android:text="Вход по телефону"
-                android:textColor="@color/white_100"
-                android:textSize="26sp"
-                android:textStyle="bold"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintStart_toStartOf="parent" />
+    <EditText
+        android:id="@+id/phone_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_input_glass"
+        android:padding="16dp"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_secondary"
+        app:layout_constraintTop_toBottomOf="@id/ccp"
+        tools:ignore="Autofill,TextFields" />
 
-            <TextView
-                android:id="@+id/tv_status"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Выберите страну и введите номер"
-                android:textColor="@color/black_10"
-                android:textSize="14sp"
-                app:layout_constraintTop_toBottomOf="@id/tv_title"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
+    <!-- Кнопка отправить код -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_send_code"
+        style="@style/GlassButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="@string/next"
+        app:layout_constraintTop_toBottomOf="@id/phone_input" />
 
-            <!-- Блок: Флаг + Номер -->
-            <LinearLayout
-                android:id="@+id/phone_container"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                app:layout_constraintTop_toBottomOf="@id/tv_status"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent">
+    <!-- Поле для ввода кода (как в Telegram) -->
+    <LinearLayout
+        android:id="@+id/code_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/btn_send_code">
 
-                <!-- Country Code Picker (красиво) -->
-                <com.hbb20.CountryCodePicker
-                    android:id="@+id/ccp"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:ccp_arrowColor="@color/purple_300"
-                    app:ccp_autoDetectCountry="true"
-                    app:ccp_contentColor="@color/white_100"
-                    app:ccp_showArrow="false"
-                    app:ccp_showFlag="true"
-                    app:ccp_showFullName="false"
-                    app:ccp_showNameCode="false" />
+        <EditText
+            android:id="@+id/code_1"
+            android:layout_width="48dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/code_digit_bg"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:textColor="@color/text_primary"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            tools:ignore="Autofill" />
 
-                <!-- Поле ввода номера -->
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="12dp"
-                    app:boxBackgroundMode="outline"
-                    app:boxStrokeColor="@color/purple_300"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusBottomEnd="12dp">
+        <EditText
+            android:id="@+id/code_2"
+            android:layout_width="48dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/code_digit_bg"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:textColor="@color/text_primary"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            tools:ignore="Autofill" />
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/phone_input"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Номер телефона"
-                        android:inputType="phone"
-                        android:textColor="@color/white_100"
-                        android:textSize="18sp"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp" />
-                </com.google.android.material.textfield.TextInputLayout>
-            </LinearLayout>
+        <EditText
+            android:id="@+id/code_3"
+            android:layout_width="48dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/code_digit_bg"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:textColor="@color/text_primary"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            tools:ignore="Autofill" />
 
-            <!-- 6 полей для кода -->
-            <LinearLayout
-                android:id="@+id/code_container"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="30dp"
-                android:gravity="center"
-                android:orientation="horizontal"
-                android:visibility="gone"
-                app:layout_constraintTop_toBottomOf="@id/phone_container"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent">
+        <EditText
+            android:id="@+id/code_4"
+            android:layout_width="48dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/code_digit_bg"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:textColor="@color/text_primary"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            tools:ignore="Autofill" />
 
-                <EditText android:id="@+id/code_1" android:layout_width="40dp" android:layout_height="52dp"
-                    android:autofillHints="auto"
-                    android:background="@drawable/code_digit_bg" android:gravity="center" android:inputType="number" android:maxLength="1" android:textColor="@color/white_100" android:textSize="24sp" android:textStyle="bold" />
-                <EditText android:id="@+id/code_2" android:layout_width="40dp" android:layout_height="52dp" android:layout_marginStart="7dp"
-                    android:autofillHints="auto"
-                    android:background="@drawable/code_digit_bg" android:gravity="center" android:inputType="number" android:maxLength="1" android:textColor="@color/white_100" android:textSize="24sp" android:textStyle="bold" />
-                <EditText android:id="@+id/code_3" android:layout_width="40dp" android:layout_height="52dp" android:layout_marginStart="7dp"
-                    android:autofillHints="auto"
-                    android:background="@drawable/code_digit_bg" android:gravity="center" android:inputType="number" android:maxLength="1" android:textColor="@color/white_100" android:textSize="24sp" android:textStyle="bold" />
-                <EditText android:id="@+id/code_4" android:layout_width="45dp" android:layout_height="52dp" android:layout_marginStart="7dp"
-                    android:autofillHints="auto"
-                    android:background="@drawable/code_digit_bg" android:gravity="center" android:inputType="number" android:maxLength="1" android:textColor="@color/white_100" android:textSize="24sp" android:textStyle="bold" />
-                <EditText android:id="@+id/code_5" android:layout_width="40dp" android:layout_height="52dp" android:layout_marginStart="7dp"
-                    android:autofillHints="auto"
-                    android:background="@drawable/code_digit_bg" android:gravity="center" android:inputType="number" android:maxLength="1" android:textColor="@color/white_100" android:textSize="24sp" android:textStyle="bold" />
-                <EditText android:id="@+id/code_6" android:layout_width="40dp" android:layout_height="52dp" android:layout_marginStart="7dp"
-                    android:autofillHints="auto"
-                    android:background="@drawable/code_digit_bg" android:gravity="center" android:inputType="number" android:maxLength="1" android:textColor="@color/white_100" android:textSize="24sp" android:textStyle="bold" />
-            </LinearLayout>
+        <EditText
+            android:id="@+id/code_5"
+            android:layout_width="48dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/code_digit_bg"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:textColor="@color/text_primary"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            tools:ignore="Autofill" />
 
-            <TextView
-                android:id="@+id/tv_timer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:textColor="@color/purple_300"
-                android:textSize="14sp"
-                android:visibility="gone"
-                app:layout_constraintTop_toBottomOf="@id/code_container"
-                app:layout_constraintStart_toStartOf="parent" />
+        <EditText
+            android:id="@+id/code_6"
+            android:layout_width="48dp"
+            android:layout_height="56dp"
+            android:background="@drawable/code_digit_bg"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:textColor="@color/text_primary"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            tools:ignore="Autofill" />
 
-            <ProgressBar
-                android:id="@+id/progress_bar"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                android:layout_marginTop="16dp"
-                app:layout_constraintTop_toBottomOf="@id/tv_timer"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
+    </LinearLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_send_code"
-                android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_marginTop="24dp"
-                android:text="Отправить код"
-                android:textSize="17sp"
-                app:backgroundTint="@color/purple_300"
-                app:cornerRadius="16dp"
-                app:layout_constraintTop_toBottomOf="@id/progress_bar"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
+    <!-- Кнопки подтверждения и повторной отправки -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_verify_code"
+        style="@style/GlassButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="@string/verify_code"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/code_container" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_verify_code"
-                android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_marginTop="16dp"
-                android:text="Подтвердить код"
-                android:textSize="17sp"
-                app:backgroundTint="@color/purple_300"
-                app:cornerRadius="16dp"
-                android:visibility="gone"
-                app:layout_constraintTop_toBottomOf="@id/btn_send_code"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_resend_code"
+        style="@style/GlassButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/resend_code"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/btn_verify_code" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_resend_code"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_marginTop="12dp"
-                android:text="Отправить код повторно"
-                android:textSize="15sp"
-                app:backgroundTint="@color/black_80"
-                app:strokeColor="@color/purple_300"
-                app:strokeWidth="1dp"
-                app:cornerRadius="16dp"
-                android:visibility="gone"
-                app:layout_constraintTop_toBottomOf="@id/btn_verify_code"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
+    <!-- Статус и таймер -->
+    <TextView
+        android:id="@+id/tv_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:gravity="center"
+        android:textColor="@color/text_secondary"
+        app:layout_constraintTop_toBottomOf="@id/btn_resend_code" />
 
-        </androidx.constraintlayout.widget.ConstraintLayout>
-    </com.google.android.material.card.MaterialCardView>
+    <TextView
+        android:id="@+id/tv_timer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textColor="@color/text_hint"
+        app:layout_constraintTop_toBottomOf="@id/tv_status" />
+
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_timer" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

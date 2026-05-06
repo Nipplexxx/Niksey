@@ -1,148 +1,157 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
 
     <!-- ==================== APP ==================== -->
     <string name="app_name">Niksey</string>
     <string name="welcome">Welcome</string>
 
     <!-- ==================== AUTH & REGISTER ==================== -->
+    <string name="anonymous">Anonymous</string>
     <string name="auth_failed">Authentication failed</string>
-    <string name="register_title_your_phone">Your phone number</string>
-    <string name="register_text_we_sent">We have sent an SMS with a verification code to your phone</string>
-    <string name="register_text_enter_code">Enter the code</string>
-    <string name="register_toast_enter_phone">Enter your phone number</string>
-    <string name="number_phone">+71234567890</string>
-    <string name="btn_text_next">Next</string>
-    <string name="cd_register_img">cd_register_img</string>
-    <string name="anonymous_sign_in">Anonymous</string>
+    <string name="enter_code">Enter the code</string>
+    <string name="enter_phone">Enter your phone number</string>
+    <string name="next">Next</string>
+    <string name="phone_hint">+7 123 456 78 90</string>
+    <string name="sms_sent">We’ve sent an SMS with a verification code to your phone</string>
+    <string name="your_phone_number">Your phone number</string>
 
     <!-- ==================== SETTINGS ==================== -->
-    <string name="personal_account">Personal account</string>
-    <string name="settings_text_account">Account</string>
-
-    <!-- Default values -->
-    <string name="settings_default_username">Andrey Petrov</string>
-    <string name="settings_default_status">Online</string>
-    <string name="settings_default_namber">89633699669</string>
-    <string name="settings_default_number">+1 123 456-78-90</string>
-    <string name="settings_default_login">andreypetrov</string>
-    <string name="settings_default_bio">Text about yourself</string>
-    <string name="settings_default_email">Email</string>
-    <string name="settings_default_password">Password</string>
-
-    <!-- Labels and hints -->
-    <string name="settings_label_phone_number">Your phone number</string>
-    <string name="settings_label_login">Username</string>
-    <string name="settings_label_bio">Write a little about yourself</string>
-    <string name="settings_hint_name">Name</string>
-    <string name="settings_hint_surname">Surname</string>
-    <string name="settings_hint_input_username">username</string>
-    <string name="settings_input_bio">Information about yourself</string>
-
-    <!-- Menu -->
-    <string name="settings_menu_change_name">Change name</string>
-    <string name="settings_menu_delete_photo">Delete avatar</string>
-    <string name="settings_menu_exit">Exit</string>
-
-    <!-- Toasts and messages -->
-    <string name="settings_toast_name_is_empty">Name cannot be empty</string>
-    <string name="settings_data_update">Data updated</string>
-    <string name="toast_data_update">Data updated</string>
+    <string name="about_me">About me</string>
+    <string name="account">Account</string>
+    <string name="avatar_deleted">Avatar deleted</string>
+    <string name="bio_example">Tell us a little about yourself</string>
+    <string name="change_name">Change name</string>
     <string name="data_updated">Data updated</string>
-    <string name="remove_photo_user">Avatar deleted</string>
+    <string name="delete_avatar">Delete avatar</string>
+    <string name="enter_new_email">Enter new email</string>
+    <string name="enter_new_password">Enter new password</string>
+    <string name="enter_new_phone_number">Enter new phone number</string>
+    <string name="exit">Exit</string>
+    <string name="fullname_example">Andrey Petrov</string>
+    <string name="name">Name</string>
+    <string name="name_and_surname">Name and surname</string>
+    <string name="new_email">New email</string>
+    <string name="new_password">New password</string>
+    <string name="new_phone_number">New phone number</string>
+    <string name="new_username">New username</string>
+    <string name="online">Online</string>
+    <string name="password">Password</string>
+    <string name="personal_account">Personal account</string>
+    <string name="phone_number">Phone number</string>
+    <string name="surname">Surname</string>
+    <string name="username_example">andreypetrov</string>
+    <string name="username_hint">username</string>
+    <string name="write_about_yourself">Write a little about yourself</string>
 
     <!-- ==================== CHAT ==================== -->
-    <string name="enter_a_message">Enter a message</string>
-    <string name="record">Record</string>
-    <string name="voice_message">Voice message</string>
-    <string name="voice_saved">Voice message saved to Downloads</string>
-    <string name="voice_deleted">Voice message deleted</string>
-    <string name="voice_reply_text">Voice message</string>
-    <string name="message_copied">Message copied</string>
-    <string name="message_deleted">Message deleted</string>
-    <string name="reply_mode_activated">Reply mode activated</string>
-    <string name="reply_mode_failed">Failed to activate reply</string>
-
-    <!-- Chat actions -->
-    <string name="clear_chat">Clear chat</string>
-    <string name="remove_chat">Remove chat</string>
-    <string name="delete_chat">Delete chat</string>
-    <string name="out_chat">Leave chat</string>
     <string name="chat_cleared">Chat cleared</string>
     <string name="chat_deleted">Chat deleted</string>
-    <string name="chat_remove">Chat removed</string>
+    <string name="clear_chat">Clear chat</string>
+    <string name="delete_chat">Delete chat</string>
+    <string name="enter_a_message">Enter a message</string>
+    <string name="leave_chat">Leave chat</string>
+    <string name="message_copied">Message copied</string>
+    <string name="message_deleted">Message deleted</string>
+    <string name="record">Record</string>
+    <string name="remove_chat">Remove chat</string>
+    <string name="reply_mode_activated">Reply mode activated</string>
+    <string name="reply_mode_failed">Failed to activate reply</string>
+    <string name="voice_deleted">Voice message deleted</string>
+    <string name="voice_message">Voice message</string>
+    <string name="voice_saved">Voice message saved to Downloads</string>
 
     <!-- ==================== GROUPS & CONTACTS ==================== -->
-    <string name="contacts">Contacts</string>
-    <string name="my_contacts">User contacts</string>
-    <string name="add_a_participant">Add participant</string>
+    <string name="add_a_participant">Add a participant</string>
+    <string name="add_contacts">Add contacts</string>
     <string name="add_participant">Add participant</string>
+    <string name="add_participants">Add participants</string>
+    <string name="cannot_remove_self">You cannot remove yourself</string>
+    <string name="chat_remove">Chat deleted</string>
+    <string name="clear_encryption_cache">Clear the encryption cache</string>
+    <string name="contacts">Contacts</string>
     <string name="create_group">Create group</string>
-    <string name="create_a_group">Create group</string>
+    <string name="create_new_group">New group</string>
     <string name="enter_a_name">Enter name</string>
-    <string name="information">Information</string>
+    <string name="example_contact_name">ghost_niksey</string>
+    <string name="example_last_message">Last echo • 2 min ago</string>
+    <string name="example_status_online">online</string>
+    <string name="group_name">Group name</string>
+    <string name="group_name_updated">Group name updated</string>
+    <string name="group_settings">Group settings</string>
+    <string name="participant_removed">Participant removed</string>
+    <string name="save">Save</string>
+
+    <!-- ==================== BOTTOM SHEET & ATTACH ==================== -->
+    <string name="attach">Attach</string>
+    <string name="attach_file">File</string>
+    <string name="attach_image">Image</string>
+    <string name="close">Close</string>
+
+    <!-- ==================== SPLASH & INFO ==================== -->
+    <string name="brand_name">VOID</string>
+    <string name="developed_with_privacy_respect">\n\nDeveloped with respect for your privacy.</string>
+    <string name="end_to_end_encrypted">● END-TO-END ENCRYPTED</string>
+    <string name="messenger_of_absolute_anonymity">Messenger of absolute anonymity</string>
+    <string name="niksey_description">Niksey is a fully encrypted messenger created for those who truly value freedom of communication.\n\nNo tracking. No ads. No data collection.\n\nYou can send text messages, images, voice messages and create private groups.\n\nAll messages are protected with end-to-end encryption.</string>
+    <string name="splash_subtitle">Messenger of absolute anonymity</string>
+    <string name="version_info">Version 6.11.0 Alpha</string>
+    <string name="void_title">VOID</string>
+
+    <!-- ==================== LOGIN & AUTH ==================== -->
+    <string name="phone_auth_title">Sign in with phone</string>
+    <string name="sign_in_with_email">Sign in with Email</string>
+    <string name="anonymous_sign_in">Anonymous sign in</string>
+    <string name="sign_in_with_phone">Sign in with phone</string>
+    <string name="email">Email</string>
+    <string name="verify_code">Verify code</string>
+    <string name="resend_code">Resend code</string>
+
+    <!-- ==================== CHATS ==================== -->
+    <string name="chats">Chats</string>
+
+    <!-- ==================== SETTINGS MENU ==================== -->
+    <string name="change_username">Username</string>
 
     <!-- ==================== ERRORS & VALIDATION ==================== -->
-    <string name="error_loading">Loading error: %s</string>
-    <string name="error_deleting_message">Error deleting: %s</string>
-    <string name="error_deleting_photo">Error deleting photo: %s</string>
-    <string name="error_deleting_voice">Error deleting: %s</string>
-    <string name="error_saving_voice">Error saving: %s</string>
-    <string name="error_cropping_image">Error cropping image: %s</string>
-    <string name="error_creating_group">Error creating group: %s</string>
-    <string name="error_sending_to_group">Error sending to group: %s</string>
-    <string name="error_sending">Error sending: %s</string>
+    <string name="error_creating_group">Error creating group</string>
+    <string name="error_cropping_image">Error cropping image</string>
+    <string name="error_deleting_message">Error deleting message</string>
+    <string name="error_deleting_photo">Error deleting photo</string>
     <string name="error_generic">Error: %s</string>
-    <string name="unknown_error">Unknown error</string>
-
-    <string name="message_cannot_be_empty">Message cannot be empty</string>
-    <string name="username_cannot_be_empty">Username cannot be empty</string>
-    <string name="name_cannot_be_empty">Name cannot be empty</string>
+    <string name="error_loading">Loading error: %s</string>
+    <string name="error_sending">Sending error</string>
+    <string name="error_sending_to_group">Error sending to group</string>
     <string name="group_name_cannot_be_empty">Group name cannot be empty</string>
+    <string name="loading_error">Loading error: %s</string>
+    <string name="message_cannot_be_empty">Message cannot be empty</string>
+    <string name="name_cannot_be_empty">Name cannot be empty</string>
+    <string name="settings_toast_name_is_empty">Name cannot be empty</string>
+    <string name="unknown_error">Unknown error</string>
+    <string name="username_cannot_be_empty">Username cannot be empty</string>
 
     <!-- ==================== OTHER ==================== -->
-    <string name="switching_to_another_window">Switching to another window</string>
-    <string name="text_123456">123456</string>
-    <string name="hello_blank_fragment">Hello blank fragment</string>
-    <string name="default_web_client_id">638294860369-862bfmfda32r9f4ou0qgasf5jq0edvvj.apps.googleusercontent.com</string>
+    <string name="cancel">Cancel</string>
+    <string name="information">Information</string>
+    <string name="remove_photo_user">Avatar deleted</string>
+    <string name="toast_data_update">Data updated</string>
     <string name="todo" translatable="false">TODO</string>
 
+    <!-- Biometric -->
+    <string name="biometric_error">Biometric error</string>
+    <string name="biometric_failed">Biometric recognition failed</string>
+    <string name="biometric_subtitle">Use your fingerprint or face</string>
+    <string name="biometric_title">Unlock Niksey</string>
+
+    <!-- Drawer -->
+    <string name="close_drawer">Close menu</string>
+    <string name="open_drawer">Open menu</string>
+
     <!-- ==================== PLURALS ==================== -->
-    <plurals name="count_members">
+    <plurals name="participants_count" tools:ignore="UnusedQuantity">
         <item quantity="one">%d participant</item>
         <item quantity="few">%d participants</item>
         <item quantity="many">%d participants</item>
         <item quantity="other">%d participants</item>
     </plurals>
 
-    <!-- Biometric App Lock -->
-    <string name="biometric_title">Unlock Niksey</string>
-    <string name="biometric_subtitle">Use fingerprint or face</string>
-    <string name="biometric_error">Biometric error</string>
-    <string name="biometric_failed">Biometrics not recognized</string>
-    <string name="cancel">Cancel</string>
-
-    <!-- Smart Status -->
-    <string name="smart_status_meeting">Meeting</string>
-
-    <!-- AI Quick Replies -->
-    <string name="ai_reply_thanks">Thanks!</string>
-    <string name="ai_reply_ok">OK</string>
-    <string name="ai_reply_later">I\'ll reply later</string>
-    <string name="ai_reply_call_me">Call me</string>
-    <string name="ai_replies_coming_soon">AI replies coming soon!</string>
-
-    <!-- Permissions -->
-    <string name="permission_denied">Permission denied</string>
-
-
-    <string name="open_drawer">Open navigation drawer</string>
-    <string name="close_drawer">Close navigation drawer</string>
-    <string name="group_name">Название группы</string>
-    <string name="save">Сохранить</string>
-    <string name="add_participants">Добавить участников</string>
-    <string name="group_settings">Настройки группы</string>
-    <string name="participant_removed">Участник удалён</string>
-    <string name="cannot_remove_self">Нельзя удалить себя</string>
-    <string name="group_name_updated">Название группы обновлено</string>
 </resources>

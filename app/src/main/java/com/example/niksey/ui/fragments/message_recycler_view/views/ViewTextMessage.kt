@@ -5,7 +5,9 @@ data class ViewTextMessage(
     override val from: String,
     override val timeStamp: String,
     override val fileUrl: String,
-    override val text: String = ""
+    override val text: String = "",
+    override val replyTo: String? = null,
+    override val duration: String? = null
 ) : MessageView {
     override var decryptedText: String = ""
 

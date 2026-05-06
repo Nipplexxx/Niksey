@@ -6,74 +6,85 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="12dp"
-    android:layout_marginVertical="6dp"
-    android:background="@drawable/bg_ghost_card"
-    android:elevation="4dp">
+    android:layout_marginVertical="6dp">
 
-    <!-- Внутренний контейнер с правильными constraints -->
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="match_parent"
+    <com.google.android.material.card.MaterialCardView
+        style="@style/GlassCard"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:padding="16dp"
+        app:cardBackgroundColor="@color/glass_card_bg"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="4dp"
+        app:strokeColor="@color/glass_border"
+        app:strokeWidth="1dp"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Аватарка -->
-        <de.hdodenhof.circleimageview.CircleImageView
-            android:id="@+id/add_contacts_item_photo"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:src="@drawable/ic_person"
-            app:civ_border_width="2.5dp"
-            app:civ_border_color="@color/purple_300"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent" />
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp">
 
-        <!-- Замок шифрования -->
-        <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:src="@drawable/ic_lock_encrypted"
-            app:layout_constraintEnd_toEndOf="@id/add_contacts_item_photo"
-            app:layout_constraintBottom_toBottomOf="@id/add_contacts_item_photo"/>
+            <!-- Аватарка -->
+            <de.hdodenhof.circleimageview.CircleImageView
+                android:id="@+id/add_contacts_item_photo"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:src="@drawable/ic_person"
+                app:civ_border_width="2.5dp"
+                app:civ_border_color="@color/accent_purple"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
 
-        <!-- Чек выбора -->
-        <de.hdodenhof.circleimageview.CircleImageView
-            android:id="@+id/add_contacts_item_choice"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:src="@drawable/ic_ghost_check"
-            android:visibility="invisible"
-            app:layout_constraintEnd_toEndOf="@id/add_contacts_item_photo"
-            app:layout_constraintTop_toTopOf="@id/add_contacts_item_photo" />
+            <!-- Замок шифрования -->
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_lock_encrypted"
+                app:layout_constraintEnd_toEndOf="@id/add_contacts_item_photo"
+                app:layout_constraintBottom_toBottomOf="@id/add_contacts_item_photo"
+                tools:ignore="ContentDescription" />
 
-        <!-- Имя -->
-        <TextView
-            android:id="@+id/add_contacts_item_name"
-            style="@style/normalText"
-            android:fontFamily="@font/chivo"
-            android:textColor="@color/white_100"
-            android:textSize="16.5sp"
-            app:layout_constraintStart_toEndOf="@id/add_contacts_item_photo"
-            app:layout_constraintTop_toTopOf="parent"
-            android:layout_marginStart="16dp"
-            tools:text="ghost_niksey" />
+            <!-- Чек выбора -->
+            <de.hdodenhof.circleimageview.CircleImageView
+                android:id="@+id/add_contacts_item_choice"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_ghost_check"
+                android:visibility="invisible"
+                app:layout_constraintEnd_toEndOf="@id/add_contacts_item_photo"
+                app:layout_constraintTop_toTopOf="@id/add_contacts_item_photo" />
 
-        <!-- Последнее сообщение -->
-        <TextView
-            android:id="@+id/add_contacts_last_message"
-            style="@style/smallText"
-            android:fontFamily="@font/chivo"
-            android:textColor="@color/black_10"
-            android:textSize="13.5sp"
-            app:layout_constraintStart_toEndOf="@id/add_contacts_item_photo"
-            app:layout_constraintTop_toBottomOf="@id/add_contacts_item_name"
-            android:layout_marginStart="16dp"
-            tools:text="Последний эхо • 2 мин назад" />
+            <!-- Имя -->
+            <TextView
+                android:id="@+id/add_contacts_item_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:fontFamily="@font/chivo"
+                android:textColor="@color/text_primary"
+                android:textSize="16.5sp"
+                app:layout_constraintStart_toEndOf="@id/add_contacts_item_photo"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:text="@string/example_contact_name" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+            <!-- Последнее сообщение -->
+            <TextView
+                android:id="@+id/add_contacts_last_message"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="2dp"
+                android:fontFamily="@font/chivo"
+                android:textColor="@color/text_secondary"
+                android:textSize="13.5sp"
+                app:layout_constraintStart_toEndOf="@id/add_contacts_item_photo"
+                app:layout_constraintTop_toBottomOf="@id/add_contacts_item_name"
+                tools:text="@string/example_last_message" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </com.google.android.material.card.MaterialCardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

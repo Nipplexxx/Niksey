@@ -1,6 +1,7 @@
 package com.example.niksey.ui.screens.phone_book
 
 import android.os.Bundle
+import android.util.Log
 import android.view.*
 import android.widget.TextView
 import androidx.appcompat.widget.SearchView
@@ -62,7 +63,7 @@ class ContactsFragment : BaseFragment(R.layout.fragment_contacts) {
                     })
 
                 holder.itemView.setOnClickListener {
-                    replaceFragment(SingleChatFragment(model))
+                    replaceFragment(SingleChatFragment.newInstance(model.id))   // ← ИСПРАВЛЕНО
                 }
             }
         }
@@ -115,24 +116,22 @@ class ContactsFragment : BaseFragment(R.layout.fragment_contacts) {
                 REF_DATABASE_ROOT.child(NODE_USERS).child(model.id)
                     .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
                         val user = snapshot.getValue(UserModel::class.java) ?: return@AppValueEventListener
-
                         holder.name.text = if (user.fullname.isNotEmpty()) user.fullname else user.username
                         holder.status.text = user.getStateText()
                         holder.photo.downloadAndSetImage(user.photoUrl)
                     })
 
                 holder.itemView.setOnClickListener {
-                    // Добавляем/обновляем в контактах
-                    saveToMainList(model.id, TYPE_CHAT)
-
-                    // Открываем чат
-                    replaceFragment(SingleChatFragment(model))
-
-                    // Закрываем поиск
-                    searchView?.setQuery("", false)
-                    searchView?.clearFocus()
-
-                    // УБРАЛИ initRecycleView() — именно он вызывал краш
+                    try {
+                        saveToMainList(model.id, TYPE_CHAT)
+                        replaceFragment(SingleChatFragment.newInstance(model.id))   // ← ИСПРАВЛЕНО
+                        searchView?.setQuery("", false)
+                        searchView?.clearFocus()
+                        initRecycleView()
+                    } catch (e: Exception) {
+                        Log.e("ContactsFragment", "Ошибка при открытии чата из поиска", e)
+                        showToast("Ошибка при открытии чата")
+                    }
                 }
             }
         }

@@ -15,21 +15,24 @@ class AppViewFactory {
                     from = message.from,
                     timeStamp = message.timeStamp.toString(),
                     fileUrl = message.fileUrl,
-                    text = message.text
+                    text = message.text,
+                    replyTo = message.replyTo
                 )
 
                 TYPE_MESSAGE_IMAGE -> ViewImageMessage(
                     id = message.id,
                     from = message.from,
                     timeStamp = message.timeStamp.toString(),
-                    fileUrl = message.fileUrl
+                    fileUrl = message.fileUrl,
+                    replyTo = message.replyTo
                 )
 
                 TYPE_MESSAGE_VOICE -> ViewVoiceMessage(
                     id = message.id,
                     from = message.from,
                     timeStamp = message.timeStamp.toString(),
-                    fileUrl = message.fileUrl
+                    fileUrl = message.fileUrl,
+                    replyTo = message.replyTo
                 )
 
                 TYPE_MESSAGE_FILE -> ViewFileMessage(
@@ -37,7 +40,16 @@ class AppViewFactory {
                     from = message.from,
                     timeStamp = message.timeStamp.toString(),
                     fileUrl = message.fileUrl,
-                    text = message.text
+                    text = message.text,
+                    replyTo = message.replyTo
+                )
+
+                TYPE_MESSAGE_VIDEO -> ViewVideoMessage(
+                    id = message.id,
+                    from = message.from,
+                    timeStamp = message.timeStamp.toString(),
+                    fileUrl = message.fileUrl,
+                    duration = message.duration ?: "0:15"
                 )
 
                 else -> {
@@ -47,7 +59,8 @@ class AppViewFactory {
                         from = message.from,
                         timeStamp = message.timeStamp.toString(),
                         fileUrl = message.fileUrl,
-                        text = message.text
+                        text = message.text,
+                        replyTo = message.replyTo
                     )
                 }
             }

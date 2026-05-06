@@ -1,9 +1,12 @@
 package com.example.niksey.ui.screens.private_messages
 
+import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.ui.fragments.message_recycler_view.view_holders.AppHolderFactory
+import com.example.niksey.ui.fragments.message_recycler_view.view_holders.HolderVideoMessage
 import com.example.niksey.ui.fragments.message_recycler_view.view_holders.MessageHolder
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 
@@ -14,44 +17,54 @@ class SingleChatAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private val mListHolders = mutableListOf<MessageHolder>()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        return AppHolderFactory.getHolder(parent, viewType)
+        return try {
+            android.util.Log.d("SingleChatAdapter", "Создаём холдер для viewType = $viewType")
+            AppHolderFactory.getHolder(parent, viewType)
+        } catch (e: Exception) {
+            android.util.Log.e("SingleChatAdapter", "КРАШ при создании холдера viewType=$viewType", e)
+            when (viewType) {
+                4 -> HolderVideoMessage(LayoutInflater.from(parent.context).inflate(com.example.niksey.R.layout.message_item_video, parent, false))
+                else -> object : RecyclerView.ViewHolder(View(parent.context)) {}
+            }
+        }
     }
 
     override fun getItemViewType(position: Int): Int {
-        return mListMessagesCache[position].getTypeView()
+        return if (position in mListMessagesCache.indices) mListMessagesCache[position].getTypeView() else -1
     }
 
     override fun getItemCount(): Int = mListMessagesCache.size
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        (holder as MessageHolder).drawMessage(mListMessagesCache[position])
+        if (holder is MessageHolder && position in mListMessagesCache.indices) {
+            holder.drawMessage(mListMessagesCache[position])
+        }
     }
 
     override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {
         super.onViewAttachedToWindow(holder)
-        val messageHolder = holder as MessageHolder
-        val position = holder.adapterPosition
-        if (position != RecyclerView.NO_POSITION) {
-            messageHolder.onAttach(mListMessagesCache[position])
-            mListHolders.add(messageHolder)
+        if (holder is MessageHolder) {
+            val pos = holder.adapterPosition
+            if (pos != RecyclerView.NO_POSITION && pos in mListMessagesCache.indices) {
+                holder.onAttach(mListMessagesCache[pos])
+                mListHolders.add(holder)
+            }
         }
     }
 
     override fun onViewDetachedFromWindow(holder: RecyclerView.ViewHolder) {
         super.onViewDetachedFromWindow(holder)
-        val messageHolder = holder as MessageHolder
-        messageHolder.onDetach()
-        mListHolders.remove(messageHolder)
+        if (holder is MessageHolder) {
+            holder.onDetach()
+            mListHolders.remove(holder)
+        }
     }
 
-    // ==================== НОВЫЙ МЕТОД submitList ====================
     fun submitList(newList: List<MessageView>) {
-        val diffCallback = DiffUtilCallback(mListMessagesCache, newList)
-        val diffResult = DiffUtil.calculateDiff(diffCallback)
-
+        val diff = DiffUtil.calculateDiff(DiffUtilCallback(mListMessagesCache, newList))
         mListMessagesCache.clear()
         mListMessagesCache.addAll(newList)
-        diffResult.dispatchUpdatesTo(this)
+        diff.dispatchUpdatesTo(this)
     }
 
     fun onDestroy() {
@@ -60,20 +73,12 @@ class SingleChatAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 }
 
-// ==================== DiffUtil для оптимизации ====================
 private class DiffUtilCallback(
     private val oldList: List<MessageView>,
     private val newList: List<MessageView>
 ) : DiffUtil.Callback() {
-
-    override fun getOldListSize(): Int = oldList.size
-    override fun getNewListSize(): Int = newList.size
-
-    override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-        return oldList[oldItemPosition].id == newList[newItemPosition].id
-    }
-
-    override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-        return oldList[oldItemPosition].text == newList[newItemPosition].text
-    }
+    override fun getOldListSize() = oldList.size
+    override fun getNewListSize() = newList.size
+    override fun areItemsTheSame(old: Int, new: Int) = oldList[old].id == newList[new].id
+    override fun areContentsTheSame(old: Int, new: Int) = oldList[old].text == newList[new].text
 }

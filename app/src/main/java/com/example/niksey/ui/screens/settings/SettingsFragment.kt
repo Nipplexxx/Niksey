@@ -3,9 +3,12 @@
 package com.example.niksey.ui.screens.settings
 
 import android.os.Bundle
+import android.util.Log
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
+import android.view.View
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -16,22 +19,10 @@ import com.canhub.cropper.CropImageView
 import com.example.niksey.R
 import com.example.niksey.database.*
 import com.example.niksey.ui.screens.base_fragment.BaseFragment
-import com.example.niksey.utillits.APP_ACTIVITY
-import com.example.niksey.utillits.AUTH
-import com.example.niksey.utillits.AppStates
-import com.example.niksey.utillits.CURRENT_UID
-import com.example.niksey.utillits.ChatEncryptionManager
-import com.example.niksey.utillits.FOLDER_PROFILE_IMAGE
-import com.example.niksey.utillits.REF_STORAGE_ROOT
-import com.example.niksey.utillits.USER
-import com.example.niksey.utillits.downloadAndSetImage
-import com.example.niksey.utillits.replaceFragment
-import com.example.niksey.utillits.restartActivity
-import com.example.niksey.utillits.showToast
+import com.example.niksey.utillits.*
 import com.mikepenz.materialize.util.KeyboardUtil
 import de.hdodenhof.circleimageview.CircleImageView
 
-@Suppress("DEPRECATION")
 class SettingsFragment : BaseFragment(R.layout.fragment_settings) {
 
     private lateinit var cropImageLauncher: ActivityResultLauncher<CropImageContractOptions>
@@ -45,13 +36,12 @@ class SettingsFragment : BaseFragment(R.layout.fragment_settings) {
                 val path = REF_STORAGE_ROOT.child(FOLDER_PROFILE_IMAGE).child(CURRENT_UID)
 
                 putImageToStorage(uri, path) {
-                    getUrlFromStorage(path) {
-                        putUrlToDatabase(it) {
+                    getUrlFromStorage(path) { url ->
+                        putUrlToDatabase(url) {
                             view?.findViewById<CircleImageView>(R.id.settings_user_photo)
-                                ?.downloadAndSetImage(it)   // ← исправлено
-
+                                ?.downloadAndSetImage(url)
                             showToast(getString(R.string.toast_data_update))
-                            USER.photoUrl = it
+                            USER.photoUrl = url
                         }
                     }
                 }
@@ -63,67 +53,79 @@ class SettingsFragment : BaseFragment(R.layout.fragment_settings) {
 
     override fun onResume() {
         super.onResume()
-        APP_ACTIVITY.title = getString(R.string.personal_account)
-        setHasOptionsMenu(true)
-        initFields()
-        KeyboardUtil.hideKeyboard(activity)
+        try {
+            APP_ACTIVITY.title = getString(R.string.personal_account)
+            setHasOptionsMenu(true)
+            initFieldsSafe()
+            KeyboardUtil.hideKeyboard(activity)
+        } catch (e: Exception) {
+            Log.e("SettingsFragment", "КРАШ В onResume", e)
+            showToast("Критическая ошибка:\n${e.javaClass.simpleName}\n${e.message}")
+        }
     }
 
-    private fun initFields() {
-        // Заполняем данные
-        view?.findViewById<TextView>(R.id.settings_bio)?.text = USER.bio
-        view?.findViewById<TextView>(R.id.settings_full_name)?.text = USER.fullname
-        view?.findViewById<TextView>(R.id.settings_phone_number)?.text = USER.phone
-        view?.findViewById<TextView>(R.id.settings_status)?.text =
-            if (AppStates.getCurrentState() == AppStates.ONLINE) "Online" else "Offline"
-        view?.findViewById<TextView>(R.id.settings_username)?.text = USER.username
-        view?.findViewById<TextView>(R.id.settings_email)?.text = maskString(USER.email)
-        view?.findViewById<TextView>(R.id.settings_password)?.text = maskString(USER.password)
+    private fun initFieldsSafe() {
+        try {
+            if (CURRENT_UID.isNullOrBlank() || CURRENT_UID == "null") {
+                showToast("Пользователь не авторизован")
+                return
+            }
 
-        // Кликеры
-        view?.findViewById<ConstraintLayout>(R.id.settings_btn_change_username)
-            ?.setOnClickListener { replaceFragment(ChangeUsernameFragment()) }
+            if (USER.id.isNullOrBlank()) {
+                showToast("Данные пользователя загружаются...")
+                return
+            }
 
-        view?.findViewById<ConstraintLayout>(R.id.settings_btn_change_bio)
-            ?.setOnClickListener { replaceFragment(ChangeBioFragment()) }
+            (view?.findViewById<View>(R.id.settings_full_name) as? TextView)?.text = USER.fullname ?: "Не указано"
+            (view?.findViewById<View>(R.id.settings_username) as? TextView)?.text = USER.username?.takeIf { it.isNotBlank() } ?: CURRENT_UID
+            (view?.findViewById<View>(R.id.settings_bio) as? TextView)?.text = USER.bio ?: "Не указано"
+            (view?.findViewById<View>(R.id.settings_phone_number) as? TextView)?.text = USER.phone ?: "Не указан"
+            (view?.findViewById<View>(R.id.settings_email) as? TextView)?.text = maskString(USER.email)
+            (view?.findViewById<View>(R.id.settings_status) as? TextView)?.text =
+                if (AppStates.getCurrentState() == AppStates.ONLINE) "Онлайн" else "Офлайн"
 
-        view?.findViewById<CircleImageView>(R.id.settings_shange_photo)
-            ?.setOnClickListener { changePhotoUser() }
+            (view?.findViewById<View>(R.id.settings_user_photo) as? CircleImageView)
+                ?.downloadAndSetImage(USER.photoUrl ?: "")
 
-        view?.findViewById<CircleImageView>(R.id.settings_user_photo)
-            ?.downloadAndSetImage(USER.photoUrl)   // ← исправлено
+            (view?.findViewById<View>(R.id.settings_btn_change_username) as? ConstraintLayout)
+                ?.setOnClickListener { replaceFragment(ChangeUsernameFragment()) }
 
-        view?.findViewById<ConstraintLayout>(R.id.settings_btn_change_email)
-            ?.setOnClickListener { replaceFragment(ChangeEmailFragment()) }
+            (view?.findViewById<View>(R.id.settings_btn_change_bio) as? ConstraintLayout)
+                ?.setOnClickListener { replaceFragment(ChangeBioFragment()) }
 
-        view?.findViewById<ConstraintLayout>(R.id.settings_btn_change_password)
-            ?.setOnClickListener { replaceFragment(ChangePasswordFragment()) }
+            (view?.findViewById<View>(R.id.settings_shange_photo) as? ImageView)
+                ?.setOnClickListener { changePhotoUser() }
 
-        view?.findViewById<ConstraintLayout>(R.id.settings_btn_change_number_phone)
-            ?.setOnClickListener { replaceFragment(ChangePhoneFragment()) }
+            (view?.findViewById<View>(R.id.settings_btn_change_email) as? ConstraintLayout)
+                ?.setOnClickListener { replaceFragment(ChangeEmailFragment()) }
+
+            (view?.findViewById<View>(R.id.settings_btn_change_number_phone) as? ConstraintLayout)
+                ?.setOnClickListener { replaceFragment(ChangePhoneFragment()) }
+
+        } catch (e: Exception) {
+            Log.e("SettingsFragment", "ОШИБКА", e)
+            showToast("Ошибка:\n${e.javaClass.simpleName}\n${e.message}")
+        }
+    }
+
+    private fun maskString(input: String?): String {
+        val text = input?.trim() ?: return "Не указано"
+        return if (text.length > 3) {
+            text.substring(0, 3) + "*".repeat(text.length - 3)
+        } else text
     }
 
     private fun changePhotoUser() {
         val options = CropImageContractOptions(
             uri = null,
             cropImageOptions = CropImageOptions(
-                aspectRatioX = 1,
-                aspectRatioY = 1,
+                aspectRatioX = 1, aspectRatioY = 1,
                 fixAspectRatio = true,
-                outputRequestWidth = 250,
-                outputRequestHeight = 250,
+                outputRequestWidth = 250, outputRequestHeight = 250,
                 cropShape = CropImageView.CropShape.OVAL
             )
         )
         cropImageLauncher.launch(options)
-    }
-
-    private fun maskString(input: String): String {
-        return if (input.length > 3) {
-            input.substring(0, 3) + "*".repeat(input.length - 3)
-        } else {
-            input
-        }
     }
 
     @Deprecated("Deprecated in Java")
@@ -135,24 +137,30 @@ class SettingsFragment : BaseFragment(R.layout.fragment_settings) {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.settings_menu_delete_photo -> {
-                removePhotoUser(USER.id) {
+                removePhotoUser {
                     showToast(getString(R.string.remove_photo_user))
-                    restartActivity()
+
+                    view?.findViewById<de.hdodenhof.circleimageview.CircleImageView>(R.id.settings_user_photo)
+                        ?.setImageResource(R.drawable.ic_person)
+
+                    USER.photoUrl = ""
                 }
             }
-
             R.id.settings_menu_clear_cache -> {
-                ChatEncryptionManager.clearAndDeleteCache()
-                showToast("Кэш шифрования очищен")
+                try {
+                    ChatEncryptionManager.clearAndDeleteCache()
+                    showToast("Кэш шифрования очищен")
+                } catch (e: Exception) {
+                    Log.e("SettingsFragment", "Ошибка очистки кэша", e)
+                    showToast("Ошибка очистки кэша:\n${e.message}")
+                }
             }
-
             R.id.settings_menu_exit -> {
                 AppStates.updateState(AppStates.OFFLINE)
                 AUTH.signOut()
                 ChatEncryptionManager.clearAndDeleteCache()
                 restartActivity()
             }
-
             R.id.settings_menu_change_name -> {
                 replaceFragment(ChangeNameFragment())
             }

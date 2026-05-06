@@ -5,20 +5,21 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground"
+    android:background="@color/background_dark"
     android:windowSoftInputMode="adjustResize"
     tools:context=".ui.screens.settings.ChangeBioFragment">
 
     <!-- Glassmorphic Card -->
     <com.google.android.material.card.MaterialCardView
+        style="@style/GlassCard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        app:cardBackgroundColor="@color/ghost_card_bg"
+        android:layout_margin="24dp"
+        app:cardBackgroundColor="@color/glass_card_bg"
         app:cardCornerRadius="28dp"
         app:cardElevation="16dp"
-        app:strokeColor="@color/purple_300"
+        app:strokeColor="@color/accent_purple"
         app:strokeWidth="1.5dp"
-        android:layout_margin="24dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -35,24 +36,24 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/chivo"
-                android:text="О себе"
+                android:text="@string/about_me"
                 android:textSize="24sp"
                 android:textStyle="bold"
-                android:textColor="@color/purple_300"
+                android:textColor="@color/accent_purple"
                 android:layout_marginBottom="20dp" />
 
             <!-- Поле ввода -->
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Напишите о себе..."
+                android:hint="@string/write_about_yourself"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                app:boxStrokeColor="@color/purple_300"
+                app:boxStrokeColor="@color/accent_purple"
                 app:boxCornerRadiusTopStart="16dp"
                 app:boxCornerRadiusTopEnd="16dp"
                 app:boxCornerRadiusBottomStart="16dp"
                 app:boxCornerRadiusBottomEnd="16dp"
-                app:hintTextColor="@color/purple_300"
+                app:hintTextColor="@color/accent_purple"
                 app:boxStrokeWidth="2dp">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -60,8 +61,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/chivo"
-                    android:textColor="@color/white_100"
-                    android:textColorHint="@color/purple_0"
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_secondary"
                     android:inputType="textMultiLine|textCapSentences"
                     android:maxLines="6"
                     android:gravity="top|start"

@@ -2,66 +2,55 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="?attr/actionBarSize"
-    android:background="@color/black_100"
-    android:windowSoftInputMode="adjustResize"
-    android:elevation="8dp">
+    android:layout_height="55dp"
+    android:background="@color/background_dark"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp">
 
-    <!-- Glassmorphic эффект (тонкая обводка) -->
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:cardBackgroundColor="@color/ghost_card_bg"
-        app:cardCornerRadius="0dp"
-        app:cardElevation="0dp"
-        app:strokeWidth="0dp">
+    <!-- Аватарка -->
+    <de.hdodenhof.circleimageview.CircleImageView
+        android:id="@+id/toolbar_chat_image"
+        android:layout_width="45dp"
+        android:layout_height="45dp"
+        app:civ_border_color="@color/accent_purple"
+        app:civ_border_width="1.5dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:paddingHorizontal="16dp">
+    <!-- Имя + Статус -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@id/toolbar_chat_image"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-            <!-- Аватарка -->
-            <de.hdodenhof.circleimageview.CircleImageView
-                android:id="@+id/toolbar_chat_image"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:src="@drawable/ic_person"
-                app:civ_border_width="2.5dp"
-                app:civ_border_color="@color/purple_300"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent" />
+        <TextView
+            android:id="@+id/toolbar_chat_fullname"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/chivo"
+            android:textColor="@color/text_primary"
+            android:textSize="16.5sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
 
-            <!-- Имя -->
-            <TextView
-                android:id="@+id/toolbar_chat_fullname"
-                style="@style/normalText"
-                android:fontFamily="@font/chivo"
-                android:textColor="@color/black_10"
-                android:textSize="17.5sp"
-                android:textStyle="bold"
-                app:layout_constraintStart_toEndOf="@id/toolbar_chat_image"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toTopOf="@id/toolbar_chat_status"
-                android:layout_marginStart="14dp"
-                tools:text="ghost_niksey" />
+        <TextView
+            android:id="@+id/toolbar_chat_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/chivo"
+            android:textColor="@color/text_secondary"
+            android:textSize="12.5sp"
+            android:maxLines="1"
+            android:ellipsize="end" />
 
-            <!-- Статус -->
-            <TextView
-                android:id="@+id/toolbar_chat_status"
-                style="@style/smallText"
-                android:fontFamily="@font/chivo"
-                android:textColor="@color/text_secondary"
-                android:textSize="13.5sp"
-                app:layout_constraintStart_toEndOf="@id/toolbar_chat_image"
-                app:layout_constraintTop_toBottomOf="@id/toolbar_chat_fullname"
-                android:layout_marginStart="14dp"
-                tools:text="в сети" />
-
-        </androidx.constraintlayout.widget.ConstraintLayout>
-    </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

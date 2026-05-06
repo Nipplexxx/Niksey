@@ -11,6 +11,8 @@ interface MessageView {
     val timeStamp: String
     val fileUrl: String
     val text: String
+    val replyTo: String?
+    val duration: String?
     var decryptedText: String  // Кэш расшифрованного текста (для HolderTextMessage)
 
     /** Возвращает тип сообщения для RecyclerView (используется в getItemViewType) */
@@ -24,5 +26,6 @@ interface MessageView {
         const val MESSAGE_IMAGE = 0
         const val MESSAGE_VOICE = 2
         const val MESSAGE_FILE = 3
+        const val MESSAGE_VIDEO = 4
     }
 }

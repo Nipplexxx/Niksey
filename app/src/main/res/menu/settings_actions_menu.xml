@@ -8,29 +8,33 @@
         android:title="">
 
         <menu>
+            <!-- Изменить имя -->
             <item
                 android:id="@+id/settings_menu_change_name"
-                android:title="@string/settings_menu_change_name"
-                android:icon="@drawable/img_edit"
-                app:showAsAction="never"/>
+                android:title="@string/change_name"
+                android:icon="@drawable/ic_edit"
+                app:showAsAction="never" />
 
+            <!-- Удалить аватар -->
             <item
                 android:id="@+id/settings_menu_delete_photo"
-                android:title="@string/settings_menu_delete_photo"
+                android:title="@string/delete_avatar"
                 android:icon="@drawable/img_delete"
-                app:showAsAction="never"/>
+                app:showAsAction="never" />
 
+            <!-- Очистить кэш шифрования -->
             <item
                 android:id="@+id/settings_menu_clear_cache"
-                android:title="Очистить кэш шифрования"
+                android:title="@string/clear_encryption_cache"
                 android:icon="@drawable/img_delete"
-                app:showAsAction="never"/>
+                app:showAsAction="never" />
 
+            <!-- Выйти -->
             <item
                 android:id="@+id/settings_menu_exit"
-                android:title="@string/settings_menu_exit"
+                android:title="@string/exit"
                 android:icon="@drawable/img_exit"
-                app:showAsAction="never"/>
+                app:showAsAction="never" />
         </menu>
     </item>
 </menu>

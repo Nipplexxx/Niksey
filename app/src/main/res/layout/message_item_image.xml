@@ -1,77 +1,133 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingHorizontal="14dp"
-    android:paddingVertical="8dp">
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="6dp">
 
-    <!-- ==================== ПОЛУЧЕННОЕ ИЗОБРАЖЕНИЕ ==================== -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/bloc_received_image"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:cardBackgroundColor="#1C1C1E"
-        app:cardCornerRadius="20dp"
-        app:cardElevation="6dp"
-        app:strokeColor="#6C51F7"
-        app:strokeWidth="1.5dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <ImageView
-            android:id="@+id/chat_received_image"
-            android:layout_width="200dp"
-            android:layout_height="200dp"
-            android:scaleType="centerCrop"
-            android:adjustViewBounds="true" />
-
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- Время полученного -->
-    <TextView
-        android:id="@+id/chat_received_image_time"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/chivo"
-        android:textColor="@color/text_secondary"
-        android:textSize="12sp"
-        app:layout_constraintStart_toStartOf="@id/bloc_received_image"
-        app:layout_constraintTop_toBottomOf="@id/bloc_received_image"
-        android:layout_marginTop="5dp" />
-
-    <!-- ==================== ОТПРАВЛЕННОЕ ИЗОБРАЖЕНИЕ ==================== -->
+    <!-- ==================== ИСХОДЯЩЕЕ ИЗОБРАЖЕНИЕ ==================== -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/bloc_user_image"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:cardBackgroundColor="#6C51F7"
-        app:cardCornerRadius="20dp"
-        app:cardElevation="6dp"
+        android:maxWidth="240dp"
+        app:cardBackgroundColor="@color/glass_card_bg"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="4dp"
+        app:cardPreventCornerOverlap="false"
+        app:strokeColor="@color/accent_purple"
+        app:strokeWidth="1.5dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <ImageView
-            android:id="@+id/chat_user_image"
-            android:layout_width="200dp"
-            android:layout_height="200dp"
-            android:scaleType="centerCrop"
-            android:adjustViewBounds="true" />
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="220dp"
+            android:layout_height="220dp">
 
+            <!-- Превью ответа -->
+            <TextView
+                android:id="@+id/user_reply_preview"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                android:background="#33000000"
+                android:fontFamily="@font/chivo"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:textColor="#CCCCCC"
+                android:textSize="12sp"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <!-- Картинка заполняет весь пузырек с закруглениями -->
+            <ImageView
+                android:id="@+id/chat_user_image"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:scaleType="centerCrop"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Время отправленного -->
+    <!-- Время исходящего -->
     <TextView
         android:id="@+id/chat_user_image_time"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
         android:fontFamily="@font/chivo"
-        android:textColor="@color/text_secondary"
-        android:textSize="12sp"
+        android:textColor="@color/text_hint"
+        android:textSize="11sp"
         app:layout_constraintEnd_toEndOf="@id/bloc_user_image"
-        app:layout_constraintTop_toBottomOf="@id/bloc_user_image"
-        android:layout_marginTop="5dp" />
+        app:layout_constraintTop_toBottomOf="@id/bloc_user_image" />
+
+    <!-- ==================== ВХОДЯЩЕЕ ИЗОБРАЖЕНИЕ ==================== -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/bloc_received_image"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:maxWidth="240dp"
+        app:cardBackgroundColor="@color/glass_card_bg"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="4dp"
+        app:cardPreventCornerOverlap="false"
+        app:strokeColor="@color/glass_border"
+        app:strokeWidth="1dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="220dp"
+            android:layout_height="220dp">
+
+            <!-- Превью ответа -->
+            <TextView
+                android:id="@+id/received_reply_preview"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                android:background="#33000000"
+                android:fontFamily="@font/chivo"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:textColor="#CCCCCC"
+                android:textSize="12sp"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <!-- Картинка заполняет весь пузырек с закруглениями -->
+            <ImageView
+                android:id="@+id/chat_received_image"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:scaleType="centerCrop"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Время входящего -->
+    <TextView
+        android:id="@+id/chat_received_image_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:fontFamily="@font/chivo"
+        android:textColor="@color/text_hint"
+        android:textSize="11sp"
+        app:layout_constraintStart_toStartOf="@id/bloc_received_image"
+        app:layout_constraintTop_toBottomOf="@id/bloc_received_image" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -53,8 +53,10 @@ class MainListAdapter : RecyclerView.Adapter<MainListAdapter.MainListHolder>() {
                         type == "text" ||
                         type == TYPE_MESSAGE_VOICE.lowercase() ||
                         type == TYPE_MESSAGE_IMAGE.lowercase() ||
-                        type == TYPE_MESSAGE_FILE.lowercase() -> {
-                    replaceFragment(SingleChatFragment(item))
+                        type == TYPE_MESSAGE_FILE.lowercase() ||
+                        type == TYPE_MESSAGE_VIDEO.lowercase() ||           // ← ДОБАВИЛИ
+                        type == "video" -> {                               // ← ДОБАВИЛИ
+                    replaceFragment(SingleChatFragment.newInstance(item.id))
                 }
                 type == TYPE_GROUP.lowercase() -> {
                     replaceFragment(GroupChatFragment(item))
@@ -66,7 +68,6 @@ class MainListAdapter : RecyclerView.Adapter<MainListAdapter.MainListHolder>() {
         }
     }
 
-    // Полностью заменяет список (для сортировки и поиска)
     fun submitList(newList: List<CommonModel>) {
         listItems.clear()
         listItems.addAll(newList)

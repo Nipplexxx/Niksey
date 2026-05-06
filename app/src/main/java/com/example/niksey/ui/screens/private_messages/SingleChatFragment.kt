@@ -1,13 +1,17 @@
 @file:Suppress("UNCHECKED_CAST", "DEPRECATION")
+
 package com.example.niksey.ui.screens.private_messages
 
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
@@ -19,10 +23,10 @@ import android.widget.TextView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.canhub.cropper.CropImageContract
 import com.canhub.cropper.CropImageContractOptions
 import com.canhub.cropper.CropImageOptions
@@ -30,6 +34,7 @@ import com.canhub.cropper.CropImageView
 import com.example.niksey.R
 import com.example.niksey.database.clearChat
 import com.example.niksey.database.deleteChat
+import com.example.niksey.database.getCommonModel
 import com.example.niksey.database.getMessageKey
 import com.example.niksey.database.getUserModel
 import com.example.niksey.database.removeChat
@@ -39,77 +44,100 @@ import com.example.niksey.models.UserModel
 import com.example.niksey.ui.screens.base_fragment.BaseFragment
 import com.example.niksey.ui.screens.main_list.MainListFragment
 import com.example.niksey.ui.viewmodels.ChatViewModel
-import com.example.niksey.utillits.APP_ACTIVITY
-import com.example.niksey.utillits.AppTextWatcher
-import com.example.niksey.utillits.AppValueEventListener
-import com.example.niksey.utillits.AppVoiceRecorder
-import com.example.niksey.utillits.ChatEncryptionManager
-import com.example.niksey.utillits.NODE_USERS
-import com.example.niksey.utillits.RECORD_AUDIO
-import com.example.niksey.utillits.REF_DATABASE_ROOT
-import com.example.niksey.utillits.TYPE_MESSAGE_FILE
-import com.example.niksey.utillits.TYPE_MESSAGE_IMAGE
-import com.example.niksey.utillits.TYPE_MESSAGE_VOICE
-import com.example.niksey.utillits.checkPermission
-import com.example.niksey.utillits.downloadAndSetImage
-import com.example.niksey.utillits.getFilenameFromUri
-import com.example.niksey.utillits.replaceFragment
-import com.example.niksey.utillits.showToast
-import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.example.niksey.utillits.*
 import com.google.firebase.database.DatabaseReference
 import de.hdodenhof.circleimageview.CircleImageView
+import java.io.File
 
-class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layout.fragment_chat) {
+class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
 
     private val viewModel: ChatViewModel by viewModels()
+    private var contactId: String = ""
+    private var contact: CommonModel? = null
 
-    private lateinit var mChatInputMessage: EditText
-    private lateinit var mChatBtnSendMessage: ImageView
-    private lateinit var mChatBtnAttach: ImageView
-    private lateinit var mChatBtnVoice: ImageView
+    private var mChatInputMessage: EditText? = null
+    private var mChatBtnSendMessage: ImageView? = null
+    private var mChatBtnAttach: ImageView? = null
+    private var mChatBtnVoice: ImageView? = null
+    private var mRecyclerView: RecyclerView? = null
 
-    private lateinit var mBtnAttachFile: View
-    private lateinit var mBtnAttachImage: View
-    private lateinit var mBtnAttachClose: View
-
-    private lateinit var mListenerInfoToolbar: AppValueEventListener
-    private lateinit var mReceivingUser: UserModel
+    private var mListenerInfoToolbar: AppValueEventListener? = null
+    private var mReceivingUser: UserModel? = null
     private var mToolbarInfo: View? = null
-    private lateinit var mRefUser: DatabaseReference
-    private lateinit var mAdapter: SingleChatAdapter
-    private lateinit var mRecyclerView: RecyclerView
-    private lateinit var mSwipeRefreshLayout: SwipeRefreshLayout
+    private var mRefUser: DatabaseReference? = null
+    private var mAdapter: SingleChatAdapter? = null
     private lateinit var mLayoutManager: LinearLayoutManager
     private lateinit var mAppVoiceRecorder: AppVoiceRecorder
-    private lateinit var mBottomSheetBehavior: BottomSheetBehavior<*>
 
-    private lateinit var cropImageLauncher: ActivityResultLauncher<CropImageContractOptions>
     private lateinit var pickFileLauncher: ActivityResultLauncher<Intent>
+    private lateinit var pickImageLauncher: ActivityResultLauncher<String>
+    private lateinit var takePhotoLauncher: ActivityResultLauncher<Uri>
+    private var pendingPhotoUri: Uri? = null
+
+    private val handler = Handler(Looper.getMainLooper())
+
+    // ==================== REPLY SYSTEM ====================
+    private var replyingToMessageId: String? = null
+    private var replyingToText: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true)
+        contactId = arguments?.getString("contact_id") ?: ""
+        initLaunchers()
+    }
 
-        cropImageLauncher = registerForActivityResult(CropImageContract()) { result ->
-            if (result.isSuccessful) {
-                val uri = result.uriContent ?: return@registerForActivityResult
-                val messageKey = getMessageKey(contact.id)
-                uploadFileToStorage(uri, messageKey, contact.id, TYPE_MESSAGE_IMAGE) {
+    private fun initLaunchers() {
+        pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            uri?.let {
+                uploadFileToStorage(it, getMessageKey(contactId), contactId, TYPE_MESSAGE_IMAGE) {
                     viewModel.reloadMessages()
                 }
+            }
+        }
+
+        takePhotoLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success && pendingPhotoUri != null) {
+                uploadFileToStorage(pendingPhotoUri!!, getMessageKey(contactId), contactId, TYPE_MESSAGE_IMAGE) {
+                    viewModel.reloadMessages()
+                }
+                pendingPhotoUri = null
             } else {
-                showToast(getString(R.string.error_cropping_image))
+                showToast("Не удалось сделать снимок")
             }
         }
 
         pickFileLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 val uri = result.data?.data ?: return@registerForActivityResult
-                val messageKey = getMessageKey(contact.id)
                 val filename = getFilenameFromUri(uri)
-                uploadFileToStorage(uri, messageKey, contact.id, TYPE_MESSAGE_FILE, filename) {
+                uploadFileToStorage(uri, getMessageKey(contactId), contactId, TYPE_MESSAGE_FILE, filename) {
                     viewModel.reloadMessages()
                 }
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (contactId.isBlank()) {
+            showToast("Ошибка: контакт не найден")
+            replaceFragment(MainListFragment())
+            return
+        }
+
+        ChatEncryptionManager.currentChatPartnerId = contactId
+        ChatEncryptionManager.getOrCreateChatKeyAsync(contactId) { }
+
+        try {
+            initViews()
+            initListeners()
+            initRecyclerView()
+            initChat()
+        } catch (e: Exception) {
+            Log.e("SingleChatFragment", "Критическая ошибка", e)
+            showToast("Ошибка открытия чата")
+            replaceFragment(MainListFragment())
         }
     }
 
@@ -119,217 +147,264 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
         mChatBtnSendMessage = root.findViewById(R.id.chat_btn_send_message)
         mChatBtnAttach = root.findViewById(R.id.chat_btn_attach)
         mChatBtnVoice = root.findViewById(R.id.chat_btn_voice)
-
-        mBtnAttachFile = root.findViewById(R.id.btn_attach_file)
-        mBtnAttachImage = root.findViewById(R.id.btn_attach_image)
-        mBtnAttachClose = root.findViewById(R.id.btn_attach_to_close)
-
-        mSwipeRefreshLayout = root.findViewById(R.id.chat_swipe_refresh)
         mRecyclerView = root.findViewById(R.id.chat_recycle_view)
     }
 
-    @SuppressLint("ClickableViewAccessibility")
-    private fun initFields() {
-        setHasOptionsMenu(true)
+    private fun initListeners() {
+        mChatBtnAttach?.setOnClickListener { attach() }
 
-        mBottomSheetBehavior = BottomSheetBehavior.from(requireView().findViewById(R.id.bottom_sheet_choice))
-        mBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
-
-        mAppVoiceRecorder = AppVoiceRecorder()
-        mLayoutManager = LinearLayoutManager(requireContext())
-
-        mChatInputMessage.addTextChangedListener(AppTextWatcher {
-            val text = mChatInputMessage.text.toString()
-            val isEmptyOrRecording = text.isEmpty() || text == getString(R.string.record)
-
-            mChatBtnSendMessage.visibility = if (isEmptyOrRecording) View.GONE else View.VISIBLE
-            mChatBtnAttach.visibility = if (isEmptyOrRecording) View.VISIBLE else View.GONE
-            mChatBtnVoice.visibility = if (isEmptyOrRecording) View.VISIBLE else View.GONE
-        })
-
-        mChatBtnAttach.setOnClickListener { attach() }
-
-        mChatBtnSendMessage.setOnClickListener {
-            val message = mChatInputMessage.text.toString().trim()
+        mChatBtnSendMessage?.setOnClickListener {
+            val message = mChatInputMessage?.text?.toString()?.trim() ?: ""
             if (message.isNotEmpty()) {
-                viewModel.sendMessage(message) {
-                    mChatInputMessage.setText("")
+                viewModel.sendMessage(message, replyingToMessageId) {
+                    mChatInputMessage?.setText("")
+                    cancelReply()
                 }
             }
         }
 
-        mChatBtnVoice.setOnTouchListener { _, event ->
-            if (checkPermission(RECORD_AUDIO)) {
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        mChatInputMessage.setText(getString(R.string.record))
-                        mChatBtnVoice.setColorFilter(ContextCompat.getColor(requireContext(), R.color.purple_200))
-                        val messageKey = getMessageKey(contact.id)
-                        mAppVoiceRecorder.startRecord(messageKey)
+        mChatInputMessage?.addTextChangedListener(AppTextWatcher {
+            val text = mChatInputMessage?.text?.toString() ?: ""
+            val isEmpty = text.isEmpty() || text == getString(R.string.record)
+            mChatBtnSendMessage?.visibility = if (isEmpty) View.GONE else View.VISIBLE
+            mChatBtnAttach?.visibility = if (isEmpty) View.VISIBLE else View.GONE
+            mChatBtnVoice?.visibility = if (isEmpty) View.VISIBLE else View.GONE
+        })
+
+        setupVoiceAndVideoRecording()
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupVoiceAndVideoRecording() {
+        mAppVoiceRecorder = AppVoiceRecorder()
+        var isRecording = false
+        var isVideoMode = false
+        var initialY = 0f
+        val initialTranslationY = mChatBtnVoice?.translationY ?: 0f
+
+        mChatBtnVoice?.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (checkPermission(RECORD_AUDIO)) {
+                        isRecording = true
+                        isVideoMode = false
+                        initialY = event.rawY
+
+                        mChatBtnVoice?.animate()
+                            ?.translationY(-120f)
+                            ?.scaleX(1.3f)
+                            ?.scaleY(1.3f)
+                            ?.setDuration(100)
+                            ?.start()
+
+                        mChatBtnVoice?.setColorFilter(
+                            ContextCompat.getColor(requireContext(), R.color.purple_300)
+                        )
+                        mChatInputMessage?.setText("Запись голосового...")
+
+                        mAppVoiceRecorder.startRecord(getMessageKey(contactId))
                     }
-                    MotionEvent.ACTION_UP -> {
-                        mChatInputMessage.setText("")
-                        mChatBtnVoice.colorFilter = null
-                        mAppVoiceRecorder.stopRecord { file, messageKey ->
-                            uploadFileToStorage(Uri.fromFile(file), messageKey, contact.id, TYPE_MESSAGE_VOICE) {
-                                viewModel.reloadMessages()
+                    true
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    if (isRecording) {
+                        val deltaY = initialY - event.rawY
+                        if (deltaY > 120 && !isVideoMode) {
+                            isVideoMode = true
+                            mChatInputMessage?.setText("Видео сообщение...")
+                            mChatBtnVoice?.setColorFilter(
+                                ContextCompat.getColor(requireContext(), R.color.accent_purple)
+                            )
+                        }
+                    }
+                    true
+                }
+
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (isRecording) {
+                        isRecording = false
+
+                        mChatBtnVoice?.animate()
+                            ?.translationY(initialTranslationY)
+                            ?.scaleX(1f)
+                            ?.scaleY(1f)
+                            ?.setDuration(120)
+                            ?.start()
+
+                        mChatBtnVoice?.colorFilter = null
+                        mChatInputMessage?.setText("")
+
+                        if (isVideoMode) {
+                            mAppVoiceRecorder.cancelRecord()
+                            openCircularVideoRecorder()
+                        } else {
+                            mAppVoiceRecorder.stopRecord { file, messageKey ->
+                                uploadFileToStorage(Uri.fromFile(file), messageKey, contactId, TYPE_MESSAGE_VOICE) {
+                                    viewModel.reloadMessages()
+                                }
                             }
                         }
                     }
+                    true
                 }
+                else -> false
             }
-            true
         }
     }
 
-    private fun attach() {
-        mBottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
-        mBtnAttachFile.setOnClickListener { attachFile() }
-        mBtnAttachImage.setOnClickListener { attachImage() }
-        mBtnAttachClose.setOnClickListener { attachToClose() }
-    }
-
-    private fun attachToClose() {
-        mBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
-    }
-
-    private fun attachFile() {
-        val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "*/*" }
-        pickFileLauncher.launch(intent)
-    }
-
-    private fun attachImage() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-            launchCropper()
-        } else {
-            requestPermissions(arrayOf(Manifest.permission.CAMERA), 1001)
+    private fun openCircularVideoRecorder() {
+        val bottomSheet = VideoRecorderBottomSheet { videoFile ->
+            uploadFileToStorage(Uri.fromFile(videoFile), getMessageKey(contactId), contactId, TYPE_MESSAGE_VIDEO) {
+                viewModel.reloadMessages()
+                showToast("Видео сообщение отправлено")
+            }
         }
+        bottomSheet.show(parentFragmentManager, "video_recorder")
     }
 
-    private fun launchCropper() {
-        val options = CropImageContractOptions(
-            uri = null,
-            cropImageOptions = CropImageOptions(
-                aspectRatioX = 1,
-                aspectRatioY = 1,
-                fixAspectRatio = true,
-                outputRequestWidth = 250,
-                outputRequestHeight = 250,
-                cropShape = CropImageView.CropShape.OVAL
-            )
-        )
-        cropImageLauncher.launch(options)
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1001 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            launchCropper()
-        } else {
-            showToast("Нужно разрешение на камеру")
-        }
-    }
-
-    private fun initRecycleView() {
+    private fun initRecyclerView() {
+        mLayoutManager = LinearLayoutManager(requireContext())
         mAdapter = SingleChatAdapter()
-        mRecyclerView.apply {
+        mRecyclerView?.apply {
             adapter = mAdapter
             setHasFixedSize(true)
             isNestedScrollingEnabled = false
             layoutManager = mLayoutManager
         }
-
-        // Наблюдаем за сообщениями из ViewModel
         viewModel.messages.observe(viewLifecycleOwner) { messages ->
-            mAdapter.submitList(messages)
-            if (messages.isNotEmpty()) {
-                mRecyclerView.smoothScrollToPosition(messages.size - 1)
-            }
-        }
-
-        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
-            mSwipeRefreshLayout.isRefreshing = isLoading
-        }
-
-        viewModel.error.observe(viewLifecycleOwner) { error ->
-            error?.let {
-                showToast(it)
-                viewModel.clearError()
-            }
-        }
-
-        mSwipeRefreshLayout.setOnRefreshListener {
-            viewModel.loadMoreMessages()
+            mAdapter?.submitList(messages)
+            if (messages.isNotEmpty()) mRecyclerView?.smoothScrollToPosition(messages.size - 1)
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        initViews()
-        initFields()
+    private fun initChat() {
+        REF_DATABASE_ROOT.child(NODE_USERS).child(contactId)
+            .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
+                contact = snapshot.getCommonModel()
+                if (contact == null) {
+                    showToast("Ошибка: контакт не найден")
+                    replaceFragment(MainListFragment())
+                    return@AppValueEventListener
+                }
+                initToolbar()
+            })
 
-        // Инициализируем ViewModel
-        viewModel.initChat(contact.id, isGroup = false)
-
-        // Предзагружаем публичные ключи
-        ChatEncryptionManager.getOtherUserPublicKey(contact.id) { publicKey ->
-            if (!publicKey.isNullOrEmpty()) {
-                ChatEncryptionManager.cachePublicKey(contact.id, publicKey)
-            }
+        viewModel.initChat(contactId, isGroup = false)
+        ChatEncryptionManager.getOtherUserPublicKey(contactId) { key ->
+            if (!key.isNullOrEmpty()) ChatEncryptionManager.cachePublicKey(contactId, key)
         }
-
-        ChatEncryptionManager.getOtherUserKyberPublicKey(contact.id) { kyberKey ->
-            if (!kyberKey.isNullOrEmpty()) {
-                ChatEncryptionManager.cacheKyberPublicKey(contact.id, kyberKey)
-            }
-        }
-
-        initToolbar()
-        initRecycleView()
     }
 
     private fun initToolbar() {
-        val toolbar = APP_ACTIVITY.mToolbar
-        mToolbarInfo = toolbar.findViewById(R.id.toolbar_info)
-
+        mToolbarInfo = requireView().findViewById(R.id.toolbar_info)
         if (mToolbarInfo == null) {
-            APP_ACTIVITY.supportActionBar?.title = contact.fullname.ifEmpty { contact.username }
+            APP_ACTIVITY.supportActionBar?.title = contact?.fullname?.ifEmpty { contact?.username } ?: "Чат"
             return
         }
-
         mToolbarInfo?.visibility = View.VISIBLE
-
-        val fullname = contact.fullname.ifEmpty { contact.username }
-        mToolbarInfo?.findViewById<TextView>(R.id.toolbar_chat_fullname)?.text = fullname
-        mToolbarInfo?.findViewById<CircleImageView>(R.id.toolbar_chat_image)
-            ?.downloadAndSetImage(contact.photoUrl)
+        mToolbarInfo?.findViewById<TextView>(R.id.toolbar_chat_fullname)?.text = contact?.fullname?.ifEmpty { contact?.username }
+        mToolbarInfo?.findViewById<CircleImageView>(R.id.toolbar_chat_image)?.downloadAndSetImage(contact?.photoUrl.orEmpty())
 
         mListenerInfoToolbar = AppValueEventListener {
             mReceivingUser = it.getUserModel()
-
-            if (mReceivingUser.publicKey.isNotEmpty()) {
-                ChatEncryptionManager.cachePublicKey(contact.id, mReceivingUser.publicKey)
-            }
-            if (mReceivingUser.kyberPublicKey.isNotEmpty()) {
-                ChatEncryptionManager.cacheKyberPublicKey(contact.id, mReceivingUser.kyberPublicKey)
-            }
-
             initInfoToolbar()
         }
-
-        mRefUser = REF_DATABASE_ROOT.child(NODE_USERS).child(contact.id)
-        mRefUser.addValueEventListener(mListenerInfoToolbar)
+        mRefUser = REF_DATABASE_ROOT.child(NODE_USERS).child(contactId)
+        mRefUser?.addValueEventListener(mListenerInfoToolbar!!)
     }
 
     private fun initInfoToolbar() {
-        mToolbarInfo?.let { toolbar ->
-            val fullname = mReceivingUser.fullname.ifEmpty { contact.fullname }
+        val user = mReceivingUser ?: return
+        mToolbarInfo?.findViewById<TextView>(R.id.toolbar_chat_fullname)?.text = user.fullname.ifEmpty { contact?.fullname }
+        mToolbarInfo?.findViewById<CircleImageView>(R.id.toolbar_chat_image)?.downloadAndSetImage(user.photoUrl)
+        val status = when {
+            user.state == "online" -> "онлайн"
+            user.state == "recording" -> "записывает голосовое..."
+            else -> user.getStateText()
+        }
+        mToolbarInfo?.findViewById<TextView>(R.id.toolbar_chat_status)?.text = status
+    }
 
-            toolbar.findViewById<TextView>(R.id.toolbar_chat_fullname)?.text = fullname
-            toolbar.findViewById<CircleImageView>(R.id.toolbar_chat_image)
-                ?.downloadAndSetImage(mReceivingUser.photoUrl)
-            toolbar.findViewById<TextView>(R.id.toolbar_chat_status)?.text = mReceivingUser.getStateText()
+    // ==================== REPLY SYSTEM ====================
+
+    fun startReply(messageId: String, messageText: String, fromUser: String) {
+        replyingToMessageId = messageId
+        replyingToText = messageText.take(70) + if (messageText.length > 70) "..." else ""
+        showReplyPreview(fromUser)
+    }
+
+    private fun showReplyPreview(fromUser: String) {
+        val replyPreview = requireView().findViewById<View>(R.id.reply_preview) ?: return
+        val replyTextView = replyPreview.findViewById<TextView>(R.id.reply_text)
+        val closeBtn = replyPreview.findViewById<ImageView>(R.id.reply_close)
+
+        replyTextView.text = "↩️ $fromUser: $replyingToText"
+        replyPreview.visibility = View.VISIBLE
+        closeBtn.setOnClickListener { cancelReply() }
+    }
+
+    private fun cancelReply() {
+        replyingToMessageId = null
+        replyingToText = null
+        requireView().findViewById<View>(R.id.reply_preview)?.visibility = View.GONE
+    }
+
+    // ==================== ПУБЛИЧНЫЕ МЕТОДЫ ====================
+
+    private fun attach() {
+        val options = arrayOf("Выбрать из галереи", "Сделать снимок")
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Прикрепить фото")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> pickImageLauncher.launch("image/*")
+                    1 -> takePhoto()
+                }
+            }
+            .show()
+    }
+
+    private fun takePhoto() {
+        if (!checkPermission(Manifest.permission.CAMERA)) {
+            showToast("Нужно разрешение на камеру")
+            return
+        }
+        try {
+            val photoFile = File(requireContext().cacheDir, "photo_${System.currentTimeMillis()}.jpg")
+            pendingPhotoUri = FileProvider.getUriForFile(
+                requireContext(),
+                "${requireContext().packageName}.fileprovider",
+                photoFile
+            )
+            takePhotoLauncher.launch(pendingPhotoUri!!)
+        } catch (e: Exception) {
+            showToast("Не удалось запустить камеру")
+        }
+    }
+
+    fun deleteMessage(messageId: String, fromUserId: String) {
+        val path1 = "$NODE_MESSAGES/$CURRENT_UID/$fromUserId/$messageId"
+        val path2 = "$NODE_MESSAGES/$fromUserId/$CURRENT_UID/$messageId"
+
+        REF_DATABASE_ROOT.child(path1).removeValue()
+        REF_DATABASE_ROOT.child(path2).removeValue()
+            .addOnSuccessListener {
+                showToast("Сообщение удалено")
+                viewModel.reloadMessages()
+            }
+            .addOnFailureListener {
+                showToast("Не удалось удалить сообщение")
+            }
+    }
+
+    fun scrollToMessage(messageId: String) {
+        val messages = viewModel.messages.value ?: return
+        val position = messages.indexOfFirst { it.id == messageId }
+        if (position >= 0) {
+            mRecyclerView?.smoothScrollToPosition(position)
+        } else {
+            showToast("Сообщение не найдено")
         }
     }
 
@@ -337,27 +412,19 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
         super.onPause()
         try {
             mToolbarInfo?.visibility = View.GONE
-            APP_ACTIVITY.mToolbar.title = getString(R.string.app_name)
-
-            if (::mRefUser.isInitialized && ::mListenerInfoToolbar.isInitialized) {
-                mRefUser.removeEventListener(mListenerInfoToolbar)
-            }
-
-            ChatEncryptionManager.currentChatPartnerId = null
-
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+            APP_ACTIVITY.mToolbar?.title = getString(R.string.app_name)
+            mRefUser?.removeEventListener(mListenerInfoToolbar!!)
+            mListenerInfoToolbar = null
+            handler.removeCallbacksAndMessages(null)
+        } catch (e: Exception) { }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         try {
             mAppVoiceRecorder.releaseRecorder()
-            mAdapter.onDestroy()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+            mAdapter?.onDestroy()
+        } catch (e: Exception) { }
     }
 
     @Deprecated("Deprecated in Java")
@@ -368,19 +435,18 @@ class SingleChatFragment(private var contact: CommonModel) : BaseFragment(R.layo
     @Deprecated("Deprecated in Java")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.menu_clear_chat -> clearChat(contact.id) {
-                showToast(getString(R.string.chat_cleared))
-                replaceFragment(MainListFragment())
-            }
-            R.id.menu_remove_chat -> removeChat(contact.id) {
-                showToast(getString(R.string.chat_remove))
-                replaceFragment(MainListFragment())
-            }
-            R.id.menu_delete_chat -> deleteChat(contact.id) {
-                showToast(getString(R.string.chat_deleted))
-                replaceFragment(MainListFragment())
-            }
+            R.id.menu_clear_chat -> clearChat(contactId) { replaceFragment(MainListFragment()) }
+            R.id.menu_remove_chat -> removeChat(contactId) { replaceFragment(MainListFragment()) }
+            R.id.menu_delete_chat -> deleteChat(contactId) { replaceFragment(MainListFragment()) }
         }
         return true
+    }
+
+    companion object {
+        fun newInstance(contactId: String): SingleChatFragment {
+            return SingleChatFragment().apply {
+                arguments = Bundle().apply { putString("contact_id", contactId) }
+            }
+        }
     }
 }

@@ -5,23 +5,14 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.niksey.database.getCommonModel
-import com.example.niksey.database.sendMessage
-import com.example.niksey.database.sendMessageToGroup
+import com.example.niksey.database.getMessageKey
 import com.example.niksey.ui.fragments.message_recycler_view.views.AppViewFactory
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
-import com.example.niksey.utillits.AppValueEventListener
-import com.example.niksey.utillits.CURRENT_UID
-import com.example.niksey.utillits.NODE_GROUPS
-import com.example.niksey.utillits.NODE_MESSAGES
-import com.example.niksey.utillits.REF_DATABASE_ROOT
-import com.example.niksey.utillits.TYPE_TEXT
+import com.example.niksey.utillits.*
 import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.ServerValue
 import kotlinx.coroutines.launch
 
-/**
- * ViewModel для чатов (SingleChat + GroupChat)
- * Сохраняет состояние при повороте экрана и упрощает фрагменты
- */
 class ChatViewModel : ViewModel() {
 
     private val _messages = MutableLiveData<List<MessageView>>(emptyList())
@@ -35,33 +26,28 @@ class ChatViewModel : ViewModel() {
 
     private var chatId: String = ""
     private var isGroup: Boolean = false
-    private var mRefMessages: DatabaseReference? = null
-    private var messageCount = 20
-
-    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+    private var messageCount = 30
 
     fun initChat(chatId: String, isGroup: Boolean = false) {
         this.chatId = chatId
         this.isGroup = isGroup
 
-        mRefMessages = if (isGroup) {
-            REF_DATABASE_ROOT.child(NODE_GROUPS).child(chatId).child(NODE_MESSAGES)
+        if (isGroup) {
+            loadGroupMessages()
         } else {
-            REF_DATABASE_ROOT.child(NODE_MESSAGES).child(CURRENT_UID).child(chatId)
+            loadPrivateMessagesFromBothPaths()
         }
-
-        loadMessages()
     }
 
-    // ==================== ЗАГРУЗКА СООБЩЕНИЙ ====================
-
-    private fun loadMessages() {
+    private fun loadGroupMessages() {
         _isLoading.value = true
+        val ref = REF_DATABASE_ROOT.child(NODE_GROUPS).child(chatId).child(NODE_MESSAGES)
 
-        mRefMessages?.limitToLast(messageCount)?.addListenerForSingleValueEvent(
+        ref.limitToLast(messageCount).addListenerForSingleValueEvent(
             AppValueEventListener { snapshot ->
                 val list = snapshot.children.mapNotNull { it.getCommonModel() }
                     .map { AppViewFactory.getView(it) }
+                    .sortedBy { it.timeStamp.toLongOrNull() ?: 0 }
 
                 _messages.value = list
                 _isLoading.value = false
@@ -69,46 +55,96 @@ class ChatViewModel : ViewModel() {
         )
     }
 
-    fun loadMoreMessages() {
-        messageCount += 20
-        loadMessages()
+    private fun loadPrivateMessagesFromBothPaths() {
+        _isLoading.value = true
+
+        val path1 = REF_DATABASE_ROOT.child(NODE_MESSAGES).child(CURRENT_UID).child(chatId)
+        val path2 = REF_DATABASE_ROOT.child(NODE_MESSAGES).child(chatId).child(CURRENT_UID)
+
+        val allMessages = mutableListOf<MessageView>()
+
+        path1.limitToLast(messageCount).addListenerForSingleValueEvent(
+            AppValueEventListener { snap1 ->
+                allMessages.addAll(snap1.children.mapNotNull { it.getCommonModel() }
+                    .map { AppViewFactory.getView(it) })
+
+                path2.limitToLast(messageCount).addListenerForSingleValueEvent(
+                    AppValueEventListener { snap2 ->
+                        allMessages.addAll(snap2.children.mapNotNull { it.getCommonModel() }
+                            .map { AppViewFactory.getView(it) })
+
+                        val unique = allMessages.distinctBy { it.id }
+                            .sortedBy { it.timeStamp.toLongOrNull() ?: 0 }
+
+                        _messages.value = unique
+                        _isLoading.value = false
+                    }
+                )
+            }
+        )
     }
 
-    /** Перезагружает сообщения (для обновления после отправки медиа) */
     fun reloadMessages() {
-        loadMessages()
+        if (isGroup) {
+            loadGroupMessages()
+        } else {
+            loadPrivateMessagesFromBothPaths()
+        }
     }
 
-    // ==================== ОТПРАВКА СООБЩЕНИЙ ====================
-
-    fun sendMessage(text: String, onSuccess: () -> Unit = {}) {
+    fun sendMessage(text: String, replyTo: String? = null, onSuccess: () -> Unit = {}) {
         if (text.isBlank()) return
 
         viewModelScope.launch {
+            val messageKey = getMessageKey(chatId)
+
+            val messageMap = hashMapOf<String, Any>(
+                "id" to messageKey,
+                "from" to CURRENT_UID,
+                "timeStamp" to ServerValue.TIMESTAMP,
+                "text" to text,
+                "type" to TYPE_TEXT,
+                "replyTo" to (replyTo ?: "")
+            )
+
             if (isGroup) {
-                sendMessageToGroup(text, chatId, TYPE_TEXT) {
-                    onSuccess()
-                    // Перезагружаем сообщения, чтобы сразу показать отправленное
-                    loadMessages()
-                }
+                REF_DATABASE_ROOT.child(NODE_GROUPS)
+                    .child(chatId)
+                    .child(NODE_MESSAGES)
+                    .child(messageKey)
+                    .setValue(messageMap)
+                    .addOnSuccessListener {
+                        onSuccess()
+                        reloadMessages()
+                    }
             } else {
-                sendMessage(text, chatId, TYPE_TEXT) {
-                    onSuccess()
-                    // Перезагружаем сообщения, чтобы сразу показать отправленное
-                    loadMessages()
-                }
+                val path1 = "$NODE_MESSAGES/$CURRENT_UID/$chatId/$messageKey"
+                val path2 = "$NODE_MESSAGES/$chatId/$CURRENT_UID/$messageKey"
+
+                REF_DATABASE_ROOT.child(path1).setValue(messageMap)
+                REF_DATABASE_ROOT.child(path2).setValue(messageMap)
+                    .addOnSuccessListener {
+                        onSuccess()
+                        reloadMessages()
+                    }
             }
         }
     }
 
-    // ==================== ОЧИСТКА ====================
-
     override fun onCleared() {
         super.onCleared()
-        // Можно добавить отписку от слушателей, если нужно
     }
 
     fun clearError() {
         _error.value = null
+    }
+
+    fun loadMoreMessages() {
+        messageCount += 20
+        if (isGroup) {
+            loadGroupMessages()
+        } else {
+            loadPrivateMessagesFromBothPaths()
+        }
     }
 }

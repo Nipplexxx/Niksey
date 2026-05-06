@@ -1,104 +1,123 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
 
-    <!-- ==================== ОСНОВНЫЕ СТИЛИ ==================== -->
-    <style name="mainToolbar">
-        <item name="android:theme">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">?attr/actionBarSize</item>
-        <item name="android:background">@color/ghost_card_bg</item>
+    <!-- Простой стиль для Toolbar -->
+    <style name="actionMenu" parent="Widget.AppCompat.ActionBar">
+        <item name="android:background">@color/background_dark</item>
+        <item name="titleTextColor">@color/text_primary</item>
     </style>
 
-    <style name="settingsButtons">
+    <!-- === GLASS CARD STYLE (Frosted Glass) === -->
+    <style name="GlassCard">
+        <item name="android:background">@color/glass_card_bg</item>
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginTop">@dimen/app_small_margin</item>
-        <item name="android:clickable">true</item>
-        <item name="android:focusable">true</item>
-        <item name="background">@drawable/ripple_effect</item>
+        <item name="android:layout_margin">8dp</item>
+        <item name="android:elevation">4dp</item>
+        <item name="android:padding">16dp</item>
+        <item name="android:foreground">?attr/selectableItemBackground</item>
+        <!-- Для настоящего blur на Android 12+ можно добавить в коде RenderEffect -->
     </style>
 
-    <!-- Адаптивные тексты (работают на светлой и тёмной теме) -->
-    <style name="normalText">
+    <style name="GlassCardMenu">
+        <item name="android:background">@color/glass_card_bg</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:elevation">4dp</item>
+        <item name="android:foreground">?attr/selectableItemBackground</item>
+        <!-- Для настоящего blur на Android 12+ можно добавить в коде RenderEffect -->
+    </style>
+
+    <!-- Glass Button -->
+    <style name="GlassButton" parent="Widget.MaterialComponents.Button">
+        <item name="android:backgroundTint">@color/glass_card_bg</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:elevation">2dp</item>
+        <item name="cornerRadius">16dp</item>
+    </style>
+
+    <!-- Text styles -->
+    <style name="MessageText">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textColor">?attr/text_primary</item>
-        <item name="android:layout_marginStart">@dimen/app_margin</item>
-        <item name="android:layout_marginTop">10dp</item>
+        <item name="android:layout_margin">@dimen/app_margin</item>
+        <item name="android:padding">10dp</item>
         <item name="android:textSize">@dimen/normalText</item>
     </style>
 
-    <style name="smallText">
+    <style name="MessageTime">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textColor">?attr/text_secondary</item>
-        <item name="android:layout_marginStart">@dimen/app_margin</item>
+        <item name="android:layout_margin">@dimen/app_margin</item>
         <item name="android:textSize">@dimen/smallText</item>
     </style>
 
-    <!-- Разделитель (адаптивный) -->
-    <style name="separator">
+    <!-- Divider -->
+    <style name="Divider">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">1dp</item>
-        <item name="android:background">?attr/colorOutline</item>   <!-- или @color/black_10 с прозрачностью -->
-        <item name="android:layout_marginTop">@dimen/app_small_margin</item>
-        <item name="android:layout_marginStart">@dimen/app_margin</item>
-        <item name="android:layout_marginEnd">@dimen/app_margin</item>
+        <item name="android:background">?attr/colorOutline</item>
+        <item name="android:layout_margin">@dimen/app_small_margin</item>
+        <item name="android:layout_marginTop">@dimen/app_margin</item>
+        <item name="android:layout_marginBottom">@dimen/app_margin</item>
     </style>
 
-    <style name="actionMenu" parent="Theme.AppCompat.Light">
-        <item name="background">@color/white_100</item>
-        <item name="actionMenuTextColor">@color/black_80</item>
+    <!-- Button styles -->
+    <style name="SendButton">
+        <item name="android:background">@color/white_100</item>
+        <item name="android:textColor">@color/black_80</item>
     </style>
 
-    <style name="style_constratint_layout">
+    <style name="ChatInput">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">0dp</item>
         <item name="android:background">?android:attr/colorBackground</item>
     </style>
 
-    <style name="style_edit_text" parent="editText">
+    <style name="MessageInput">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:autofillHints" tools:targetApi="o" />
-        <item name="android:inputType">text</item>
+        <item name="android:hint">text</item>
         <item name="android:textColor">?attr/text_primary</item>
-        <item name="minHeight">48dp</item>
+        <item name="android:minHeight">48dp</item>
     </style>
 
-    <!-- Остальные стили (оставляем как были) -->
-    <style name="style_input_code" parent="editText">
+    <!-- Code input -->
+    <style name="CodeInput">
         <item name="android:layout_width">wrap_content</item>
-        <item name="android:autofillHints" tools:targetApi="o" />
+        <item name="android:layout_height">wrap_content</item>
         <item name="android:background">@null</item>
         <item name="android:gravity">center</item>
-        <item name="android:inputType" />
         <item name="android:maxLength">6</item>
     </style>
 
-    <style name="style_photo_profil">
+    <!-- Settings photo -->
+    <style name="SettingsPhoto">
         <item name="android:layout_width">@dimen/settings_user_photo_width</item>
         <item name="android:layout_height">@dimen/settings_btn_change_photo_height</item>
         <item name="android:background">?attr/ghost_card_bg</item>
     </style>
 
-    <style name="style_pinView" parent="PinWidget.PinView">
+    <!-- Header text -->
+    <style name="HeaderText">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginTop">50dp</item>
-        <item name="android:cursorVisible">true</item>
-        <item name="android:elevation">15dp</item>
-        <item name="android:inputType">text</item>
+        <item name="android:layout_margin">50dp</item>
+        <item name="android:padding">15dp</item>
+        <item name="android:text">text</item>
         <item name="android:textColor">?attr/text_primary</item>
         <item name="android:textSize">18sp</item>
         <item name="android:textStyle">bold</item>
     </style>
 
-    <style name="AppButtonStyle">
+    <!-- FAB style -->
+    <style name="FAB">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textColor">@android:color/white</item>
-        <item name="android:backgroundTint">@color/purple_300</item>
+        <item name="android:backgroundTint">@android:color/white</item>
+        <item name="android:tint">@color/purple_300</item>
     </style>
 
 </resources>

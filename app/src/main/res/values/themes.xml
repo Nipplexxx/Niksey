@@ -1,27 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.Niksey" parent="Theme.Material3.Light.NoActionBar">
+<resources xmlns:tools="http://schemas.android.com/tools">
 
-        <!-- Основные цвета -->
-        <item name="colorPrimary">@color/purple_300</item>
-        <item name="colorPrimaryVariant">@color/purple_0</item>
+    <!-- === NIKSEY GLASS THEME === -->
+    <style name="Theme.Niksey" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Основной акцент -->
+        <item name="colorPrimary">@color/accent_purple</item>
+        <item name="colorPrimaryVariant">@color/accent_purple_glow</item>
         <item name="colorOnPrimary">@color/white_100</item>
 
-        <!-- Вторичные цвета -->
-        <item name="colorSecondary">@color/purple_100</item>
-        <item name="colorSecondaryVariant">@color/purple_200</item>
-        <item name="colorOnSecondary">@color/black_80</item>
+        <!-- Фон и стекло -->
+        <item name="android:windowBackground">@color/background_dark</item>
+        <item name="android:statusBarColor">@color/background_dark</item>
+        <item name="android:navigationBarColor">@color/background_dark</item>
 
-        <!-- Статус-бар -->
-        <item name="android:statusBarColor">@color/purple_0</item>
+        <!-- Текст -->
+        <item name="text_primary">@color/text_primary</item>
+        <item name="text_secondary">@color/text_secondary</item>
+        <item name="text_hint">@color/text_hint</item>
 
-        <!-- Popup меню -->
-        <item name="popupTheme">@style/actionMenu</item>
-
-        <!-- Цвета для чата (светлая тема) -->
-        <item name="ghost_card_bg">@color/ghost_card_bg_light</item>
-        <item name="text_primary">@color/text_primary_light</item>
-        <item name="text_secondary">@color/text_secondary_light</item>
-        <item name="text_hint">@color/text_hint_light</item>
+        <!-- Glass card стиль -->
+        <item name="glass_card_bg">@color/glass_card_bg_menu</item>
+        <item name="glass_border">@color/glass_border_menu</item>
     </style>
+
 </resources>
