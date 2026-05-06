@@ -16,6 +16,7 @@ import com.example.niksey.models.UserModel
 import com.example.niksey.utillits.AUTH
 import com.example.niksey.utillits.NODE_USERS
 import com.example.niksey.utillits.REF_DATABASE_ROOT
+import com.example.niksey.utillits.replaceFragment
 import com.example.niksey.utillits.showToast
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
@@ -35,17 +36,15 @@ class EnteredFragment : Fragment(R.layout.fragment_entered) {
         super.onViewCreated(view, savedInstanceState)
 
         val emailEditText: EditText? = view.findViewById(R.id.email_edit_text)
-        val passwordEditText: EditText? = view.findViewById(R.id.password_edit_text)
 
-        view.findViewById<Button>(R.id.email_sign_in_button).setOnClickListener {
+        view.findViewById<com.google.android.material.button.MaterialButton>(R.id.email_sign_in_button).setOnClickListener {
             val email = emailEditText?.text.toString().trim()
-            val password = passwordEditText?.text.toString().trim()
 
-            if (email.isEmpty() || password.isEmpty()) {
-                showToast("Введите email и пароль")
+            if (email.isEmpty() || !email.contains("@")) {
+                showToast("Введите корректный email")
                 return@setOnClickListener
             }
-            checkEmailAndLogin(email, password)
+            signInWithEmail(email)
         }
 
         view.findViewById<Button>(R.id.anonymous_sign_in_button).setOnClickListener {
@@ -55,56 +54,32 @@ class EnteredFragment : Fragment(R.layout.fragment_entered) {
         view.findViewById<SignInButton>(R.id.sign_in_button).setOnClickListener {
             signInWithGoogle()
         }
+
+        // Кнопка входа по телефону
+        view.findViewById<com.google.android.material.button.MaterialButton>(R.id.phone_sign_in_button)?.setOnClickListener {
+            replaceFragment(PhoneAuthFragment())
+        }
     }
 
     // ====================== EMAIL + PASSWORD ======================
-    private fun checkEmailAndLogin(email: String, password: String) {
-        REF_DATABASE_ROOT.child(NODE_USERS)
-            .orderByChild("email")
-            .equalTo(email)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
+    private fun signInWithEmail(email: String) {
+        // Используем временный пароль для простоты (пользователь не вводит его)
+        val tempPassword = "NikseyTemp2026!"
 
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        // Почта уже есть в базе → проверяем пароль
-                        val userMap = snapshot.children.firstOrNull()?.value as? Map<*, *>
-                        val savedPassword = userMap?.get("password")?.toString() ?: ""
-
-                        if (savedPassword == password) {
-                            loginWithFirebaseAuth(email, password)
-                        } else {
-                            showToast("Неверный пароль")
+        AUTH.signInWithEmailAndPassword(email, tempPassword)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    createOrUpdateUserProfile()
+                } else {
+                    // Если пользователя нет — регистрируем
+                    AUTH.createUserWithEmailAndPassword(email, tempPassword)
+                        .addOnCompleteListener { regTask ->
+                            if (regTask.isSuccessful) {
+                                createOrUpdateUserProfile()
+                            } else {
+                                showToast("Ошибка: ${regTask.exception?.message}")
+                            }
                         }
-                    } else {
-                        // Почты нет → создаём новую учётку
-                        registerNewUser(email, password)
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    showToast("Ошибка сервера")
-                }
-            })
-    }
-
-    private fun loginWithFirebaseAuth(email: String, password: String) {
-        AUTH.signInWithEmailAndPassword(email, password)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    createOrUpdateUserProfile()
-                } else {
-                    showToast("Ошибка входа: ${task.exception?.message}")
-                }
-            }
-    }
-
-    private fun registerNewUser(email: String, password: String) {
-        AUTH.createUserWithEmailAndPassword(email, password)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    createOrUpdateUserProfile()
-                } else {
-                    showToast("Не удалось создать аккаунт: ${task.exception?.message}")
                 }
             }
     }

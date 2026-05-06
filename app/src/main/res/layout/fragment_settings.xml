@@ -33,7 +33,7 @@
                 android:layout_width="@dimen/settings_user_photo_width"
                 android:layout_height="@dimen/settings_user_photo_height"
                 android:layout_marginStart="0dp"
-                android:src="@drawable/default_photo"
+                android:src="@drawable/ic_person"
                 app:civ_circle_background_color="@color/material_drawer_divider"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"

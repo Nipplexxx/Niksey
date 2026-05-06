@@ -81,6 +81,7 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0"
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.10.0"
     implementation "androidx.fragment:fragment-ktx:1.8.9"
+    implementation 'com.hbb20:ccp:2.7.3'
 
     // Новые правильные артефакты (замена старых)
     implementation 'com.vanniktech:android-image-cropper:4.7.0'

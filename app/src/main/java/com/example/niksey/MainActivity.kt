@@ -2,8 +2,10 @@ package com.example.niksey
 
 import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.biometric.BiometricManager
@@ -14,20 +16,21 @@ import androidx.lifecycle.lifecycleScope
 import com.example.niksey.database.initFirebase
 import com.example.niksey.database.initUser
 import com.example.niksey.databinding.ActivityMainBinding
+import com.example.niksey.models.UserDataManager
 import com.example.niksey.ui.objects.AppDrawer
 import com.example.niksey.ui.screens.main_list.MainListFragment
 import com.example.niksey.ui.screens.register.EnteredFragment
 import com.example.niksey.utillits.APP_ACTIVITY
+import com.example.niksey.utillits.AUTH
 import com.example.niksey.utillits.AppStates
 import com.example.niksey.utillits.ChatEncryptionManager
 import com.example.niksey.utillits.PostQuantumKeyManager
-import com.example.niksey.models.UserDataManager
-import com.example.niksey.utillits.AUTH
 import com.example.niksey.utillits.initContacts
 import com.example.niksey.utillits.replaceFragment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executor
+import androidx.core.content.edit
 
 @SuppressLint("SourceLockedOrientationActivity")
 class MainActivity : AppCompatActivity() {
@@ -40,6 +43,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var promptInfo: BiometricPrompt.PromptInfo
     private var isAppLocked = false
 
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         mBinding = ActivityMainBinding.inflate(layoutInflater)
@@ -50,15 +54,53 @@ class MainActivity : AppCompatActivity() {
 
         APP_ACTIVITY = this
 
-        // Инициализируем новую систему шифрования (пост-квантовое)
+        // Инициализируем систему шифрования (пост-квантовое)
         ChatEncryptionManager.init(this)
-        PostQuantumKeyManager.generateECDHKeyPair() // Генерируем ECDH ключ при первом запуске
+        PostQuantumKeyManager.generateECDHKeyPair()
 
         initFirebase()
+
+        // === Обработка Email Link (Passwordless вход) ===
+        handleEmailLinkIfPresent()
 
         if (AUTH.currentUser != null) {
             checkBiometricAndInit()
         } else {
+            replaceFragment(EnteredFragment(), false)
+        }
+    }
+
+    /**
+     * Обработка ссылки для входа по email (Email Link Authentication)
+     */
+    private fun handleEmailLinkIfPresent() {
+        try {
+            val emailLink = intent?.data?.toString()
+            if (emailLink != null && AUTH.isSignInWithEmailLink(emailLink)) {
+                val prefs = getSharedPreferences("auth", MODE_PRIVATE)
+                val pendingEmail = prefs.getString("pending_email", null)
+
+                if (pendingEmail != null) {
+                    AUTH.signInWithEmailLink(pendingEmail, emailLink)
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                prefs.edit { remove("pending_email") }
+                                initUser { initApp() }
+                            } else {
+                                Toast.makeText(
+                                    this,
+                                    "Не удалось войти по ссылке: ${task.exception?.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                replaceFragment(EnteredFragment(), false)
+                            }
+                        }
+                } else {
+                    replaceFragment(EnteredFragment(), false)
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Ошибка обработки ссылки: ${e.message}", Toast.LENGTH_LONG).show()
             replaceFragment(EnteredFragment(), false)
         }
     }
@@ -130,7 +172,7 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(mToolbar)
         mAppDrawer.create()
 
-        // Небольшая задержка для стабильности на эмуляторе
+        // Небольшая задержка для стабильности
         mBinding.root.postDelayed({
             replaceFragment(MainListFragment(), false)
         }, 180)
@@ -143,13 +185,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        // Пользователь вернулся в приложение — ставим ONLINE
         AppStates.updateState(AppStates.ONLINE)
     }
 
     override fun onStop() {
         super.onStop()
-        // Только если не поворот экрана и не переход в другое Activity
         if (!isChangingConfigurations) {
             AppStates.updateState(AppStates.OFFLINE)
         }
@@ -157,7 +197,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Очищаем кэш шифрования и данные пользователя при полном выходе из приложения
         if (isFinishing) {
             ChatEncryptionManager.clear()
             UserDataManager.clearUser(this)

@@ -12,7 +12,7 @@
         android:id="@+id/header_avatar"
         android:layout_width="72dp"
         android:layout_height="72dp"
-        android:src="@drawable/default_photo"
+        android:src="@drawable/ic_person"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 

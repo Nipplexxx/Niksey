@@ -84,7 +84,7 @@ class AppDrawer {
         if (USER.photoUrl.isNotEmpty()) {
             avatarImageView.downloadAndSetImage(USER.photoUrl)
         } else {
-            avatarImageView.setImageResource(R.drawable.default_photo)
+            avatarImageView.setImageResource(R.drawable.ic_person)
         }
     }
 
@@ -101,7 +101,7 @@ class AppDrawer {
         if (USER.photoUrl.isNotEmpty()) {
             avatarImageView.downloadAndSetImage(USER.photoUrl)
         } else {
-            avatarImageView.setImageResource(R.drawable.default_photo)
+            avatarImageView.setImageResource(R.drawable.ic_person)
         }
     }
 
