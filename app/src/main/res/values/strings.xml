@@ -108,6 +108,8 @@
 
     <!-- ==================== CHATS ==================== -->
     <string name="chats">Chats</string>
+    <string name="empty_chats_title">No conversations yet</string>
+    <string name="empty_chats_subtitle">Find someone in Contacts to start an anonymous chat.</string>
 
     <!-- ==================== SETTINGS MENU ==================== -->
     <string name="change_username">Username</string>
@@ -154,4 +156,16 @@
         <item quantity="other">%d participants</item>
     </plurals>
 
+    <string name="about_app">About Niksey</string>
+    <string name="clear_cache_title">Clear cache</string>
+    <string name="clear_cache_with_size">Clear cache · %1$s</string>
+    <string name="clear_cache_message">Removes downloaded photos, videos, voice messages and files from this device. Messages and chats are not affected; media will download again when opened.</string>
+    <string name="cache_cleared">Cache cleared</string>
+    <string name="identity_changed_warning">The security key of a contact changed. Messages to them are paused until you confirm the new key.</string>
+    <string name="identity_accept">Confirm</string>
+    <string name="identity_confirmed">New key confirmed</string>
+    <string name="profile_copy_id">Copy ID</string>
+    <string name="profile_not_set">Not set</string>
+        <string name="empty_contacts_title">No contacts yet</string>
+    <string name="empty_contacts_subtitle">People you chat with will appear here. Search by username to find someone.</string>
 </resources>

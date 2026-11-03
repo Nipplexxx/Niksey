@@ -16,7 +16,7 @@ import com.example.niksey.ui.screens.private_messages.SingleChatFragment
 import com.example.niksey.utillits.APP_ACTIVITY
 import com.example.niksey.utillits.CURRENT_UID
 import com.example.niksey.utillits.asTime
-import com.example.niksey.utillits.downloadAndSetImage
+import com.example.niksey.utillits.media.MediaViews
 import com.example.niksey.utillits.showToast
 import com.google.android.material.card.MaterialCardView
 
@@ -44,16 +44,16 @@ class HolderImageMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         blocUserImage.visibility = View.VISIBLE
         blocReceivedImage.visibility = View.GONE
 
-        chatUserImage.downloadAndSetImage(view.fileUrl)
+        MediaViews.showImage(view, chatUserImage, R.drawable.ic_attach_image)
         chatUserImageTime.text = view.timeStamp.asTime()
 
         showReplyPreview(view, userReplyPreview)
 
         val clickListener = View.OnClickListener {
-            if (view.fileUrl.isNotBlank()) {
-                ImagePreviewBottomSheet.newInstance(view.fileUrl)
+            MediaViews.withFile(view, { file ->
+                ImagePreviewBottomSheet.newInstance(file.absolutePath)
                     .show(APP_ACTIVITY.supportFragmentManager, "image_preview")
-            }
+            })
         }
         chatUserImage.setOnClickListener(clickListener)
         blocUserImage.setOnClickListener(clickListener)
@@ -63,16 +63,16 @@ class HolderImageMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         blocUserImage.visibility = View.GONE
         blocReceivedImage.visibility = View.VISIBLE
 
-        chatReceivedImage.downloadAndSetImage(view.fileUrl)
+        MediaViews.showImage(view, chatReceivedImage, R.drawable.ic_attach_image)
         chatReceivedImageTime.text = view.timeStamp.asTime()
 
         showReplyPreview(view, receivedReplyPreview)
 
         val clickListener = View.OnClickListener {
-            if (view.fileUrl.isNotBlank()) {
-                ImagePreviewBottomSheet.newInstance(view.fileUrl)
+            MediaViews.withFile(view, { file ->
+                ImagePreviewBottomSheet.newInstance(file.absolutePath)
                     .show(APP_ACTIVITY.supportFragmentManager, "image_preview")
-            }
+            })
         }
         chatReceivedImage.setOnClickListener(clickListener)
         blocReceivedImage.setOnClickListener(clickListener)

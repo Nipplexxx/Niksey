@@ -1,36 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- === GLASS / FROSTED GLASS THEME (Niksey) === -->
+    <!-- === NIKSEY · midnight glass palette ===
+         Глубокий чёрный + тёмный индиго, приглушённый violet и teal.
+         Имена сохранены, чтобы не править layouts; значения — новые. -->
 
-    <!-- Background gradient (dark cyberpunk) -->
-    <color name="bg_gradient_top">#0F172A</color>
-    <color name="bg_gradient_bottom">#020617</color>
-    <color name="background_dark">#020617</color>
+    <!-- Base -->
+    <color name="bg_gradient_top">#140E33</color>
+    <color name="bg_gradient_bottom">#020206</color>
+    <color name="background_dark">#040410</color>
+    <color name="surface_dark">#0B0A1E</color>
 
-    <!-- Glass / Frosted elements -->
-    <color name="glass_bg">#14FFFFFF</color>           <!-- rgba(255,255,255,0.08) -->
-    <color name="glass_border">#1AFFFFFF</color>       <!-- rgba(255,255,255,0.10) -->
-    <color name="glass_card_bg">#1AFFFFFF</color>
+    <!-- Frosted glass: полупрозрачная заливка, тонкая кромка, внутренний блик -->
+    <color name="glass_fill">#9E120E2A</color>
+    <color name="glass_fill_strong">#D10D0B20</color>
+    <color name="glass_stroke">#29FFFFFF</color>
+    <color name="glass_stroke_strong">#3DFFFFFF</color>
+    <color name="glass_highlight">#22FFFFFF</color>
+    <color name="glass_highlight_end">#00FFFFFF</color>
+    <color name="glass_inner_glow">#146D5CE0</color>
+    <color name="glass_bg">#14FFFFFF</color>
+    <color name="glass_border">#26FFFFFF</color>
+    <color name="glass_card_bg">#9E120E2A</color>
+    <color name="glass_border_menu">#26FFFFFF</color>
+    <color name="glass_card_bg_menu">#9E120E2A</color>
 
-    <color name="glass_border_menu">#1AFFFFFF</color>       <!-- rgba(255,255,255,0.10) -->
-    <color name="glass_card_bg_menu">#1AFFFFFF</color>
+    <!-- Accents: приглушённый violet, indigo и teal -->
+    <color name="accent_purple">#A18CFF</color>
+    <color name="accent_purple_glow">#5E4BC9</color>
+    <color name="accent_blue">#7C7CF2</color>
+    <color name="accent_cyan">#4FD4C2</color>
 
-    <!-- Accent (only one - neon purple) -->
-    <color name="accent_purple">#6C51F7</color>
-    <color name="accent_purple_glow">#4C3BBF</color>   <!-- для свечения -->
+    <!-- Glows (низкая контрастность) -->
+    <color name="glow_purple">#2E7C6AF0</color>
+    <color name="glow_cyan">#1E4FD4C2</color>
+    <color name="avatar_glow">#4A9D85FF</color>
+    <color name="glow_transparent">#009D85FF</color>
+
+    <!-- Active nav pill -->
+    <color name="nav_pill_start">#3F9D85FF</color>
+    <color name="nav_pill_end">#2E4FD4C2</color>
+    <color name="nav_pill_stroke">#4D9D85FF</color>
+
+    <!-- Icon chips -->
+    <color name="chip_fill">#1F9D85FF</color>
+
+    <!-- Bubbles -->
+    <color name="bubble_out_start">#7A62F0</color>
+    <color name="bubble_out_end">#4B3BB5</color>
+    <color name="bubble_in_fill">#7A3B3A7E</color>
+    <color name="bubble_in_stroke">#3DFFFFFF</color>
+
+    <!-- Строки контактов и чатов: заметное стекло -->
+    <color name="row_fill">#66302E70</color>
 
     <!-- Text -->
-    <color name="text_primary">#E5E7EB</color>
-    <color name="text_secondary">#9CA3AF</color>
-    <color name="text_hint">#6B7280</color>
+    <color name="text_primary">#F3F1FF</color>
+    <color name="text_secondary">#B7B3D6</color>
+    <color name="text_hint">#7D78A3</color>
     <color name="text_on_glass">#FFFFFF</color>
 
-    <!-- Success / Error (minimal use) -->
-    <color name="success">#22C55E</color>
-    <color name="error">#EF4444</color>
+    <!-- Success / Error -->
+    <color name="success">#4FD4A0</color>
+    <color name="error">#F26B8A</color>
 
-    <!-- Legacy support (для совместимости) -->
-    <color name="purple_300">#6C51F7</color>
+    <!-- Legacy names (используются в layouts) -->
+    <color name="purple_300">#A18CFF</color>
     <color name="white_100">#FFFFFF</color>
     <color name="black_80">#1C1C1E</color>
 </resources>

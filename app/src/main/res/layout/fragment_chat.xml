@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_dark"
+    android:background="@drawable/bg_screen_backdrop"
     android:fitsSystemWindows="true">
 
     <!-- TOOLBAR -->
@@ -13,17 +13,60 @@
         android:id="@+id/toolbar_info"
         layout="@layout/toolbar_info"
         android:layout_width="match_parent"
-        android:layout_height="48dp" />
+        android:layout_height="64dp"
+        android:layout_marginHorizontal="12dp"
+        android:layout_marginTop="8dp" />
 
     <!-- СПИСОК СООБЩЕНИЙ -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/chat_recycle_view"
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/chat_swipe_refresh"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginTop="48dp"
-        android:clipToPadding="false"
-        android:paddingTop="6dp"
-        android:paddingBottom="140dp" />
+        android:layout_marginTop="80dp">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/chat_recycle_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingTop="6dp"
+            android:paddingBottom="140dp" />
+
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    <!-- Предупреждение: ключ безопасности собеседника изменился (сообщения приостановлены до подтверждения) -->
+    <LinearLayout
+        android:id="@+id/chat_identity_warning"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:layout_marginHorizontal="12dp"
+        android:layout_marginTop="84dp"
+        android:background="@drawable/bg_glass_panel"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="14dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/chat_identity_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/manrope"
+            android:text="@string/identity_changed_warning"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/chat_identity_accept"
+            style="@style/NikseyButtonPrimary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:minHeight="44dp"
+            android:text="@string/identity_accept" />
+    </LinearLayout>
 
     <!-- ==================== REPLY PREVIEW (как в Telegram) ==================== -->
     <LinearLayout
@@ -33,15 +76,14 @@
         android:layout_gravity="bottom"
         android:layout_marginHorizontal="10dp"
         android:layout_marginBottom="70dp"
-        android:background="@color/glass_card_bg"
+        android:background="@drawable/bg_glass_row"
         android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
+        android:paddingStart="14dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
         android:visibility="gone"
-        app:cardCornerRadius="12dp"
-        android:elevation="4dp">
+        android:elevation="8dp">
 
         <!-- Иконка ответа -->
         <ImageView
@@ -60,7 +102,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_gravity="center_vertical"
-            android:fontFamily="@font/chivo"
+            android:fontFamily="@font/manrope"
             android:textColor="@color/text_secondary"
             android:textSize="13sp"
             android:maxLines="1"
@@ -87,11 +129,11 @@
         android:layout_gravity="bottom"
         android:layout_marginHorizontal="10dp"
         android:layout_marginBottom="10dp"
-        app:cardBackgroundColor="@color/glass_card_bg"
-        app:cardCornerRadius="22dp"
-        app:cardElevation="8dp"
-        app:strokeColor="@color/glass_border"
-        app:strokeWidth="0.5dp">
+        app:cardBackgroundColor="@color/glass_fill_strong"
+        app:cardCornerRadius="26dp"
+        app:cardElevation="12dp"
+        app:strokeColor="@color/glass_stroke_strong"
+        app:strokeWidth="1dp">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"

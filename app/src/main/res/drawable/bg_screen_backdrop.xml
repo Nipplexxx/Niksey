@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Фон экранов: индиго-градиент + два мягких свечения в углах -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="@color/bg_gradient_top"
+                android:endColor="@color/bg_gradient_bottom" />
+        </shape>
+    </item>
+    <item
+        android:width="360dp"
+        android:height="360dp"
+        android:gravity="top|start">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="50%p"
+                android:startColor="@color/glow_purple"
+                android:endColor="@color/glow_transparent" />
+        </shape>
+    </item>
+    <item
+        android:width="320dp"
+        android:height="320dp"
+        android:gravity="bottom|end">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="50%p"
+                android:startColor="@color/glow_cyan"
+                android:endColor="@color/glow_transparent" />
+        </shape>
+    </item>
+</layer-list>

@@ -11,6 +11,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.canhub.cropper.CropImageContract
 import com.canhub.cropper.CropImageContractOptions
@@ -110,6 +111,7 @@ class CreateGroupFragment(private var listContacts: List<CommonModel>) :
     private fun initRecyclerView() {
         mRecyclerView = view?.findViewById(R.id.create_group_recycle_view)!!
         mAdapter = AddContactsAdapter()
+        mRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         mRecyclerView.adapter = mAdapter
         listContacts.forEach { mAdapter.updateListItems(it) }
     }

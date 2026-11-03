@@ -17,8 +17,12 @@ import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 import com.example.niksey.utillits.APP_ACTIVITY
 import com.example.niksey.utillits.CURRENT_UID
 import com.example.niksey.utillits.ChatEncryptionManager
+import com.example.niksey.utillits.EncryptionUtils
 import com.example.niksey.utillits.asTime
+import com.example.niksey.utillits.media.MediaRepository
+import com.example.niksey.utillits.media.MediaViews
 import com.example.niksey.utillits.showToast
+import com.example.niksey.utillits.signal.SecureMessaging
 import com.google.android.material.card.MaterialCardView
 import java.io.File
 
@@ -74,18 +78,11 @@ class HolderFileMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
 
     // ==================== НОВАЯ ВЕРСИЯ РАСШИФРОВКИ ====================
     private fun decryptFileName(view: MessageView): String {
-        return try {
-            val chatKey = ChatEncryptionManager.getChatKey(view.from)
-
-            if (chatKey != null) {
-                ChatEncryptionManager.decryptMessage(view.text, chatKey)
-            } else {
-                // Если ключа нет — показываем оригинальное имя файла
-                view.text.ifEmpty { "Файл" }
-            }
-        } catch (_: Exception) {
-            view.text.ifEmpty { "Файл" }
-        }
+        // Имя лежит в зашифрованных метаданных. Если ещё не расшифровано — запускаем фоновую расшифровку;
+        // по её окончании экран перерисуется (SecureMessaging.onDecryptedUpdate)
+        MediaRepository.cachedName(view)?.let { return it }
+        ChatEncryptionManager.currentConversationId?.let { SecureMessaging.prefetch(view.id, view.from, it, view.text) }
+        return "Файл"
     }
     // ===============================================================
 
@@ -127,32 +124,34 @@ class HolderFileMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
         chatReceivedBtnDownload.setOnLongClickListener(longClickListener)
     }
 
+    /**
+     * Файл сначала расшифровывается в кэш (см. MediaRepository), затем копируется в «Загрузки»
+     * под исходным именем — это действие пользователя, поэтому копия становится видна системе.
+     */
     private fun downloadFile(messageView: MessageView) {
-        val fileUrl = messageView.fileUrl
-        if (fileUrl.isEmpty()) {
-            showToast("Файл недоступен")
-            return
-        }
-
         val isUser = messageView.from == CURRENT_UID
         showProgress(isUser)
 
-        val fileName = messageView.text
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val file = File(downloadsDir, fileName)
-
-        try {
-            file.createNewFile()
-            getFileFromStorage(file, fileUrl) {
+        MediaViews.withFile(messageView, { cached ->
+            try {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val target = File(downloadsDir, fileDisplayName(messageView))
+                cached.copyTo(target, overwrite = true)
                 hideProgress(isUser)
                 showToast("Файл сохранён в Загрузки")
-                openDownloadedFile(file)
+                openDownloadedFile(target)
+            } catch (e: Exception) {
+                hideProgress(isUser)
+                showToast("Ошибка сохранения: ${e.message}")
             }
-        } catch (e: Exception) {
+        }, { error ->
             hideProgress(isUser)
-            showToast("Ошибка скачивания: ${e.message}")
-        }
+            showToast("Ошибка скачивания: ${error.message}")
+        })
     }
+
+    private fun fileDisplayName(messageView: MessageView): String =
+        MediaRepository.cachedName(messageView)?.ifEmpty { null } ?: "file"
 
     private fun openDownloadedFile(file: File) {
         try {

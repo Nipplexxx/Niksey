@@ -4,15 +4,29 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_dark"
     tools:context=".ui.screens.phone_book.ContactsFragment">
 
+    <!-- Нижний отступ — под плавающую панель вкладок -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/contacts_recycle_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/background_dark"
+        android:clipToPadding="false"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="110dp"
+        android:scrollbars="none"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         tools:listitem="@layout/contact_item" />
+
+    <!-- Заглушка, когда контактов нет -->
+    <include
+        android:id="@+id/contacts_empty_state"
+        layout="@layout/view_empty_state"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone" />
 
 </FrameLayout>

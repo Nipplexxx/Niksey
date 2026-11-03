@@ -1,120 +1,114 @@
 package com.example.niksey.ui.objects
 
+import android.content.res.ColorStateList
+import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.appcompat.app.ActionBarDrawerToggle
-import androidx.core.view.GravityCompat
-import androidx.drawerlayout.widget.DrawerLayout
+import androidx.core.view.isVisible
 import com.example.niksey.R
-import com.example.niksey.ui.screens.groups_messages.AddContactsFragment
-import com.example.niksey.ui.screens.other_fragment.InformationFragment
+import com.example.niksey.ui.screens.main_list.MainListFragment
 import com.example.niksey.ui.screens.phone_book.ContactsFragment
 import com.example.niksey.ui.screens.settings.SettingsFragment
 import com.example.niksey.utillits.APP_ACTIVITY
-import com.example.niksey.utillits.USER
-import com.example.niksey.utillits.downloadAndSetImage
 import com.example.niksey.utillits.replaceFragment
-import com.google.android.material.navigation.NavigationView
 
+/**
+ * Навигация: плавающая стеклянная панель с тремя вкладками (Чаты · Контакты · Аккаунт).
+ * Вкладки — корневые экраны без стека истории. Остальные экраны открываются поверх
+ * и скрывают панель, в заголовке появляется стрелка «назад».
+ * Имя класса сохранено от старого выдвижного меню, чтобы не менять все обращения к нему.
+ */
 class AppDrawer {
 
-    private lateinit var mDrawerLayout: DrawerLayout
-    private lateinit var mNavigationView: NavigationView
-    private lateinit var mToggle: ActionBarDrawerToggle
+    enum class Tab { CHATS, CONTACTS, ACCOUNT }
+
+    private lateinit var mNavBar: View
+    private val mTabViews = mutableMapOf<Tab, View>()
+    private var mCurrentTab: Tab? = null
 
     fun create() {
-        mDrawerLayout = APP_ACTIVITY.findViewById(R.id.drawer_layout)
-        mNavigationView = APP_ACTIVITY.findViewById(R.id.nav_view)
+        mNavBar = APP_ACTIVITY.findViewById(R.id.nav_bar)
+        mTabViews[Tab.CHATS] = APP_ACTIVITY.findViewById(R.id.nav_tab_chats)
+        mTabViews[Tab.CONTACTS] = APP_ACTIVITY.findViewById(R.id.nav_tab_contacts)
+        mTabViews[Tab.ACCOUNT] = APP_ACTIVITY.findViewById(R.id.nav_tab_account)
 
-        setupHeader()
-        setupMenu()
-        setupToggle()
-
-        // Обновляем данные при создании (на случай, если они изменились)
-        updateHeader()
+        mTabViews.forEach { (tab, view) -> view.setOnClickListener { openTab(tab) } }
     }
 
-    private fun setupToggle() {
-        mToggle = ActionBarDrawerToggle(
-            APP_ACTIVITY,
-            mDrawerLayout,
-            APP_ACTIVITY.mToolbar,
-            R.string.open_drawer,
-            R.string.close_drawer
-        )
-        mDrawerLayout.addDrawerListener(mToggle)
-        mToggle.syncState()
+    /** Переключает вкладку без стека: «назад» из корневой вкладки не возвращает на предыдущую. */
+    fun openTab(tab: Tab) {
+        if (tab == mCurrentTab) return
+        val fragment = when (tab) {
+            Tab.CHATS -> MainListFragment()
+            Tab.CONTACTS -> ContactsFragment()
+            Tab.ACCOUNT -> SettingsFragment()
+        }
+        replaceFragment(fragment, addStack = false)
     }
 
-    fun disableDrawer() {
-        mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
+    /** Корневой экран вкладки: панель видна, стрелки нет. */
+    fun showRoot(tab: Tab) {
+        mCurrentTab = tab
+        APP_ACTIVITY.supportActionBar?.setDisplayHomeAsUpEnabled(false)
+        APP_ACTIVITY.mToolbar.navigationIcon = null
+        APP_ACTIVITY.mToolbar.setNavigationOnClickListener(null)
+        APP_ACTIVITY.mToolbar.isVisible = true
+        renderSelection(tab)
+        setBarVisible(true)
+    }
 
-        // Показываем стрелку назад
+    /** Вложенный экран (чат, настройки профиля и т.п.): панель скрыта, в заголовке «назад». */
+    fun showSubScreen() {
         APP_ACTIVITY.supportActionBar?.setDisplayHomeAsUpEnabled(true)
         APP_ACTIVITY.mToolbar.setNavigationIcon(R.drawable.ic_arrow_back)
-
         APP_ACTIVITY.mToolbar.setNavigationOnClickListener {
             APP_ACTIVITY.supportFragmentManager.popBackStack()
         }
+        APP_ACTIVITY.mToolbar.isVisible = true
+        setBarVisible(false)
     }
 
-    fun enableDrawer() {
-        mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
-        mToggle.syncState()
+    /** Чат использует собственную шапку: системную панель заголовка скрываем, чтобы не было двух полос. */
+    fun setToolbarVisible(visible: Boolean) {
+        APP_ACTIVITY.mToolbar.isVisible = visible
+    }
 
-        // Возвращаем гамбургер
-        APP_ACTIVITY.supportActionBar?.setDisplayHomeAsUpEnabled(false)
-        mToggle.syncState()
+    private fun renderSelection(selected: Tab) {
+        mTabViews.forEach { (tab, view) ->
+            val isSelected = tab == selected
+            view.background = if (isSelected) APP_ACTIVITY.getDrawable(R.drawable.bg_nav_pill) else null
 
-        APP_ACTIVITY.mToolbar.setNavigationOnClickListener {
-            mDrawerLayout.openDrawer(GravityCompat.START)
+            val iconColor = APP_ACTIVITY.getColor(if (isSelected) R.color.accent_cyan else R.color.text_hint)
+            val labelColor = APP_ACTIVITY.getColor(if (isSelected) R.color.text_primary else R.color.text_hint)
+
+            // Структура вкладки: [ImageView, TextView] внутри LinearLayout (см. activity_main.xml)
+            val content = view as ViewGroup
+            val column = content.getChildAt(0) as ViewGroup
+            (column.getChildAt(0) as ImageView).imageTintList = ColorStateList.valueOf(iconColor)
+            (column.getChildAt(1) as TextView).setTextColor(labelColor)
         }
     }
 
-    private fun setupHeader() {
-        val headerView = mNavigationView.getHeaderView(0)
+    private fun setBarVisible(visible: Boolean) {
+        mNavBar.animate().cancel()
+        val offset = 48f * mNavBar.resources.displayMetrics.density
 
-        val nameTextView = headerView.findViewById<TextView>(R.id.header_name)
-        val phoneTextView = headerView.findViewById<TextView>(R.id.header_phone)
-        val avatarImageView = headerView.findViewById<ImageView>(R.id.header_avatar)
-
-        nameTextView.text = USER.fullname.ifEmpty { "Пользователь" }
-        phoneTextView.text = USER.phone.ifEmpty { "Нет номера" }
-
-        if (USER.photoUrl.isNotEmpty()) {
-            avatarImageView.downloadAndSetImage(USER.photoUrl)
+        if (visible) {
+            if (mNavBar.isVisible && mNavBar.alpha == 1f) return
+            mNavBar.visibility = View.VISIBLE
+            mNavBar.translationY = offset
+            mNavBar.alpha = 0f
+            mNavBar.animate().translationY(0f).alpha(1f).setDuration(220).start()
         } else {
-            avatarImageView.setImageResource(R.drawable.ic_person)
-        }
-    }
-
-    fun updateHeader() {
-        val headerView = mNavigationView.getHeaderView(0)
-
-        val nameTextView = headerView.findViewById<TextView>(R.id.header_name)
-        val phoneTextView = headerView.findViewById<TextView>(R.id.header_phone)
-        val avatarImageView = headerView.findViewById<ImageView>(R.id.header_avatar)
-
-        nameTextView.text = USER.fullname.ifEmpty { "Пользователь" }
-        phoneTextView.text = USER.phone.ifEmpty { "Нет номера" }
-
-        if (USER.photoUrl.isNotEmpty()) {
-            avatarImageView.downloadAndSetImage(USER.photoUrl)
-        } else {
-            avatarImageView.setImageResource(R.drawable.ic_person)
-        }
-    }
-
-    private fun setupMenu() {
-        mNavigationView.setNavigationItemSelectedListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.nav_create_group -> replaceFragment(AddContactsFragment())
-                R.id.nav_contacts -> replaceFragment(ContactsFragment())
-                R.id.nav_personal_account -> replaceFragment(SettingsFragment())
-                R.id.nav_information -> replaceFragment(InformationFragment())
-            }
-            mDrawerLayout.closeDrawer(GravityCompat.START)
-            true
+            if (!mNavBar.isVisible) return
+            mNavBar.animate().translationY(offset).alpha(0f).setDuration(180)
+                .withEndAction {
+                    mNavBar.visibility = View.GONE
+                    mNavBar.translationY = 0f
+                    mNavBar.alpha = 1f
+                }
+                .start()
         }
     }
 }

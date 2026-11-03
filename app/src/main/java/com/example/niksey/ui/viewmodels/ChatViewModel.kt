@@ -9,6 +9,7 @@ import com.example.niksey.database.getMessageKey
 import com.example.niksey.ui.fragments.message_recycler_view.views.AppViewFactory
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 import com.example.niksey.utillits.*
+import com.example.niksey.utillits.signal.SecureMessaging
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ServerValue
 import kotlinx.coroutines.launch
@@ -92,17 +93,40 @@ class ChatViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Отправка текста. Текст шифруется ключом беседы; если ключа нет — не отправляем вовсе,
+     * а не пишем открытый текст в базу.
+     */
     fun sendMessage(text: String, replyTo: String? = null, onSuccess: () -> Unit = {}) {
         if (text.isBlank()) return
 
+        val conversationId = if (isGroup) {
+            ChatEncryptionManager.groupConversationId(chatId)
+        } else {
+            ChatEncryptionManager.privateConversationId(CURRENT_UID, chatId)
+        }
+
+        val messageKey = getMessageKey(chatId)
+        // Личный чат — протокол Signal; группа — прежняя схема (пока)
+        val peer = if (isGroup) null else chatId
+
+        SecureMessaging.encryptText(messageKey, peer, conversationId, text) { encrypted ->
+            if (encrypted == null) {
+                APP_ACTIVITY.runOnUiThread { showToast("Сообщение не отправлено: проверьте шифрование чата") }
+                return@encryptText
+            }
+            APP_ACTIVITY.runOnUiThread { writeTextMessage(messageKey, encrypted, replyTo, onSuccess) }
+        }
+    }
+
+    private fun writeTextMessage(messageKey: String, encryptedText: String, replyTo: String?, onSuccess: () -> Unit) {
         viewModelScope.launch {
-            val messageKey = getMessageKey(chatId)
 
             val messageMap = hashMapOf<String, Any>(
                 "id" to messageKey,
                 "from" to CURRENT_UID,
                 "timeStamp" to ServerValue.TIMESTAMP,
-                "text" to text,
+                "text" to encryptedText,
                 "type" to TYPE_TEXT,
                 "replyTo" to (replyTo ?: "")
             )

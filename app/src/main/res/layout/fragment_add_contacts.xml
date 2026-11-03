@@ -1,41 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_dark"
-    android:padding="16dp">
+    android:background="@drawable/bg_screen_backdrop"
+    android:orientation="vertical"
+    android:padding="20dp">
 
     <!-- Заголовок -->
     <TextView
+        style="@style/NikseyTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:text="@string/add_contacts"
-        android:textColor="@color/text_primary"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:text="@string/add_contacts" />
 
-    <!-- Список контактов -->
+    <!-- Список контактов для выбора участников -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/add_contacts_recycle_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_weight="1"
         android:layout_marginTop="16dp"
-        app:layout_constraintBottom_toTopOf="@id/add_contacts_btn_next"
-        app:layout_constraintTop_toBottomOf="@id/add_contacts_btn_next" />
+        android:clipToPadding="false"
+        android:paddingBottom="12dp"
+        android:scrollbars="none" />
 
-    <!-- Кнопка "Далее" -->
+    <!-- Кнопка «Далее» -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/add_contacts_btn_next"
-        style="@style/GlassButton"
+        style="@style/NikseyButtonPrimary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="@string/next"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        android:layout_marginTop="8dp"
+        android:text="@string/next" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

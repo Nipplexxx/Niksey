@@ -16,6 +16,7 @@ import com.example.niksey.utillits.CURRENT_UID
 import com.example.niksey.utillits.ChatEncryptionManager
 import com.example.niksey.utillits.asTime
 import com.example.niksey.utillits.showToast
+import com.example.niksey.utillits.signal.SecureMessaging
 import com.google.android.material.card.MaterialCardView
 
 class HolderTextMessage(view: View) : RecyclerView.ViewHolder(view), MessageHolder {
@@ -30,8 +31,14 @@ class HolderTextMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
     private val chatReceivedMessageTime: TextView = view.findViewById(R.id.chat_received_message_time)
     private val receivedReplyPreview: TextView = view.findViewById(R.id.received_reply_preview)
 
+    /** id сообщения, которое сейчас показывает строка. */
+    private var boundMessageId: String? = null
+
     override fun drawMessage(view: MessageView) {
+        boundMessageId = view.id
         getDecryptedText(view) { decryptedText ->
+            // Строка могла уже показывать другое сообщение (переиспользование при прокрутке)
+            if (boundMessageId != view.id) return@getDecryptedText
             if (view.from == CURRENT_UID) {
                 blocUserMessage.visibility = View.VISIBLE
                 blocReceivedMessage.visibility = View.GONE
@@ -78,24 +85,21 @@ class HolderTextMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
                 return
             }
 
-            val partnerId = if (view.from == CURRENT_UID) {
-                ChatEncryptionManager.currentChatPartnerId ?: view.from
-            } else {
-                view.from
+            val conversationId = ChatEncryptionManager.currentConversationId
+            if (conversationId == null) {
+                onResult(ChatEncryptionManager.UNREADABLE_TEXT)
+                return
             }
 
-            val key = ChatEncryptionManager.getChatKey(partnerId)
-
-            if (key != null) {
-                val decrypted = ChatEncryptionManager.decryptMessage(view.text, key)
-                view.decryptedText = decrypted
-                onResult(decrypted)
-            } else {
-                onResult(view.text) // показываем как есть
+            // Signal-сообщение расшифровывается на фоне; результат кэшируется по id сообщения
+            SecureMessaging.decryptText(view.id, view.from, conversationId, view.text) { plain ->
+                val shown = plain ?: ChatEncryptionManager.UNREADABLE_TEXT
+                if (plain != null) view.decryptedText = plain
+                onResult(shown)
             }
         } catch (e: Exception) {
-            // Полностью игнорируем ошибку и показываем оригинальный текст
-            onResult(view.text)
+            // Шифротекст никогда не показываем как обычный текст
+            onResult(ChatEncryptionManager.UNREADABLE_TEXT)
         }
     }
 

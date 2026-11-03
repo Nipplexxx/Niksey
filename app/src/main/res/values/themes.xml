@@ -1,17 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- === NIKSEY GLASS THEME === -->
+    <!-- === NIKSEY GLASS THEME (always dark) === -->
     <style name="Theme.Niksey" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Основной акцент -->
         <item name="colorPrimary">@color/accent_purple</item>
         <item name="colorPrimaryVariant">@color/accent_purple_glow</item>
         <item name="colorOnPrimary">@color/white_100</item>
+        <item name="colorSecondary">@color/accent_purple</item>
 
-        <!-- Фон и стекло -->
+        <!-- Тёмные поверхности, светлый текст и иконки (приложение всегда тёмное) -->
+        <item name="colorSurface">@color/surface_dark</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorOnBackground">@color/text_primary</item>
+        <item name="colorControlNormal">@color/text_secondary</item>
+        <item name="colorControlActivated">@color/accent_purple</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+
+        <!-- Фон и системные панели -->
         <item name="android:windowBackground">@color/background_dark</item>
-        <item name="android:statusBarColor">@color/background_dark</item>
+        <item name="android:colorBackground">@color/background_dark</item>
+        <item name="android:statusBarColor">@color/surface_dark</item>
         <item name="android:navigationBarColor">@color/background_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
 
         <!-- Текст -->
         <item name="text_primary">@color/text_primary</item>
@@ -19,8 +32,8 @@
         <item name="text_hint">@color/text_hint</item>
 
         <!-- Glass card стиль -->
-        <item name="glass_card_bg">@color/glass_card_bg_menu</item>
-        <item name="glass_border">@color/glass_border_menu</item>
+        <item name="glass_card_bg">@color/glass_card_bg</item>
+        <item name="glass_border">@color/glass_border</item>
     </style>
 
 </resources>

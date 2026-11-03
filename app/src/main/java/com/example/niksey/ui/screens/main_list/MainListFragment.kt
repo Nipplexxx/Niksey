@@ -5,18 +5,23 @@ package com.example.niksey.ui.screens.main_list
 import android.os.Bundle
 import android.view.*
 import androidx.appcompat.widget.SearchView
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
 import com.example.niksey.database.*
 import com.example.niksey.models.CommonModel
+import com.example.niksey.ui.screens.groups_messages.AddContactsFragment
+import com.example.niksey.ui.objects.AppDrawer
 import com.example.niksey.utillits.*
+import com.example.niksey.utillits.signal.SecureMessaging
 
 class MainListFragment : Fragment(R.layout.fragment_main_list) {
 
     private lateinit var mRecyclerView: RecyclerView
     private lateinit var mAdapter: MainListAdapter
+    private lateinit var mEmptyState: View
 
     private val originalList = mutableListOf<CommonModel>()
     private val filteredList = mutableListOf<CommonModel>()
@@ -30,11 +35,15 @@ class MainListFragment : Fragment(R.layout.fragment_main_list) {
     override fun onResume() {
         super.onResume()
         APP_ACTIVITY.mToolbar.title = getString(R.string.app_name)
-        APP_ACTIVITY.mAppDrawer.enableDrawer()
+        APP_ACTIVITY.mAppDrawer.showRoot(AppDrawer.Tab.CHATS)
     }
 
     private fun initRecyclerView() {
         mRecyclerView = requireView().findViewById(R.id.main_list_recycle_view)
+        mEmptyState = requireView().findViewById(R.id.main_empty_state)
+        requireView().findViewById<View>(R.id.main_fab_create_group).setOnClickListener {
+            replaceFragment(AddContactsFragment())
+        }
         mAdapter = MainListAdapter()
 
         mRecyclerView.apply {
@@ -64,6 +73,8 @@ class MainListFragment : Fragment(R.layout.fragment_main_list) {
                 }
             }
 
+            updateEmptyState()
+
             // Предзагружаем все публичные ключи сразу
             chatIds.forEach { chatId ->
                 ChatEncryptionManager.getOtherUserPublicKey(chatId) { /* кэшируем */ }
@@ -81,7 +92,7 @@ class MainListFragment : Fragment(R.layout.fragment_main_list) {
                         val lastMsg = snapshot2.children.firstOrNull()?.getCommonModel()
 
                         if (lastMsg != null) {
-                            decryptLastMessage(lastMsg, model.id) { decryptedText ->
+                            decryptLastMessage(lastMsg, ChatEncryptionManager.privateConversationId(CURRENT_UID, model.id)) { decryptedText ->
                                 userModel.lastMessage = decryptedText
                                 userModel.timeStamp = lastMsg.timeStamp as? Long ?: 0L
                                 userModel.type = lastMsg.type.ifEmpty { TYPE_CHAT }
@@ -111,7 +122,7 @@ class MainListFragment : Fragment(R.layout.fragment_main_list) {
                         val lastMsg = snapshot2.children.firstOrNull()?.getCommonModel()
 
                         if (lastMsg != null) {
-                            decryptLastMessage(lastMsg, model.id) { decryptedText ->
+                            decryptLastMessage(lastMsg, ChatEncryptionManager.groupConversationId(model.id)) { decryptedText ->
                                 groupModel.lastMessage = decryptedText
                                 groupModel.timeStamp = lastMsg.timeStamp as? Long ?: 0L
                                 groupModel.type = lastMsg.type.ifEmpty { TYPE_GROUP }
@@ -139,9 +150,16 @@ class MainListFragment : Fragment(R.layout.fragment_main_list) {
         filteredList.addAll(originalList)
 
         mAdapter.submitList(filteredList)
+        updateEmptyState()
     }
 
-    private fun decryptLastMessage(msg: CommonModel, chatId: String, onResult: (String) -> Unit) {
+    /** Показываем оформленную заглушку только когда чатов нет вообще (не при пустом поиске). */
+    private fun updateEmptyState() {
+        mEmptyState.isVisible = originalList.isEmpty()
+        mRecyclerView.isVisible = originalList.isNotEmpty()
+    }
+
+    private fun decryptLastMessage(msg: CommonModel, conversationId: String, onResult: (String) -> Unit) {
         val type = msg.type.lowercase()
         val fileUrl = msg.fileUrl.lowercase()
 
@@ -173,35 +191,17 @@ class MainListFragment : Fragment(R.layout.fragment_main_list) {
             return
         }
 
-        val cachedKey = ChatEncryptionManager.getChatKey(chatId)
-        if (cachedKey != null) {
-            try {
-                val decrypted = ChatEncryptionManager.decryptMessage(msg.text, cachedKey)
-                msg.decryptedText = decrypted
-                onResult(if (decrypted.length > 50) decrypted.take(50) + "..." else decrypted)
-            } catch (_: Exception) {
-                onResult(msg.text.take(30) + "...")
-            }
-            return
+        // Превью: расшифровываем ключом беседы; без ключа/при ошибке — заглушка, а не шифротекст
+        fun preview(decrypted: String?): String = when {
+            decrypted == null -> ChatEncryptionManager.UNREADABLE_TEXT
+            decrypted.length > 50 -> decrypted.take(50) + "..."
+            else -> decrypted
         }
 
-        // Ключа нет — загружаем асинхронно
-        ChatEncryptionManager.getOrCreateChatKeyAsync(chatId) { chatKey ->
-            if (chatKey != null) {
-                try {
-                    val decrypted = ChatEncryptionManager.decryptMessage(msg.text, chatKey)
-                    msg.decryptedText = decrypted
-
-                    APP_ACTIVITY.runOnUiThread {
-                        onResult(if (decrypted.length > 50) decrypted.take(50) + "..." else decrypted)
-                        mAdapter.submitList(filteredList)
-                    }
-                } catch (_: Exception) {
-                    onResult(msg.text.take(20) + "...")
-                }
-            } else {
-                onResult(msg.text.take(20) + "...")
-            }
+        // Signal-сообщение расшифровывается один раз и кэшируется по id — повторный вызов берёт кэш
+        SecureMessaging.decryptText(msg.id, msg.from, conversationId, msg.text) { decrypted ->
+            if (decrypted != null) msg.decryptedText = decrypted
+            onResult(preview(decrypted))
         }
     }
 

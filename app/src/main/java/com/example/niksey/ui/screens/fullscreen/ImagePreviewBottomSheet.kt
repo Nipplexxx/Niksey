@@ -34,7 +34,7 @@ class ImagePreviewBottomSheet : DialogFragment() {
 
         imageUrl?.let { url ->
             Glide.with(this)
-                .load(url)
+                .load(java.io.File(url))
                 .into(previewImage)
         }
 

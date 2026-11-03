@@ -1,32 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@color/background_dark">
+    android:layout_height="match_parent">
 
-    <!-- Заголовок -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:text="@string/chats"
-        android:textColor="@color/text_primary"
-        android:textSize="26sp"
-        android:textStyle="bold"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <!-- Список чатов -->
+    <!-- Список чатов: нижний отступ под плавающую панель -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/main_list_recycle_view"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="60dp"
+        android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:padding="8dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="110dp"
+        android:scrollbars="none" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <!-- Заглушка, когда чатов нет -->
+    <include
+        android:id="@+id/main_empty_state"
+        layout="@layout/view_empty_state"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+
+    <!-- Создание группы: над плавающей панелью вкладок -->
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/main_fab_create_group"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="104dp"
+        android:fontFamily="@font/outfit"
+        android:text="@string/create_group"
+        android:textColor="@color/white_100"
+        app:backgroundTint="@color/bubble_out_start"
+        app:elevation="10dp"
+        app:icon="@drawable/ic_group"
+        app:iconTint="@color/white_100" />
+
+</FrameLayout>

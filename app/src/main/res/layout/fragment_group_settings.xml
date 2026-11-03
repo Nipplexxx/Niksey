@@ -1,67 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background_dark"
+    android:orientation="vertical"
     android:padding="20dp">
 
     <!-- Заголовок -->
     <TextView
+        style="@style/NikseyTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
-        android:text="@string/group_settings"
-        android:textColor="@color/text_primary"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:text="@string/group_settings" />
 
     <!-- Название группы -->
     <EditText
         android:id="@+id/group_name_edit"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="60dp"
+        android:layout_marginTop="20dp"
         android:autofillHints="auto"
         android:background="@drawable/bg_input_glass"
+        android:fontFamily="@font/manrope"
         android:hint="@string/group_name"
         android:padding="16dp"
         android:textColor="@color/text_primary"
-        android:textColorHint="@color/text_secondary"
-        app:layout_constraintTop_toTopOf="parent"
+        android:textColorHint="@color/text_hint"
+        android:textSize="16sp"
         tools:ignore="TextFields" />
 
-    <!-- Кнопка сохранить -->
+    <!-- Сохранить название -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_save_name"
-        style="@style/GlassButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="@string/save"
-        app:layout_constraintTop_toBottomOf="@id/group_name_edit" />
-
-    <!-- Кнопка добавить участников -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_add_participants"
-        style="@style/GlassButton"
+        style="@style/NikseyButtonPrimary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:text="@string/add_participants"
-        app:layout_constraintTop_toBottomOf="@id/btn_save_name" />
+        android:text="@string/save" />
+
+    <!-- Добавить участников -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_add_participants"
+        style="@style/NikseyButtonGlass"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/add_participants" />
 
     <!-- Список участников -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/participants_recycler"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="24dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btn_add_participants" />
+        android:layout_weight="1"
+        android:layout_marginTop="20dp"
+        android:clipToPadding="false"
+        android:paddingBottom="24dp"
+        android:scrollbars="none" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

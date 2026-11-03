@@ -1,82 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<!-- Стеклянная строка контакта: аватар со свечением, имя, статус -->
+<com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="12dp"
-    android:layout_marginVertical="6dp">
+    android:layout_marginBottom="10dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    app:cardBackgroundColor="@color/row_fill"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/glass_stroke_strong"
+    app:strokeWidth="1dp">
 
-    <com.google.android.material.card.MaterialCardView
-        style="@style/GlassCard"
-        android:layout_width="0dp"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardBackgroundColor="@color/glass_card_bg"
-        app:cardCornerRadius="20dp"
-        app:cardElevation="4dp"
-        app:strokeColor="@color/glass_border"
-        app:strokeWidth="1dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="12dp">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="16dp">
+        <FrameLayout
+            android:id="@+id/contact_avatar_frame"
+            android:layout_width="68dp"
+            android:layout_height="68dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
 
-            <!-- Аватарка с неоновым бордером -->
+            <View
+                android:layout_width="68dp"
+                android:layout_height="68dp"
+                android:background="@drawable/bg_avatar_glow" />
+
             <de.hdodenhof.circleimageview.CircleImageView
                 android:id="@+id/contact_photo"
-                android:layout_width="59dp"
-                android:layout_height="60dp"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:layout_gravity="center"
                 android:src="@drawable/ic_person"
                 app:civ_border_color="@color/accent_purple"
-                app:civ_border_width="2.5dp"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:civ_border_width="1.5dp" />
 
-            <!-- Имя контакта -->
-            <TextView
-                android:id="@+id/contact_fullname"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:fontFamily="@font/chivo"
-                android:textColor="@color/text_primary"
-                android:textSize="16.5sp"
-                app:layout_constraintStart_toEndOf="@id/contact_photo"
-                app:layout_constraintTop_toTopOf="parent"
-                tools:text="@string/example_contact_name" />
+        </FrameLayout>
 
-            <!-- Статус -->
-            <TextView
-                android:id="@+id/contact_status"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:fontFamily="@font/chivo"
-                android:textColor="@color/text_secondary"
-                android:textSize="13.5sp"
-                app:layout_constraintStart_toEndOf="@id/contact_photo"
-                app:layout_constraintTop_toBottomOf="@id/contact_fullname"
-                tools:text="@string/example_status_online" />
+        <!-- Имя контакта -->
+        <TextView
+            android:id="@+id/contact_fullname"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:ellipsize="end"
+            android:fontFamily="@font/outfit"
+            android:maxLines="1"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            app:layout_constraintEnd_toStartOf="@id/contact_checkmark"
+            app:layout_constraintStart_toEndOf="@id/contact_avatar_frame"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="@string/example_contact_name" />
 
-            <!-- Галочка выбора -->
-            <ImageView
-                android:id="@+id/contact_checkmark"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_marginEnd="12dp"
-                android:layout_marginTop="12dp"
-                android:src="@drawable/ic_check"
-                android:visibility="gone"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+        <!-- Статус -->
+        <TextView
+            android:id="@+id/contact_status"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="4dp"
+            android:fontFamily="@font/manrope"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/contact_avatar_frame"
+            app:layout_constraintTop_toBottomOf="@id/contact_fullname"
+            tools:text="@string/example_status_online" />
 
-        </androidx.constraintlayout.widget.ConstraintLayout>
-    </com.google.android.material.card.MaterialCardView>
+        <!-- Отметка выбора -->
+        <ImageView
+            android:id="@+id/contact_checkmark"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:src="@drawable/ic_check"
+            android:tint="@color/accent_cyan"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</com.google.android.material.card.MaterialCardView>

@@ -25,6 +25,8 @@ import com.example.niksey.ui.objects.AppDrawer
 import com.example.niksey.ui.screens.main_list.MainListFragment
 import com.example.niksey.ui.screens.register.EnteredFragment
 import com.example.niksey.utillits.*
+import com.example.niksey.utillits.media.MediaCache
+import com.example.niksey.utillits.signal.SecureMessaging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executor
@@ -49,13 +51,16 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         mBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(mBinding.root)
+        // Контент всегда под строкой состояния и над панелью навигации (не full-screen)
+        WindowCompat.setDecorFitsSystemWindows(window, true)
 
-        WindowCompat.setDecorFitsSystemWindows(window, false)
         APP_ACTIVITY = this
 
         requestAllPermissions()
 
         ChatEncryptionManager.init(this)
+        SecureMessaging.init(this)
+        MediaCache.init(this)
         PostQuantumKeyManager.generateECDHKeyPair()
         initFirebase()
 
@@ -207,6 +212,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStart() {
+        com.example.niksey.utillits.signal.SignalManager.onAppForeground()
         super.onStart()
         AppStates.updateState(AppStates.ONLINE)
     }

@@ -1,43 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Текстовое сообщение: стеклянный пузырь, время под ним -->
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingHorizontal="12dp"
-    android:paddingVertical="6dp">
+    android:paddingVertical="3dp">
 
-    <!-- ==================== ИСХОДЯЩЕЕ СООБЩЕНИЕ ==================== -->
+    <!-- ==================== ИСХОДЯЩЕЕ (violet) ==================== -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/bloc_user_message"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:maxWidth="280dp"
-        app:cardBackgroundColor="#2A1F3D"
+        android:visibility="gone"
+        app:cardBackgroundColor="@android:color/transparent"
         app:cardCornerRadius="20dp"
-        app:cardElevation="3dp"
-        app:strokeColor="#6B4EFF"
-        app:strokeWidth="1.5dp"
+        app:cardElevation="4dp"
+        app:layout_constraintWidth_max="300dp"
+        app:strokeWidth="0dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="@drawable/bg_bubble_out"
             android:orientation="vertical"
-            android:padding="12dp">
+            android:paddingHorizontal="14dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="9dp">
 
-            <!-- Превью ответа (для исходящего) -->
+            <!-- Превью ответа -->
             <TextView
                 android:id="@+id/user_reply_preview"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="6dp"
-                android:background="#1A000000"
-                android:fontFamily="@font/chivo"
+                android:background="@drawable/bg_reply_quote"
+                android:fontFamily="@font/manrope"
                 android:paddingHorizontal="8dp"
                 android:paddingVertical="4dp"
-                android:textColor="#AAAAAA"
+                android:textColor="@color/text_primary"
                 android:textSize="12sp"
                 android:visibility="gone" />
 
@@ -45,10 +49,10 @@
                 android:id="@+id/chat_user_message"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/chivo"
+                android:fontFamily="@font/manrope"
                 android:lineSpacingExtra="3dp"
                 android:textColor="@color/text_primary"
-                android:textSize="15.5sp"
+                android:textSize="16sp"
                 tools:text="Всё отлично, а у тебя?" />
 
         </LinearLayout>
@@ -59,43 +63,47 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="3dp"
-        android:fontFamily="@font/chivo"
-        android:textColor="@color/text_hint"
+        android:layout_marginEnd="6dp"
+        android:fontFamily="@font/manrope"
+        android:textColor="@color/text_secondary"
         android:textSize="11sp"
         app:layout_constraintEnd_toEndOf="@id/bloc_user_message"
         app:layout_constraintTop_toBottomOf="@id/bloc_user_message" />
 
-    <!-- ==================== ВХОДЯЩЕЕ СООБЩЕНИЕ ==================== -->
+    <!-- ==================== ВХОДЯЩЕЕ (стекло) ==================== -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/bloc_received_message"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:maxWidth="280dp"
-        app:cardBackgroundColor="@color/glass_card_bg"
+        android:visibility="gone"
+        app:cardBackgroundColor="@android:color/transparent"
         app:cardCornerRadius="20dp"
-        app:cardElevation="3dp"
-        app:strokeColor="@color/glass_border"
-        app:strokeWidth="1dp"
+        app:cardElevation="4dp"
+        app:layout_constraintWidth_max="300dp"
+        app:strokeWidth="0dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="@drawable/bg_bubble_in"
             android:orientation="vertical"
-            android:padding="12dp">
+            android:paddingHorizontal="14dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="9dp">
 
-            <!-- Превью ответа (для входящего) -->
+            <!-- Превью ответа -->
             <TextView
                 android:id="@+id/received_reply_preview"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="6dp"
-                android:background="#1A000000"
-                android:fontFamily="@font/chivo"
+                android:background="@drawable/bg_reply_quote"
+                android:fontFamily="@font/manrope"
                 android:paddingHorizontal="8dp"
                 android:paddingVertical="4dp"
-                android:textColor="#AAAAAA"
+                android:textColor="@color/text_secondary"
                 android:textSize="12sp"
                 android:visibility="gone" />
 
@@ -103,10 +111,10 @@
                 android:id="@+id/chat_received_message"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/chivo"
+                android:fontFamily="@font/manrope"
                 android:lineSpacingExtra="3dp"
                 android:textColor="@color/text_primary"
-                android:textSize="15.5sp"
+                android:textSize="16sp"
                 tools:text="Привет, как дела?" />
 
         </LinearLayout>
@@ -117,8 +125,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="3dp"
-        android:fontFamily="@font/chivo"
-        android:textColor="@color/text_hint"
+        android:layout_marginStart="6dp"
+        android:fontFamily="@font/manrope"
+        android:textColor="@color/text_secondary"
         android:textSize="11sp"
         app:layout_constraintStart_toStartOf="@id/bloc_received_message"
         app:layout_constraintTop_toBottomOf="@id/bloc_received_message" />

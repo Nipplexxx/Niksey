@@ -1,58 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Стеклянная строка участника группы -->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    style="@style/GlassCard"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    app:cardBackgroundColor="@color/glass_card_bg"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="4dp"
-    app:strokeColor="@color/glass_border"
+    android:layout_marginBottom="10dp"
+    app:cardBackgroundColor="@color/row_fill"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/glass_stroke_strong"
     app:strokeWidth="1dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="12dp">
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="12dp">
 
-        <!-- Аватарка -->
-        <de.hdodenhof.circleimageview.CircleImageView
-            android:id="@+id/participant_photo"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/ic_person"
-            app:civ_border_width="2dp"
-            app:civ_border_color="@color/accent_purple"
+        <!-- Аватар со свечением -->
+        <FrameLayout
+            android:id="@+id/participant_avatar_frame"
+            android:layout_width="68dp"
+            android:layout_height="68dp"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            app:layout_constraintTop_toTopOf="parent">
+
+            <View
+                android:layout_width="68dp"
+                android:layout_height="68dp"
+                android:background="@drawable/bg_avatar_glow" />
+
+            <de.hdodenhof.circleimageview.CircleImageView
+                android:id="@+id/participant_photo"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_person"
+                app:civ_border_color="@color/accent_purple"
+                app:civ_border_width="1.5dp" />
+
+        </FrameLayout>
 
         <!-- Имя -->
         <TextView
             android:id="@+id/participant_name"
+            style="@style/NikseyBody"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:textColor="@color/text_primary"
+            android:layout_marginStart="12dp"
+            android:ellipsize="end"
+            android:fontFamily="@font/outfit"
+            android:maxLines="1"
             android:textSize="16sp"
-            app:layout_constraintStart_toEndOf="@id/participant_photo"
-            app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/btn_remove_participant"
+            app:layout_constraintStart_toEndOf="@id/participant_avatar_frame"
+            app:layout_constraintTop_toTopOf="parent"
             tools:text="Yura Petrov" />
 
-        <!-- Кнопка удаления -->
+        <!-- Удалить участника -->
         <ImageView
             android:id="@+id/btn_remove_participant"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_glass_bar"
+            android:padding="9dp"
             android:src="@drawable/ic_remove"
-            app:tint="@color/error"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:tint="@color/error"
             tools:ignore="ContentDescription" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>

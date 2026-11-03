@@ -18,12 +18,18 @@ import com.canhub.cropper.CropImageOptions
 import com.canhub.cropper.CropImageView
 import com.example.niksey.R
 import com.example.niksey.database.*
-import com.example.niksey.ui.screens.base_fragment.BaseFragment
+import com.example.niksey.ui.objects.AppDrawer
+import com.example.niksey.ui.screens.other_fragment.InformationFragment
+import com.example.niksey.utillits.media.MediaCache
+import com.example.niksey.utillits.signal.SecureMessaging
+import android.text.format.Formatter
+import androidx.appcompat.app.AlertDialog
 import com.example.niksey.utillits.*
 import com.mikepenz.materialize.util.KeyboardUtil
 import de.hdodenhof.circleimageview.CircleImageView
+import androidx.fragment.app.Fragment
 
-class SettingsFragment : BaseFragment(R.layout.fragment_settings) {
+class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
     private lateinit var cropImageLauncher: ActivityResultLauncher<CropImageContractOptions>
 
@@ -55,6 +61,7 @@ class SettingsFragment : BaseFragment(R.layout.fragment_settings) {
         super.onResume()
         try {
             APP_ACTIVITY.title = getString(R.string.personal_account)
+            APP_ACTIVITY.mAppDrawer.showRoot(AppDrawer.Tab.ACCOUNT)
             setHasOptionsMenu(true)
             initFieldsSafe()
             KeyboardUtil.hideKeyboard(activity)
@@ -66,18 +73,21 @@ class SettingsFragment : BaseFragment(R.layout.fragment_settings) {
 
     private fun initFieldsSafe() {
         try {
-            if (CURRENT_UID.isNullOrBlank() || CURRENT_UID == "null") {
+            if (CURRENT_UID.isBlank() || CURRENT_UID == "null") {
                 showToast("Пользователь не авторизован")
                 return
             }
 
-            if (USER.id.isNullOrBlank()) {
+            if (USER.id.isBlank()) {
                 showToast("Данные пользователя загружаются...")
                 return
             }
 
             (view?.findViewById<View>(R.id.settings_full_name) as? TextView)?.text = USER.fullname ?: "Не указано"
-            (view?.findViewById<View>(R.id.settings_username) as? TextView)?.text = USER.username?.takeIf { it.isNotBlank() } ?: CURRENT_UID
+            (view?.findViewById<View>(R.id.settings_username) as? TextView)?.text =
+                "@" + (USER.username?.takeIf { it.isNotBlank() } ?: CURRENT_UID)
+            (view?.findViewById<View>(R.id.settings_user_id) as? TextView)?.text =
+                "ID · " + CURRENT_UID.take(12)
             (view?.findViewById<View>(R.id.settings_bio) as? TextView)?.text = USER.bio ?: "Не указано"
             (view?.findViewById<View>(R.id.settings_phone_number) as? TextView)?.text = USER.phone ?: "Не указан"
             (view?.findViewById<View>(R.id.settings_email) as? TextView)?.text = maskString(USER.email)
@@ -87,25 +97,61 @@ class SettingsFragment : BaseFragment(R.layout.fragment_settings) {
             (view?.findViewById<View>(R.id.settings_user_photo) as? CircleImageView)
                 ?.downloadAndSetImage(USER.photoUrl ?: "")
 
-            (view?.findViewById<View>(R.id.settings_btn_change_username) as? ConstraintLayout)
+            (view?.findViewById<View>(R.id.settings_btn_change_username) as? View)
                 ?.setOnClickListener { replaceFragment(ChangeUsernameFragment()) }
 
-            (view?.findViewById<View>(R.id.settings_btn_change_bio) as? ConstraintLayout)
+            (view?.findViewById<View>(R.id.settings_btn_change_bio) as? View)
                 ?.setOnClickListener { replaceFragment(ChangeBioFragment()) }
 
             (view?.findViewById<View>(R.id.settings_shange_photo) as? ImageView)
                 ?.setOnClickListener { changePhotoUser() }
 
-            (view?.findViewById<View>(R.id.settings_btn_change_email) as? ConstraintLayout)
+            (view?.findViewById<View>(R.id.settings_btn_about) as? View)
+                ?.setOnClickListener { replaceFragment(InformationFragment()) }
+
+            (view?.findViewById<View>(R.id.settings_btn_clear_cache) as? View)
+                ?.setOnClickListener { confirmClearCache() }
+            refreshCacheSize()
+
+            (view?.findViewById<View>(R.id.settings_btn_change_email) as? View)
                 ?.setOnClickListener { replaceFragment(ChangeEmailFragment()) }
 
-            (view?.findViewById<View>(R.id.settings_btn_change_number_phone) as? ConstraintLayout)
+            (view?.findViewById<View>(R.id.settings_btn_change_number_phone) as? View)
                 ?.setOnClickListener { replaceFragment(ChangePhoneFragment()) }
 
         } catch (e: Exception) {
             Log.e("SettingsFragment", "ОШИБКА", e)
             showToast("Ошибка:\n${e.javaClass.simpleName}\n${e.message}")
         }
+    }
+
+    /** Показывает размер кэша медиа (считаем в фоне — папка может быть большой). */
+    private fun refreshCacheSize() {
+        Thread {
+            val size = MediaCache.sizeBytes()
+            APP_ACTIVITY.runOnUiThread {
+                view?.findViewById<TextView>(R.id.settings_cache_title)?.text =
+                    getString(R.string.clear_cache_with_size, Formatter.formatFileSize(APP_ACTIVITY, size))
+            }
+        }.start()
+    }
+
+    /** Очищает только кэш медиа и аватаров. Сообщения, ключи и чаты остаются. */
+    private fun confirmClearCache() {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.clear_cache_title)
+            .setMessage(R.string.clear_cache_message)
+            .setPositiveButton(R.string.clear_cache_title) { _, _ ->
+                Thread {
+                    MediaCache.clear()
+                    APP_ACTIVITY.runOnUiThread {
+                        showToast(getString(R.string.cache_cleared))
+                        refreshCacheSize()
+                    }
+                }.start()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun maskString(input: String?): String {
@@ -158,6 +204,7 @@ class SettingsFragment : BaseFragment(R.layout.fragment_settings) {
             R.id.settings_menu_exit -> {
                 AppStates.updateState(AppStates.OFFLINE)
                 AUTH.signOut()
+                SecureMessaging.wipe()
                 ChatEncryptionManager.clearAndDeleteCache()
                 restartActivity()
             }

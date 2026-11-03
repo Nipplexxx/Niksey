@@ -32,6 +32,9 @@ import com.canhub.cropper.CropImageContractOptions
 import com.canhub.cropper.CropImageOptions
 import com.canhub.cropper.CropImageView
 import com.example.niksey.R
+import com.example.niksey.ui.objects.setStatusDotColor
+import com.example.niksey.ui.objects.showChatMenu
+import com.example.niksey.ui.screens.profile.UserProfileSheet
 import com.example.niksey.database.clearChat
 import com.example.niksey.database.deleteChat
 import com.example.niksey.database.getCommonModel
@@ -45,6 +48,9 @@ import com.example.niksey.ui.screens.base_fragment.BaseFragment
 import com.example.niksey.ui.screens.main_list.MainListFragment
 import com.example.niksey.ui.viewmodels.ChatViewModel
 import com.example.niksey.utillits.*
+import com.example.niksey.utillits.signal.SecureMessaging
+import com.example.niksey.utillits.signal.SignalManager
+import com.example.niksey.ui.objects.bindIdentityBanner
 import com.google.firebase.database.DatabaseReference
 import de.hdodenhof.circleimageview.CircleImageView
 import java.io.File
@@ -87,6 +93,17 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
         initLaunchers()
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        // Без контакта чат открывать нельзя: onResume сам вернёт пользователя назад
+        if (contactId.isBlank()) return
+        // Один раз на вью: вью, адаптер, подписки на сообщения и обработчики ввода
+        initViews()
+        initRecyclerView()
+        initListeners()
+        viewModel.initChat(contactId, isGroup = false)
+    }
+
     private fun initLaunchers() {
         pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri?.let {
@@ -120,19 +137,25 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
 
     override fun onResume() {
         super.onResume()
+        APP_ACTIVITY.mAppDrawer.setToolbarVisible(false)
+        SecureMessaging.onDecryptedUpdate = { mAdapter?.notifyDataSetChanged() }
+        bindIdentityBanner(listOf(contactId))
         if (contactId.isBlank()) {
             showToast("Ошибка: контакт не найден")
             replaceFragment(MainListFragment())
             return
         }
 
-        ChatEncryptionManager.currentChatPartnerId = contactId
-        ChatEncryptionManager.getOrCreateChatKeyAsync(contactId) { }
+        // Открытая беседа — по ней адаптеры расшифровывают сообщения
+        val conversationId = ChatEncryptionManager.privateConversationId(CURRENT_UID, contactId)
+        ChatEncryptionManager.currentConversationId = conversationId
+        ChatEncryptionManager.getKeyAsync(conversationId) { key ->
+            // Ключ готов: перерисовываем сообщения, которые показывали заглушку
+            if (key != null) APP_ACTIVITY.runOnUiThread { mAdapter?.notifyDataSetChanged() }
+        }
 
         try {
-            initViews()
-            initListeners()
-            initRecyclerView()
+            // Вью, адаптер и подписки создаются в onViewCreated; здесь — только данные сессии
             initChat()
         } catch (e: Exception) {
             Log.e("SingleChatFragment", "Критическая ошибка", e)
@@ -290,7 +313,6 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
                 initToolbar()
             })
 
-        viewModel.initChat(contactId, isGroup = false)
         ChatEncryptionManager.getOtherUserPublicKey(contactId) { key ->
             if (!key.isNullOrEmpty()) ChatEncryptionManager.cachePublicKey(contactId, key)
         }
@@ -303,15 +325,25 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
             return
         }
         mToolbarInfo?.visibility = View.VISIBLE
+        mToolbarInfo?.findViewById<ImageView>(R.id.chat_btn_back)?.setOnClickListener { parentFragmentManager.popBackStack() }
+        mToolbarInfo?.findViewById<ImageView>(R.id.chat_btn_more)?.setOnClickListener { showChatMenu(it, R.menu.single_chat_action_menu) }
+        mToolbarInfo?.findViewById<View>(R.id.chat_header_info)?.setOnClickListener {
+            UserProfileSheet.newInstance(contactId).show(parentFragmentManager, "user_profile")
+        }
         mToolbarInfo?.findViewById<TextView>(R.id.toolbar_chat_fullname)?.text = contact?.fullname?.ifEmpty { contact?.username }
         mToolbarInfo?.findViewById<CircleImageView>(R.id.toolbar_chat_image)?.downloadAndSetImage(contact?.photoUrl.orEmpty())
 
-        mListenerInfoToolbar = AppValueEventListener {
-            mReceivingUser = it.getUserModel()
-            initInfoToolbar()
+        // Слушатель добавляем один раз: initToolbar вызывается при каждом возобновлении экрана
+        if (mListenerInfoToolbar == null) {
+            val listener = AppValueEventListener {
+                mReceivingUser = it.getUserModel()
+                initInfoToolbar()
+            }
+            val ref = REF_DATABASE_ROOT.child(NODE_USERS).child(contactId)
+            ref.addValueEventListener(listener)
+            mRefUser = ref
+            mListenerInfoToolbar = listener
         }
-        mRefUser = REF_DATABASE_ROOT.child(NODE_USERS).child(contactId)
-        mRefUser?.addValueEventListener(mListenerInfoToolbar!!)
     }
 
     private fun initInfoToolbar() {
@@ -324,6 +356,7 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
             else -> user.getStateText()
         }
         mToolbarInfo?.findViewById<TextView>(R.id.toolbar_chat_status)?.text = status
+        mToolbarInfo?.findViewById<View>(R.id.chat_status_dot)?.let { setStatusDotColor(it, user.state == "online") }
     }
 
     // ==================== REPLY SYSTEM ====================
@@ -410,10 +443,12 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
 
     override fun onPause() {
         super.onPause()
+        SecureMessaging.onDecryptedUpdate = null
         try {
             mToolbarInfo?.visibility = View.GONE
             APP_ACTIVITY.mToolbar?.title = getString(R.string.app_name)
-            mRefUser?.removeEventListener(mListenerInfoToolbar!!)
+            mListenerInfoToolbar?.let { mRefUser?.removeEventListener(it) }
+            mRefUser = null
             mListenerInfoToolbar = null
             handler.removeCallbacksAndMessages(null)
         } catch (e: Exception) { }

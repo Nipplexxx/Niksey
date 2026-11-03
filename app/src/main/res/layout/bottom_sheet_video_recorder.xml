@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@color/background_dark"
+    android:background="@drawable/bg_bottom_sheet_rounded"
     android:padding="24dp">
 
     <!-- Контейнер для камеры + прогресса -->
@@ -16,12 +16,21 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
+        <!-- Мягкое свечение за круглым превью -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_avatar_glow" />
+
         <!-- Круглое превью камеры -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            app:cardBackgroundColor="@color/glass_fill"
             app:cardCornerRadius="999dp"
-            app:cardElevation="12dp">
+            app:cardElevation="0dp"
+            app:strokeColor="@color/glass_stroke_strong"
+            app:strokeWidth="2dp">
 
             <com.otaliastudios.cameraview.CameraView
                 android:id="@+id/camera_view"
@@ -33,7 +42,7 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Красный круг прогресса (как в Telegram) -->
+        <!-- Круг прогресса записи -->
         <ProgressBar
             android:id="@+id/progress_circle"
             android:layout_width="match_parent"
