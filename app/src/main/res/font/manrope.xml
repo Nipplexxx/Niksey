@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Manrope (Google Fonts, OFL): основной текст -->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+    <font android:font="@font/manrope_variable" android:fontWeight="400" android:fontStyle="normal" />
+    <font android:font="@font/manrope_variable" android:fontWeight="500" android:fontStyle="normal" />
+    <font android:font="@font/manrope_variable" android:fontWeight="700" android:fontStyle="normal" />
+</font-family>

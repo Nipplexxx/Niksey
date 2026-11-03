@@ -1,98 +1,200 @@
 package com.example.niksey.ui.screens.groups_messages
 
+import android.os.Bundle
+import android.view.View
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.TextView
+import androidx.activity.result.ActivityResultLauncher
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.canhub.cropper.CropImageContract
+import com.canhub.cropper.CropImageContractOptions
+import com.canhub.cropper.CropImageOptions
+import com.canhub.cropper.CropImageView
 import com.example.niksey.R
 import com.example.niksey.database.getCommonModel
+import com.example.niksey.database.getUrlFromStorage
+import com.example.niksey.database.putImageToStorage
 import com.example.niksey.models.CommonModel
 import com.example.niksey.ui.screens.base_fragment.BaseFragment
-import com.example.niksey.utillits.APP_ACTIVITY
-import com.example.niksey.utillits.AppValueEventListener
-import com.example.niksey.utillits.CHILD_FULLNAME
-import com.example.niksey.utillits.CURRENT_UID
-import com.example.niksey.utillits.NODE_GROUPS
-import com.example.niksey.utillits.NODE_PARTICIPANTS
-import com.example.niksey.utillits.NODE_USERS
-import com.example.niksey.utillits.REF_DATABASE_ROOT
-import com.example.niksey.utillits.replaceFragment
-import com.example.niksey.utillits.showToast
+import com.example.niksey.utillits.*
+import com.google.android.material.button.MaterialButton
+import de.hdodenhof.circleimageview.CircleImageView
+import java.util.concurrent.atomic.AtomicInteger
 
+/**
+ * Информация о группе (открывается по нажатию на шапку чата).
+ *
+ * Все видят участников. Редактировать название, фото и удалять участников может только создатель
+ * (роль берётся из groups/{id}/members).
+ */
 class GroupSettingsFragment(private val group: CommonModel) : BaseFragment(R.layout.fragment_group_settings) {
 
-    private lateinit var mRecyclerView: RecyclerView
-    private lateinit var mAdapter: GroupParticipantsAdapter
-    private val participants = mutableListOf<CommonModel>()
+    private var mAdapter: GroupParticipantsAdapter? = null
+    private val members = mutableListOf<GroupMember>()
+    private var isCreator = false
+    private var cropLauncher: ActivityResultLauncher<CropImageContractOptions>? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        cropLauncher = registerForActivityResult(CropImageContract()) { result ->
+            if (result.isSuccessful) {
+                result.uriContent?.let { uploadGroupPhoto(it) }
+            } else {
+                showToast(APP_ACTIVITY.getString(R.string.error_cropping_image))
+            }
+        }
+    }
 
     override fun onResume() {
         super.onResume()
-        APP_ACTIVITY.title = getString(R.string.group_settings)
-        initViews()
-        loadParticipants()
+        // Экран использует собственную стеклянную шапку, как и чат: системную панель скрываем
+        APP_ACTIVITY.mAppDrawer.setToolbarVisible(false)
     }
 
-    private fun initViews() {
-        // Имя группы
-        view?.findViewById<EditText>(R.id.group_name_edit)?.setText(group.fullname)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
-        // Кнопка сохранить имя
-        view?.findViewById<TextView>(R.id.btn_save_name)?.setOnClickListener {
-            val newName = view?.findViewById<EditText>(R.id.group_name_edit)?.text.toString()
-            if (newName.isNotBlank()) {
-                updateGroupName(newName)
-            }
+        view.findViewById<TextView>(R.id.header_title).text = getString(R.string.group_info_title)
+        view.findViewById<ImageView>(R.id.header_back).setOnClickListener {
+            parentFragmentManager.popBackStack()
         }
 
-        // Добавить участников
-        view?.findViewById<TextView>(R.id.btn_add_participants)?.setOnClickListener {
+        val recycler = view.findViewById<RecyclerView>(R.id.participants_recycler)
+        recycler.layoutManager = LinearLayoutManager(requireContext())
+        mAdapter = GroupParticipantsAdapter(members) { member -> removeMember(member) }
+        recycler.adapter = mAdapter
+
+        view.findViewById<MaterialButton>(R.id.btn_save_name).setOnClickListener {
+            val newName = view.findViewById<EditText>(R.id.group_name_edit).text.toString().trim()
+            if (newName.isNotEmpty()) updateGroupName(newName)
+        }
+        view.findViewById<MaterialButton>(R.id.btn_add_participants).setOnClickListener {
             replaceFragment(AddContactsFragment())
         }
-
-        // RecyclerView участников
-        mRecyclerView = view?.findViewById(R.id.participants_recycler)!!
-        mAdapter = GroupParticipantsAdapter(participants) { user ->
-            removeParticipant(user)
+        view.findViewById<ImageView>(R.id.group_info_photo).setOnClickListener {
+            if (isCreator) cropLauncher?.launch(photoCropOptions())
         }
-        mRecyclerView.adapter = mAdapter
+
+        bindHeader(view)
+        loadMembers()
     }
 
-    private fun loadParticipants() {
-        REF_DATABASE_ROOT.child("$NODE_GROUPS/${group.id}/$NODE_PARTICIPANTS")
-            .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
-                participants.clear()
-                snapshot.children.forEach { child ->
-                    val userId = child.key ?: return@forEach
-                    REF_DATABASE_ROOT.child("$NODE_USERS/$userId")
-                        .addListenerForSingleValueEvent(AppValueEventListener { userSnapshot ->
-                            val user = userSnapshot.getCommonModel()
-                            participants.add(user)
-                            mAdapter.notifyDataSetChanged()
-                        })
-                }
-            })
+    override fun onDestroyView() {
+        super.onDestroyView()
+        mAdapter = null
     }
+
+    // ==================== данные ====================
+
+    private fun bindHeader(view: View) {
+        view.findViewById<TextView>(R.id.group_info_name).text = group.fullname
+        view.findViewById<CircleImageView>(R.id.group_info_photo).downloadAndSetImage(group.photoUrl)
+        view.findViewById<TextView>(R.id.group_info_members).text = getPlurals(members.size)
+    }
+
+    /** Роли и профили участников: groups/{id}/members (роль) + users/{uid} (имя и фото). */
+    private fun loadMembers() {
+        REF_DATABASE_ROOT.child("$NODE_GROUPS/${group.id}/$NODE_MEMBERS").get()
+            .addOnSuccessListener { snapshot ->
+                val roles = snapshot.children.mapNotNull { child ->
+                    child.key?.let { it to (child.getValue(String::class.java) ?: USER_MEMBER) }
+                }.toMap()
+                isCreator = roles[CURRENT_UID] == USER_CREATOR
+
+                if (roles.isEmpty()) {
+                    applyMembers(emptyList())
+                    return@addOnSuccessListener
+                }
+
+                val loaded = mutableListOf<GroupMember>()
+                val remaining = AtomicInteger(roles.size)
+                roles.forEach { (id, role) ->
+                    REF_DATABASE_ROOT.child("$NODE_USERS/$id").get()
+                        .addOnCompleteListener { task ->
+                            val user = task.result?.takeIf { task.isSuccessful }?.getCommonModel()
+                            val name = user?.fullname?.ifEmpty { user.username }?.ifEmpty { id } ?: id
+                            synchronized(loaded) {
+                                loaded.add(GroupMember(id, name, user?.photoUrl ?: "empty", role == USER_CREATOR))
+                            }
+                            if (remaining.decrementAndGet() == 0) {
+                                activity?.runOnUiThread { applyMembers(loaded.toList()) }
+                            }
+                        }
+                }
+            }
+            .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_generic, it.message)) }
+    }
+
+    private fun applyMembers(loaded: List<GroupMember>) {
+        val v = view ?: return
+        members.clear()
+        // Создатель первым, остальные по имени
+        members.addAll(loaded.sortedWith(compareByDescending<GroupMember> { it.isCreator }.thenBy { it.name }))
+
+        mAdapter?.canRemove = isCreator
+        mAdapter?.notifyDataSetChanged()
+
+        v.findViewById<View>(R.id.group_edit_panel).visibility = if (isCreator) View.VISIBLE else View.GONE
+        v.findViewById<View>(R.id.btn_add_participants).visibility = if (isCreator) View.VISIBLE else View.GONE
+        v.findViewById<EditText>(R.id.group_name_edit).setText(group.fullname)
+        bindHeader(v)
+    }
+
+    // ==================== действия создателя ====================
 
     private fun updateGroupName(newName: String) {
         REF_DATABASE_ROOT.child("$NODE_GROUPS/${group.id}/$CHILD_FULLNAME")
             .setValue(newName)
             .addOnSuccessListener {
-                showToast(getString(R.string.group_name_updated))
                 group.fullname = newName
+                showToast(APP_ACTIVITY.getString(R.string.group_name_updated))
+                view?.let { bindHeader(it) }
             }
+            .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_generic, it.message)) }
     }
 
-    private fun removeParticipant(user: CommonModel) {
-        if (user.id == CURRENT_UID) {
-            showToast(getString(R.string.cannot_remove_self))
+    private fun uploadGroupPhoto(uri: android.net.Uri) {
+        val path = REF_STORAGE_ROOT.child("$FOLDER_GROUPS_IMAGE/${group.id}")
+        putImageToStorage(uri, path) {
+            getUrlFromStorage(path) { url ->
+                REF_DATABASE_ROOT.child("$NODE_GROUPS/${group.id}/$CHILD_PHOTO_URL")
+                    .setValue(url)
+                    .addOnSuccessListener {
+                        group.photoUrl = url
+                        showToast(APP_ACTIVITY.getString(R.string.group_photo_updated))
+                        view?.let { bindHeader(it) }
+                    }
+            }
+        }
+    }
+
+    private fun removeMember(member: GroupMember) {
+        if (!isCreator || member.isCreator || member.id == CURRENT_UID) {
+            showToast(APP_ACTIVITY.getString(R.string.cannot_remove_self))
             return
         }
-
-        REF_DATABASE_ROOT.child("$NODE_GROUPS/${group.id}/$NODE_PARTICIPANTS/${user.id}")
+        REF_DATABASE_ROOT.child("$NODE_GROUPS/${group.id}/$NODE_MEMBERS/${member.id}")
             .removeValue()
             .addOnSuccessListener {
-                showToast(getString(R.string.participant_removed))
-                participants.remove(user)
-                mAdapter.notifyDataSetChanged()
+                showToast(APP_ACTIVITY.getString(R.string.participant_removed))
+                members.remove(member)
+                mAdapter?.notifyDataSetChanged()
+                view?.let { bindHeader(it) }
             }
+            .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_generic, it.message)) }
     }
+
+    private fun photoCropOptions() = CropImageContractOptions(
+        uri = null,
+        cropImageOptions = CropImageOptions(
+            aspectRatioX = 1,
+            aspectRatioY = 1,
+            fixAspectRatio = true,
+            outputRequestWidth = 250,
+            outputRequestHeight = 250,
+            cropShape = CropImageView.CropShape.OVAL
+        )
+    )
 }

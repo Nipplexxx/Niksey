@@ -25,7 +25,7 @@ class ChangeNameFragment : BaseChangeFragment(R.layout.fragment_change_name) {
         val name = view?.findViewById<EditText>(R.id.settings_input_name)?.text.toString()
         val surname = view?.findViewById<EditText>(R.id.settings_input_surname)?.text.toString()
         if (name.isEmpty()) {
-            showToast(getString(R.string.settings_toast_name_is_empty))
+            showToast(APP_ACTIVITY.getString(R.string.settings_toast_name_is_empty))
         } else {
             val fullname = "$name $surname"
             setNameToDatabase(fullname)

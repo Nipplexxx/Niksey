@@ -5,6 +5,7 @@ import android.view.*
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.widget.SearchView
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
 import com.example.niksey.database.*
@@ -31,6 +32,7 @@ class AddContactsFragment : BaseFragment(R.layout.fragment_add_contacts) {
         setHasOptionsMenu(true)
     }
 
+
     override fun onResume() {
         super.onResume()
         APP_ACTIVITY.title = getString(R.string.add_a_participant)
@@ -40,7 +42,7 @@ class AddContactsFragment : BaseFragment(R.layout.fragment_add_contacts) {
         // Кнопка Next
         view?.findViewById<com.google.android.material.button.MaterialButton>(R.id.add_contacts_btn_next)?.setOnClickListener {
             if (listContacts.isEmpty()) {
-                showToast(getString(R.string.add_participant))
+                showToast(APP_ACTIVITY.getString(R.string.add_participant))
             } else {
                 replaceFragment(CreateGroupFragment(listContacts))
             }
@@ -48,7 +50,10 @@ class AddContactsFragment : BaseFragment(R.layout.fragment_add_contacts) {
     }
 
     private fun initRecycleView() {
+        if (::mAdapter.isInitialized) mAdapter.stopListening()
         mRecyclerView = requireView().findViewById(R.id.add_contacts_recycle_view)
+        // Без LayoutManager RecyclerView не показывает строки — поэтому список оставался пустым
+        mRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         mRefMainList = REF_DATABASE_ROOT.child(NODE_MAIN_LIST).child(CURRENT_UID)
 
         val options = FirebaseRecyclerOptions.Builder<CommonModel>()
@@ -113,6 +118,7 @@ class AddContactsFragment : BaseFragment(R.layout.fragment_add_contacts) {
     }
 
     private fun searchUsers(query: String) {
+        if (::mAdapter.isInitialized) mAdapter.stopListening()
         val searchQuery = REF_DATABASE_ROOT.child(NODE_USERS)
             .orderByChild("username")
             .startAt(query)

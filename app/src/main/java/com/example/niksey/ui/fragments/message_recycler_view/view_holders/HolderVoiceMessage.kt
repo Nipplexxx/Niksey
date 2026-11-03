@@ -15,6 +15,7 @@ import com.example.niksey.R
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 import com.example.niksey.utillits.CURRENT_UID
 import com.example.niksey.utillits.asTime
+import com.example.niksey.utillits.media.MediaViews
 import com.google.android.material.card.MaterialCardView
 import kotlin.math.sin
 
@@ -61,6 +62,9 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
 
     companion object {
         var currentPlayingHolder: HolderVoiceMessage? = null
+
+        /** url → длительность в формате m:ss, чтобы не открывать каждое голосовое повторно. */
+        private val durationCache = java.util.concurrent.ConcurrentHashMap<String, String>()
     }
 
     override fun drawMessage(view: MessageView) {
@@ -74,20 +78,23 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
     private fun showUserVoice(view: MessageView) {
         blocUserVoice.visibility = View.VISIBLE
         blocReceivedVoice.visibility = View.GONE
-        currentUrl = view.fileUrl
+        // currentUrl задаётся при воспроизведении (путь к локальному файлу)
         chatUserVoiceTime.text = view.timeStamp.asTime()
-        preloadDuration(view.fileUrl, chatUserVoiceDuration)
+        MediaViews.withFile(view, { file -> preloadDuration(file.absolutePath, chatUserVoiceDuration) })
     }
 
     private fun showReceivedVoice(view: MessageView) {
         blocUserVoice.visibility = View.GONE
         blocReceivedVoice.visibility = View.VISIBLE
-        currentUrl = view.fileUrl
+        // currentUrl задаётся при воспроизведении (путь к локальному файлу)
         chatReceivedVoiceTime.text = view.timeStamp.asTime()
-        preloadDuration(view.fileUrl, chatReceivedVoiceDuration)
+        MediaViews.withFile(view, { file -> preloadDuration(file.absolutePath, chatReceivedVoiceDuration) })
     }
 
     private fun preloadDuration(url: String, durationTextView: TextView) {
+        // Длительность уже известна (строка переиспользуется при прокрутке) — не запускаем плеер заново
+        durationCache[url]?.let { durationTextView.text = it; return }
+
         Thread {
             try {
                 val tempPlayer = MediaPlayer().apply {
@@ -96,6 +103,7 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
                     val minutes = duration / 1000 / 60
                     val seconds = (duration / 1000) % 60
                     val durationText = String.format("%d:%02d", minutes, seconds)
+                    durationCache[url] = durationText
                     handler.post { durationTextView.text = durationText }
                     release()
                 }
@@ -134,13 +142,23 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         bars: List<View>,
         isUser: Boolean
     ) {
-        val url = messageView.fileUrl.takeIf { it.isNotBlank() } ?: return
+        MediaViews.withFile(messageView, { file -> playFile(file.absolutePath, messageView, playBtn, seekBar, bars, isUser) })
+    }
+
+    private fun playFile(
+        url: String,
+        messageView: MessageView,
+        playBtn: ImageView,
+        seekBar: SeekBar,
+        bars: List<View>,
+        isUser: Boolean
+    ) {
 
         // Если уже играет это же сообщение — пауза
         if (mediaPlayer?.isPlaying == true && currentUrl == url) {
             mediaPlayer?.pause()
             isPlaying = false
-            playBtn.setImageResource(if (isUser) R.drawable.ic_play_purple else R.drawable.ic_play_blue)
+            playBtn.setImageResource(if (isUser) R.drawable.ic_voice_play else R.drawable.ic_voice_play)
             stopWaveAnimation(bars)
             stopVisualizer()
             handler.removeCallbacks(updateSeekBar)
@@ -163,7 +181,7 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
                 setOnPreparedListener {
                     start()
                     this@HolderVoiceMessage.isPlaying = true
-                    playBtn.setImageResource(if (isUser) R.drawable.ic_stop_purple else R.drawable.ic_stop_purple)
+                    playBtn.setImageResource(if (isUser) R.drawable.ic_voice_pause else R.drawable.ic_voice_pause)
                     seekBar.max = duration
                     startWaveAnimation(bars)
                     startVisualizer(bars)
@@ -171,7 +189,7 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
                 }
                 setOnCompletionListener {
                     this@HolderVoiceMessage.isPlaying = false
-                    playBtn.setImageResource(if (isUser) R.drawable.ic_play_purple else R.drawable.ic_play_blue)
+                    playBtn.setImageResource(if (isUser) R.drawable.ic_voice_play else R.drawable.ic_voice_play)
                     seekBar.progress = 0
                     stopWaveAnimation(bars)
                     stopVisualizer()
@@ -182,7 +200,7 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         } else {
             mediaPlayer?.start()
             isPlaying = true
-            playBtn.setImageResource(if (isUser) R.drawable.ic_stop_purple else R.drawable.ic_stop_purple)
+            playBtn.setImageResource(if (isUser) R.drawable.ic_voice_pause else R.drawable.ic_voice_pause)
             startWaveAnimation(bars)
             startVisualizer(bars)
             handler.post(updateSeekBar)
@@ -193,8 +211,8 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
     fun pauseCurrentPlayback() {
         mediaPlayer?.pause()
         isPlaying = false
-        chatUserVoicePlay.setImageResource(R.drawable.ic_play_purple)
-        chatReceivedVoicePlay.setImageResource(R.drawable.ic_play_blue)
+        chatUserVoicePlay.setImageResource(R.drawable.ic_voice_play)
+        chatReceivedVoicePlay.setImageResource(R.drawable.ic_voice_play)
         stopWaveAnimation(userWaveBars)
         stopWaveAnimation(receivedWaveBars)
         stopVisualizer()
@@ -203,19 +221,25 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
 
     private fun startVisualizer(bars: List<View>) {
         stopVisualizer()
-        mediaPlayer?.audioSessionId?.let { sessionId ->
-            visualizer = Visualizer(sessionId).apply {
-                captureSize = Visualizer.getCaptureSizeRange()[1]
-                setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
-                    override fun onWaveFormDataCapture(visualizer: Visualizer?, waveform: ByteArray?, samplingRate: Int) {
-                        waveform?.let {
-                            handler.post { updateBarsFromWaveform(bars, it) }
+        // Visualizer требует разрешения на запись аудио и может не запуститься на некоторых устройствах —
+        // в этом случае волна просто остаётся статичной, а чат не падает.
+        try {
+            mediaPlayer?.audioSessionId?.let { sessionId ->
+                visualizer = Visualizer(sessionId).apply {
+                    captureSize = Visualizer.getCaptureSizeRange()[1]
+                    setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
+                        override fun onWaveFormDataCapture(visualizer: Visualizer?, waveform: ByteArray?, samplingRate: Int) {
+                            waveform?.let {
+                                handler.post { updateBarsFromWaveform(bars, it) }
+                            }
                         }
-                    }
-                    override fun onFftDataCapture(visualizer: Visualizer?, fft: ByteArray?, samplingRate: Int) {}
-                }, Visualizer.getMaxCaptureRate() / 2, true, false)
-                enabled = true
+                        override fun onFftDataCapture(visualizer: Visualizer?, fft: ByteArray?, samplingRate: Int) {}
+                    }, Visualizer.getMaxCaptureRate() / 2, true, false)
+                    enabled = true
+                }
             }
+        } catch (e: Exception) {
+            visualizer = null
         }
     }
 

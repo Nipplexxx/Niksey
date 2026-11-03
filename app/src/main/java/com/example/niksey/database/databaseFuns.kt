@@ -42,6 +42,8 @@ import com.example.niksey.utillits.REF_STORAGE_ROOT
 import com.example.niksey.utillits.USER
 import com.example.niksey.utillits.USER_CREATOR
 import com.example.niksey.utillits.USER_MEMBER
+import com.example.niksey.utillits.UserKeyManager
+import com.example.niksey.utillits.signal.SignalManager
 import com.example.niksey.utillits.showToast
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -76,7 +78,7 @@ fun ensureUserEncryptionKey(onComplete: (() -> Unit)? = null) {
     }
 
     try {
-        val ecdhPublicKey = EncryptionUtils.generateUserKeyPair()
+        val ecdhPublicKey = UserKeyManager.generateECDHKeyPair()
         val ecdhPublicKeyBase64 = EncryptionUtils.publicKeyToBase64(ecdhPublicKey)
 
         REF_DATABASE_ROOT.child("$NODE_USERS/$CURRENT_UID/publicKey")
@@ -121,7 +123,11 @@ inline fun initUser(crossinline function: () -> Unit) {
                     if (USER.username.isEmpty()) USER.username = CURRENT_UID
                 }
             }
-            ensureUserEncryptionKey { function() }
+            purgeStoredPassword()
+            ensureUserEncryptionKey {
+                SignalManager.onUserReady()
+                function()
+            }
         })
 }
 
@@ -146,109 +152,37 @@ fun updatePhonesToDatabase(arrayContacts: ArrayList<CommonModel>) {
         })
 }
 
-// ==================== ОТПРАВКА СООБЩЕНИЙ ====================
-
-@SuppressLint("StringFormatInvalid")
-fun sendMessage(message: String, receivingUserID: String, typeText: String, function: () -> Unit) {
-    if (message.isBlank()) {
-        showToast(APP_ACTIVITY.getString(R.string.message_cannot_be_empty))
-        return
-    }
-
-    ChatEncryptionManager.getOtherUserPublicKey(receivingUserID) { otherPublicKeyBase64 ->
-        if (otherPublicKeyBase64.isNullOrEmpty()) {
-            showToast("Ошибка шифрования: у пользователя нет публичного ключа")
-            return@getOtherUserPublicKey
-        }
-
-        ChatEncryptionManager.getOrCreateChatKeyAsync(receivingUserID) { chatKey ->
-            if (chatKey == null) {
-                showToast("Ошибка шифрования: не удалось получить ключ чата")
-                return@getOrCreateChatKeyAsync
-            }
-
-            val encryptedMessage = EncryptionUtils.encryptMessage(message, chatKey)
-            val messageKey = REF_DATABASE_ROOT.child("$NODE_MESSAGES/$CURRENT_UID/$receivingUserID").push().key ?: return@getOrCreateChatKeyAsync
-
-            val messageData = mapOf(
-                CHILD_FROM to CURRENT_UID,
-                CHILD_TYPE to typeText,
-                CHILD_TEXT to encryptedMessage,
-                CHILD_ID to messageKey,
-                CHILD_TIMESTAMP to ServerValue.TIMESTAMP
-            )
-
-            REF_DATABASE_ROOT.updateChildren(
-                mapOf(
-                    "$NODE_MESSAGES/$CURRENT_UID/$receivingUserID/$messageKey" to messageData,
-                    "$NODE_MESSAGES/$receivingUserID/$CURRENT_UID/$messageKey" to messageData
-                )
-            ).addOnSuccessListener { function() }
-                .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_sending, it.message)) }
-        }
-    }
-}
-
-fun sendMessageToGroup(message: String, groupID: String, typeText: String, function: () -> Unit) {
-    if (message.isBlank()) {
-        showToast(APP_ACTIVITY.getString(R.string.message_cannot_be_empty))
-        return
-    }
-
-    ChatEncryptionManager.getOrCreateChatKeyAsync(groupID) { chatKey ->
-        if (chatKey == null) {
-            showToast("Ошибка шифрования: не удалось получить ключ группы")
-            return@getOrCreateChatKeyAsync
-        }
-
-        val encryptedMessage = EncryptionUtils.encryptMessage(message, chatKey)
-        val messageKey = REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupID/$NODE_MESSAGES").push().key ?: return@getOrCreateChatKeyAsync
-
-        val messageData = mapOf(
-            CHILD_FROM to CURRENT_UID,
-            CHILD_TYPE to typeText,
-            CHILD_TEXT to encryptedMessage,
-            CHILD_ID to messageKey,
-            CHILD_TIMESTAMP to ServerValue.TIMESTAMP
-        )
-
-        REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupID/$NODE_MESSAGES/$messageKey")
-            .updateChildren(messageData)
-            .addOnSuccessListener { function() }
-            .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_sending_to_group)) }
-    }
-}
-
 // ==================== РАБОТА С ФАЙЛАМИ ====================
 
+/**
+ * Медиа в личном чате: шифруется на устройстве (см. uploadEncryptedMedia), в Storage — только шифротекст.
+ * В сообщение попадают URL шифротекста и зашифрованные метаданные (ключ файла и имя).
+ */
 fun uploadFileToStorage(uri: Uri, messageKey: String, receivedID: String, typeMessage: String, filename: String = "", onComplete: () -> Unit = {}) {
-    val path = REF_STORAGE_ROOT.child("$FOLDER_FILES/$messageKey")
-    putFileToStorage(uri, path) {
-        getUrlFromStorage(path) { url ->
-            sendMessageAsFile(receivedID, url, messageKey, typeMessage, filename)
-            onComplete()
-        }
+    val conversationId = ChatEncryptionManager.privateConversationId(CURRENT_UID, receivedID)
+    uploadEncryptedMedia(uri, messageKey, conversationId, typeMessage, filename, peer = receivedID) { url, metaText ->
+        sendMessageAsFile(receivedID, url, messageKey, typeMessage, metaText)
+        onComplete()
     }
 }
 
+/** Медиа в группе: то же самое, но с ключом группы. */
 fun uploadFileToStorageGroup(uri: Uri, messageKey: String, groupID: String, typeMessage: String, filename: String = "", onComplete: () -> Unit = {}) {
-    val path = REF_STORAGE_ROOT.child("$FOLDER_FILES/$messageKey")
-    putFileToStorage(uri, path) {
-        getUrlFromStorage(path) { url ->
-            sendMessageAsFileGroup(groupID, url, messageKey, typeMessage, filename)
-            onComplete()
-        }
+    val conversationId = ChatEncryptionManager.groupConversationId(groupID)
+    uploadEncryptedMedia(uri, messageKey, conversationId, typeMessage, filename, peer = null) { url, metaText ->
+        sendMessageAsFileGroup(groupID, url, messageKey, typeMessage, metaText)
+        onComplete()
     }
 }
 
-private fun sendMessageAsFile(receivingUserID: String, fileUrl: String, messageKey: String, typeMessage: String, filename: String) {
+private fun sendMessageAsFile(receivingUserID: String, fileUrl: String, messageKey: String, typeMessage: String, encryptedMeta: String) {
     val messageData = mapOf(
         CHILD_FROM to CURRENT_UID,
         CHILD_TYPE to typeMessage,
         CHILD_ID to messageKey,
         CHILD_TIMESTAMP to ServerValue.TIMESTAMP,
         CHILD_FILE_URL to fileUrl,
-        CHILD_TEXT to filename
+        CHILD_TEXT to encryptedMeta
     )
     REF_DATABASE_ROOT.updateChildren(
         mapOf(
@@ -258,14 +192,14 @@ private fun sendMessageAsFile(receivingUserID: String, fileUrl: String, messageK
     )
 }
 
-private fun sendMessageAsFileGroup(groupID: String, fileUrl: String, messageKey: String, typeMessage: String, filename: String) {
+private fun sendMessageAsFileGroup(groupID: String, fileUrl: String, messageKey: String, typeMessage: String, encryptedMeta: String) {
     val messageData = mapOf(
         CHILD_FROM to CURRENT_UID,
         CHILD_TYPE to typeMessage,
         CHILD_ID to messageKey,
         CHILD_TIMESTAMP to ServerValue.TIMESTAMP,
         CHILD_FILE_URL to fileUrl,
-        CHILD_TEXT to filename
+        CHILD_TEXT to encryptedMeta
     )
     REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupID/$NODE_MESSAGES/$messageKey")
         .updateChildren(messageData)
@@ -297,10 +231,15 @@ private fun deleteOldUsername(newUserName: String) {
         .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_generic, it.message)) }
 }
 
-fun setBioToDatabase(newBio: String) = updateUserField(CHILD_BIO, newBio) { USER.bio = newBio; APP_ACTIVITY.mAppDrawer.updateHeader() }
-fun setEmailToDatabase(newEmail: String) = updateUserField(CHILD_EMAIL, newEmail) { USER.email = newEmail; APP_ACTIVITY.mAppDrawer.updateHeader() }
-fun setPasswordToDatabase(newPassword: String) = updateUserField(CHILD_PASSWORD, newPassword) { USER.password = newPassword; APP_ACTIVITY.mAppDrawer.updateHeader() }
-fun setPhoneToDatabase(newPhone: String) = updateUserField(CHILD_PHONE, newPhone) { USER.phone = newPhone; APP_ACTIVITY.mAppDrawer.updateHeader() }
+fun setBioToDatabase(newBio: String) = updateUserField(CHILD_BIO, newBio) { USER.bio = newBio }
+fun setEmailToDatabase(newEmail: String) = updateUserField(CHILD_EMAIL, newEmail) { USER.email = newEmail }
+/** Удаляет пароль, который раньше был записан в базу. Вызывается при загрузке пользователя. */
+fun purgeStoredPassword() {
+    if (USER.password.isEmpty()) return
+    REF_DATABASE_ROOT.child("$USER_PATH/$CHILD_PASSWORD").removeValue()
+    USER.password = ""
+}
+fun setPhoneToDatabase(newPhone: String) = updateUserField(CHILD_PHONE, newPhone) { USER.phone = newPhone }
 
 fun setNameToDatabase(fullname: String) {
     if (fullname.isBlank()) {
@@ -309,7 +248,6 @@ fun setNameToDatabase(fullname: String) {
     }
     updateUserField(CHILD_FULLNAME, fullname) {
         USER.fullname = fullname
-        APP_ACTIVITY.mAppDrawer.updateHeader()
     }
 }
 
@@ -336,7 +274,6 @@ inline fun putUrlToDatabase(url: String, crossinline function: () -> Unit) {
         .setValue(url)
         .addOnSuccessListener {
             USER.photoUrl = url
-            APP_ACTIVITY.mAppDrawer.updateHeader()
             function()
         }
         .addOnFailureListener { showToast(APP_ACTIVITY.getString(R.string.error_generic, it.message)) }
@@ -390,7 +327,8 @@ fun createGroupToDatabase(nameGroup: String, uri: Uri, listContacts: List<Common
     )
 
     groupPath.updateChildren(groupData).addOnSuccessListener {
-        ChatEncryptionManager.getOrCreateChatKeyAsync(groupId) { _ -> }
+        // Sender Key группы раздаём сразу: участники смогут читать сообщения, не дожидаясь первого сообщения
+        SignalManager.shareSenderKey(groupId) { }
 
         if (uri != Uri.EMPTY) {
             putFileToStorage(uri, storagePath) {

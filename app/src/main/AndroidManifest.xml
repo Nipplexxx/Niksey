@@ -55,7 +55,7 @@
 
         <!-- ==================== Splash Screen ==================== -->
         <activity
-            android:name=".ui.screens.other_fragment.splash_screen"
+            android:name=".ui.screens.other_fragment.SplashScreenActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -4,7 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_dark"
+    android:background="@drawable/bg_app_gradient"
     android:fitsSystemWindows="true">
 
     <!-- Фото (занимает всё пространство кроме кнопок) -->
@@ -13,39 +13,37 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="fitCenter"
-        android:layout_marginBottom="80dp" />
+        android:layout_marginBottom="120dp" />
 
-    <!-- Нижняя панель с кнопками -->
+    <!-- Нижняя стеклянная панель с кнопками -->
     <LinearLayout
         android:id="@+id/buttons_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp"
-        android:background="@color/glass_card_bg"
         android:layout_gravity="bottom"
-        android:fitsSystemWindows="true">
+        android:layout_marginBottom="16dp"
+        android:layout_marginHorizontal="16dp"
+        android:background="@drawable/bg_glass_panel"
+        android:fitsSystemWindows="true"
+        android:orientation="horizontal"
+        android:padding="12dp">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_send"
+            style="@style/NikseyButtonPrimary"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Отправить"
-            android:textColor="@color/white_100"
-            app:backgroundTint="@color/purple_300"
             android:layout_marginEnd="8dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_cancel"
+            style="@style/NikseyButtonGlass"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Отмена"
-            android:textColor="@color/text_primary"
-            app:backgroundTint="@color/glass_card_bg"
-            app:strokeColor="@color/glass_border"
-            app:strokeWidth="1dp" />
+            android:text="Отмена" />
 
     </LinearLayout>
 

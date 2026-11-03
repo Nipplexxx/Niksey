@@ -5,204 +5,101 @@ package com.example.niksey.ui.screens.main_list
 import android.os.Bundle
 import android.view.*
 import androidx.appcompat.widget.SearchView
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
-import com.example.niksey.database.*
 import com.example.niksey.models.CommonModel
-import com.example.niksey.utillits.*
+import com.example.niksey.ui.objects.AppDrawer
+import com.example.niksey.ui.screens.groups_messages.AddContactsFragment
+import com.example.niksey.ui.viewmodels.MainListViewModel
+import com.example.niksey.utillits.APP_ACTIVITY
+import com.example.niksey.utillits.replaceFragment
+import com.example.niksey.utillits.showToast
 
+/**
+ * Экран «Чаты». Данные и их загрузка — в [MainListViewModel]; фрагмент только показывает
+ * текущий список и применяет поиск. Поэтому возврат из чата или группы отображает список сразу.
+ */
 class MainListFragment : Fragment(R.layout.fragment_main_list) {
 
     private lateinit var mRecyclerView: RecyclerView
     private lateinit var mAdapter: MainListAdapter
+    private lateinit var mEmptyState: View
 
-    private val originalList = mutableListOf<CommonModel>()
-    private val filteredList = mutableListOf<CommonModel>()
+    private val viewModel by lazy { ViewModelProvider(APP_ACTIVITY)[MainListViewModel::class.java] }
+
+    /** Полный список и текущий поисковый запрос (поиск — только отображение, не данные). */
+    private var allChats: List<CommonModel> = emptyList()
+    private var loaded = false
+    private var searchQuery: String? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setHasOptionsMenu(true)
-        initRecyclerView()
+        initViews(view)
+
+        // Наблюдатели подключаются до start(): текущий список (включая кэш) приходит сразу
+        viewModel.chats.observe(viewLifecycleOwner) { list ->
+            allChats = list
+            applyFilter()
+        }
+        viewModel.loaded.observe(viewLifecycleOwner) { isLoaded ->
+            loaded = isLoaded
+            updateEmptyState()
+        }
+        viewModel.error.observe(viewLifecycleOwner) { message ->
+            if (message != null) {
+                showToast(APP_ACTIVITY.getString(R.string.error_generic, message))
+                viewModel.clearError()
+            }
+        }
+        viewModel.start()
     }
 
     override fun onResume() {
         super.onResume()
         APP_ACTIVITY.mToolbar.title = getString(R.string.app_name)
-        APP_ACTIVITY.mAppDrawer.enableDrawer()
+        APP_ACTIVITY.mAppDrawer.showRoot(AppDrawer.Tab.CHATS)
     }
 
-    private fun initRecyclerView() {
-        mRecyclerView = requireView().findViewById(R.id.main_list_recycle_view)
+    private fun initViews(view: View) {
+        mRecyclerView = view.findViewById(R.id.main_list_recycle_view)
+        mEmptyState = view.findViewById(R.id.main_empty_state)
+        view.findViewById<View>(R.id.main_fab_create_group).setOnClickListener {
+            replaceFragment(AddContactsFragment())
+        }
         mAdapter = MainListAdapter()
-
         mRecyclerView.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = mAdapter
             setHasFixedSize(true)
         }
-
-        loadMainList()
     }
 
-    private fun loadMainList() {
-        originalList.clear()
-
-        val mRefMainList = REF_DATABASE_ROOT.child(NODE_MAIN_LIST).child(CURRENT_UID)
-
-        mRefMainList.addListenerForSingleValueEvent(AppValueEventListener { dataSnapshot ->
-            val chatIds = mutableListOf<String>()
-
-            dataSnapshot.children.forEach { snapshot ->
-                val model = snapshot.getCommonModel()
-                chatIds.add(model.id)
-
-                when (model.type) {
-                    TYPE_CHAT -> loadChatWithLastMessage(model)
-                    TYPE_GROUP -> loadGroupWithLastMessage(model)
-                }
+    /** Показывает список с учётом поиска. */
+    private fun applyFilter() {
+        val query = searchQuery?.trim()?.lowercase()
+        val visible = if (query.isNullOrEmpty()) {
+            allChats
+        } else {
+            allChats.filter {
+                it.fullname.lowercase().contains(query) ||
+                        it.phone.lowercase().contains(query) ||
+                        it.username.lowercase().contains(query)
             }
-
-            // Предзагружаем все публичные ключи сразу
-            chatIds.forEach { chatId ->
-                ChatEncryptionManager.getOtherUserPublicKey(chatId) { /* кэшируем */ }
-            }
-        })
+        }
+        mAdapter.submitList(visible)
+        updateEmptyState()
     }
 
-    private fun loadChatWithLastMessage(model: CommonModel) {
-        mRefUsers.child(model.id)
-            .addListenerForSingleValueEvent(AppValueEventListener { snapshot1 ->
-                val userModel = snapshot1.getCommonModel()
-
-                mRefMessages.child(model.id).limitToLast(1)
-                    .addListenerForSingleValueEvent(AppValueEventListener { snapshot2 ->
-                        val lastMsg = snapshot2.children.firstOrNull()?.getCommonModel()
-
-                        if (lastMsg != null) {
-                            decryptLastMessage(lastMsg, model.id) { decryptedText ->
-                                userModel.lastMessage = decryptedText
-                                userModel.timeStamp = lastMsg.timeStamp as? Long ?: 0L
-                                userModel.type = lastMsg.type.ifEmpty { TYPE_CHAT }
-
-                                if (userModel.fullname.isEmpty()) userModel.fullname = userModel.phone
-                                addItemSorted(userModel)
-                            }
-                        } else {
-                            userModel.lastMessage = getString(R.string.chat_cleared)
-                            userModel.timeStamp = 0L
-                            userModel.type = TYPE_CHAT
-                            if (userModel.fullname.isEmpty()) userModel.fullname = userModel.phone
-                            addItemSorted(userModel)
-                        }
-                    })
-            })
-    }
-
-    private fun loadGroupWithLastMessage(model: CommonModel) {
-        REF_DATABASE_ROOT.child(NODE_GROUPS).child(model.id)
-            .addListenerForSingleValueEvent(AppValueEventListener { snapshot1 ->
-                val groupModel = snapshot1.getCommonModel()
-
-                REF_DATABASE_ROOT.child(NODE_GROUPS).child(model.id).child(NODE_MESSAGES)
-                    .limitToLast(1)
-                    .addListenerForSingleValueEvent(AppValueEventListener { snapshot2 ->
-                        val lastMsg = snapshot2.children.firstOrNull()?.getCommonModel()
-
-                        if (lastMsg != null) {
-                            decryptLastMessage(lastMsg, model.id) { decryptedText ->
-                                groupModel.lastMessage = decryptedText
-                                groupModel.timeStamp = lastMsg.timeStamp as? Long ?: 0L
-                                groupModel.type = lastMsg.type.ifEmpty { TYPE_GROUP }
-                                addItemSorted(groupModel)
-                            }
-                        } else {
-                            groupModel.lastMessage = getString(R.string.chat_cleared)
-                            groupModel.timeStamp = 0L
-                            groupModel.type = TYPE_GROUP
-                            addItemSorted(groupModel)
-                        }
-                    })
-            })
-    }
-
-    private fun addItemSorted(item: CommonModel) {
-        originalList.add(item)
-
-        val sortedList = originalList.sortedByDescending { it.timeStamp as? Long ?: 0L }
-
-        originalList.clear()
-        originalList.addAll(sortedList)
-
-        filteredList.clear()
-        filteredList.addAll(originalList)
-
-        mAdapter.submitList(filteredList)
-    }
-
-    private fun decryptLastMessage(msg: CommonModel, chatId: String, onResult: (String) -> Unit) {
-        val type = msg.type.lowercase()
-        val fileUrl = msg.fileUrl.lowercase()
-
-        // === ДЛЯ МЕДИА — ВСЕГДА ПОКАЗЫВАЕМ ТИП (даже если text пустой) ===
-        when {
-            type.contains("voice") || fileUrl.contains("voice") -> {
-                onResult("🎤 Голосовое сообщение")
-                return
-            }
-            type.contains("image") || type.contains("photo") || fileUrl.contains("image") || fileUrl.contains("photo") -> {
-                onResult("🖼️ Изображение")
-                return
-            }
-            type.contains("file") || fileUrl.contains("file") -> {
-                onResult("📎 Файл")
-                return
-            }
-        }
-
-        // === ДЛЯ ТЕКСТА ===
-        if (msg.text.isBlank()) {
-            onResult("Нет сообщений")
-            return
-        }
-
-        // Для текста — расшифровываем
-        if (msg.decryptedText.isNotEmpty()) {
-            onResult(msg.decryptedText)
-            return
-        }
-
-        val cachedKey = ChatEncryptionManager.getChatKey(chatId)
-        if (cachedKey != null) {
-            try {
-                val decrypted = ChatEncryptionManager.decryptMessage(msg.text, cachedKey)
-                msg.decryptedText = decrypted
-                onResult(if (decrypted.length > 50) decrypted.take(50) + "..." else decrypted)
-            } catch (_: Exception) {
-                onResult(msg.text.take(30) + "...")
-            }
-            return
-        }
-
-        // Ключа нет — загружаем асинхронно
-        ChatEncryptionManager.getOrCreateChatKeyAsync(chatId) { chatKey ->
-            if (chatKey != null) {
-                try {
-                    val decrypted = ChatEncryptionManager.decryptMessage(msg.text, chatKey)
-                    msg.decryptedText = decrypted
-
-                    APP_ACTIVITY.runOnUiThread {
-                        onResult(if (decrypted.length > 50) decrypted.take(50) + "..." else decrypted)
-                        mAdapter.submitList(filteredList)
-                    }
-                } catch (_: Exception) {
-                    onResult(msg.text.take(20) + "...")
-                }
-            } else {
-                onResult(msg.text.take(20) + "...")
-            }
-        }
+    /** Заглушку «нет чатов» показываем только после ответа сети, а не во время ожидания. */
+    private fun updateEmptyState() {
+        if (!::mEmptyState.isInitialized) return
+        mEmptyState.isVisible = loaded && allChats.isEmpty()
+        mRecyclerView.isVisible = allChats.isNotEmpty()
     }
 
     @Deprecated("Deprecated in Java")
@@ -216,30 +113,10 @@ class MainListFragment : Fragment(R.layout.fragment_main_list) {
             override fun onQueryTextSubmit(query: String?): Boolean = false
 
             override fun onQueryTextChange(newText: String?): Boolean {
-                filterList(newText)
+                searchQuery = newText
+                applyFilter()
                 return true
             }
         })
     }
-
-    private fun filterList(query: String?) {
-        if (query.isNullOrBlank()) {
-            filteredList.clear()
-            filteredList.addAll(originalList)
-        } else {
-            val lowerQuery = query.lowercase()
-            filteredList.clear()
-            filteredList.addAll(
-                originalList.filter {
-                    it.fullname.lowercase().contains(lowerQuery) ||
-                            it.phone.lowercase().contains(lowerQuery) ||
-                            it.username.lowercase().contains(lowerQuery)
-                }
-            )
-        }
-        mAdapter.submitList(filteredList)
-    }
-
-    private val mRefUsers = REF_DATABASE_ROOT.child(NODE_USERS)
-    private val mRefMessages = REF_DATABASE_ROOT.child(NODE_MESSAGES).child(CURRENT_UID)
 }

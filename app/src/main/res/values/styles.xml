@@ -2,122 +2,211 @@
 <resources>
 
     <!-- Простой стиль для Toolbar -->
-    <style name="actionMenu" parent="Widget.AppCompat.ActionBar">
-        <item name="android:background">@color/background_dark</item>
-        <item name="titleTextColor">@color/text_primary</item>
-    </style>
 
     <!-- === GLASS CARD STYLE (Frosted Glass) === -->
-    <style name="GlassCard">
-        <item name="android:background">@color/glass_card_bg</item>
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_margin">8dp</item>
-        <item name="android:elevation">4dp</item>
-        <item name="android:padding">16dp</item>
-        <item name="android:foreground">?attr/selectableItemBackground</item>
-        <!-- Для настоящего blur на Android 12+ можно добавить в коде RenderEffect -->
-    </style>
 
-    <style name="GlassCardMenu">
-        <item name="android:background">@color/glass_card_bg</item>
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:elevation">4dp</item>
-        <item name="android:foreground">?attr/selectableItemBackground</item>
-        <!-- Для настоящего blur на Android 12+ можно добавить в коде RenderEffect -->
-    </style>
 
     <!-- Glass Button -->
-    <style name="GlassButton" parent="Widget.MaterialComponents.Button">
-        <item name="android:backgroundTint">@color/glass_card_bg</item>
-        <item name="android:textColor">@color/text_primary</item>
-        <item name="android:elevation">2dp</item>
-        <item name="cornerRadius">16dp</item>
-    </style>
 
     <!-- Text styles -->
-    <style name="MessageText">
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:textColor">?attr/text_primary</item>
-        <item name="android:layout_margin">@dimen/app_margin</item>
-        <item name="android:padding">10dp</item>
-        <item name="android:textSize">@dimen/normalText</item>
-    </style>
 
-    <style name="MessageTime">
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:textColor">?attr/text_secondary</item>
-        <item name="android:layout_margin">@dimen/app_margin</item>
-        <item name="android:textSize">@dimen/smallText</item>
-    </style>
 
     <!-- Divider -->
-    <style name="Divider">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">1dp</item>
-        <item name="android:background">?attr/colorOutline</item>
-        <item name="android:layout_margin">@dimen/app_small_margin</item>
-        <item name="android:layout_marginTop">@dimen/app_margin</item>
-        <item name="android:layout_marginBottom">@dimen/app_margin</item>
-    </style>
 
     <!-- Button styles -->
-    <style name="SendButton">
-        <item name="android:background">@color/white_100</item>
-        <item name="android:textColor">@color/black_80</item>
-    </style>
 
-    <style name="ChatInput">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">0dp</item>
-        <item name="android:background">?android:attr/colorBackground</item>
-    </style>
 
-    <style name="MessageInput">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:hint">text</item>
-        <item name="android:textColor">?attr/text_primary</item>
-        <item name="android:minHeight">48dp</item>
-    </style>
 
     <!-- Code input -->
-    <style name="CodeInput">
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:background">@null</item>
-        <item name="android:gravity">center</item>
-        <item name="android:maxLength">6</item>
-    </style>
 
     <!-- Settings photo -->
-    <style name="SettingsPhoto">
-        <item name="android:layout_width">@dimen/settings_user_photo_width</item>
-        <item name="android:layout_height">@dimen/settings_btn_change_photo_height</item>
-        <item name="android:background">?attr/ghost_card_bg</item>
-    </style>
 
     <!-- Header text -->
-    <style name="HeaderText">
+
+    <!-- Заголовок стеклянной панели -->
+    <style name="NikseyToolbarTitle" parent="TextAppearance.Widget.AppCompat.Toolbar.Title">
+        <item name="android:fontFamily">@font/outfit</item>
+        <item name="android:textSize">19sp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <!-- Плавающая нижняя панель: вкладки -->
+    <style name="NikseyNavTab">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:foreground">?attr/selectableItemBackgroundBorderless</item>
+    </style>
+
+    <style name="NikseyNavTabContent">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+    <style name="NikseyNavIcon">
+        <item name="android:layout_width">22dp</item>
+        <item name="android:layout_height">22dp</item>
+        <item name="android:tint">@color/text_hint</item>
+    </style>
+
+    <style name="NikseyNavLabel">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_margin">50dp</item>
-        <item name="android:padding">15dp</item>
-        <item name="android:text">text</item>
-        <item name="android:textColor">?attr/text_primary</item>
-        <item name="android:textSize">18sp</item>
-        <item name="android:textStyle">bold</item>
+        <item name="android:layout_marginTop">3dp</item>
+        <item name="android:fontFamily">@font/outfit</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:textColor">@color/text_hint</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+
+    <!-- Строки настроек профиля (стеклянный список) -->
+    <style name="NikseySettingsRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">64dp</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingHorizontal">14dp</item>
+        <item name="android:background">?attr/selectableItemBackground</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <style name="NikseySettingsChip">
+        <item name="android:layout_width">38dp</item>
+        <item name="android:layout_height">38dp</item>
+        <item name="android:background">@drawable/bg_icon_chip</item>
+    </style>
+
+    <style name="NikseySettingsChipIcon">
+        <item name="android:layout_width">20dp</item>
+        <item name="android:layout_height">20dp</item>
+        <item name="android:layout_gravity">center</item>
+        <item name="android:tint">@color/accent_cyan</item>
+    </style>
+
+    <style name="NikseySettingsRowTitle">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_marginStart">14dp</item>
+        <item name="android:fontFamily">@font/manrope</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <style name="NikseySettingsChevron">
+        <item name="android:layout_width">18dp</item>
+        <item name="android:layout_height">18dp</item>
+        <item name="android:src">@drawable/ic_arrow_right</item>
+        <item name="android:tint">@color/text_hint</item>
+    </style>
+
+    <style name="NikseySettingsDivider">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">1dp</item>
+        <item name="android:layout_marginStart">66dp</item>
+        <item name="android:background">@color/glass_border</item>
+    </style>
+
+    <!-- ===== Общие компоненты (используются во всех экранах) ===== -->
+
+    <!-- Заголовок экрана / карточки -->
+    <style name="NikseyTitle">
+        <item name="android:fontFamily">@font/outfit</item>
+        <item name="android:textSize">24sp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:letterSpacing">0.01</item>
+    </style>
+
+    <!-- Основной текст -->
+    <style name="NikseyBody">
+        <item name="android:fontFamily">@font/manrope</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:lineSpacingExtra">4dp</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <!-- Вторичный текст -->
+    <style name="NikseySubtitle">
+        <item name="android:fontFamily">@font/manrope</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <!-- Подпись / метка -->
+    <style name="NikseyCaption">
+        <item name="android:fontFamily">@font/outfit</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:letterSpacing">0.04</item>
+        <item name="android:textColor">@color/text_hint</item>
+    </style>
+
+    <!-- Стеклянное поле ввода (outlined) -->
+    <style name="NikseyInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxBackgroundColor">@color/glass_fill</item>
+        <item name="boxStrokeColor">@color/glass_stroke_strong</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxStrokeWidthFocused">1.5dp</item>
+        <item name="boxCornerRadiusTopStart">18dp</item>
+        <item name="boxCornerRadiusTopEnd">18dp</item>
+        <item name="boxCornerRadiusBottomStart">18dp</item>
+        <item name="boxCornerRadiusBottomEnd">18dp</item>
+        <item name="hintTextColor">@color/accent_purple</item>
+        <item name="android:textColorHint">@color/text_hint</item>
+    </style>
+
+    <!-- Текст внутри стеклянного поля -->
+    <style name="NikseyInputText" parent="Widget.MaterialComponents.TextInputEditText.OutlinedBox">
+        <item name="android:fontFamily">@font/manrope</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textColorHint">@color/text_hint</item>
+    </style>
+
+    <!-- Главная кнопка: приглушённый violet -->
+    <style name="NikseyButtonPrimary" parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">@color/bubble_out_start</item>
+        <item name="android:textColor">@color/white_100</item>
+        <item name="android:fontFamily">@font/outfit</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:minHeight">54dp</item>
+        <item name="cornerRadius">18dp</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <!-- Вторичная кнопка: стекло с тонкой кромкой -->
+    <style name="NikseyButtonGlass" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="backgroundTint">@color/glass_fill</item>
+        <item name="strokeColor">@color/glass_stroke_strong</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:fontFamily">@font/outfit</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:minHeight">54dp</item>
+        <item name="cornerRadius">18dp</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <!-- Профиль собеседника: диалог поверх чата. Окно прозрачное, затемнение даёт сам диалог -->
+    <style name="NikseyProfileSheetAnimation">
+        <item name="android:windowEnterAnimation">@anim/sheet_slide_up</item>
+        <item name="android:windowExitAnimation">@anim/sheet_slide_down</item>
+    </style>
+
+    <style name="NikseyProfileDialog" parent="Theme.Niksey">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">true</item>
     </style>
 
     <!-- FAB style -->
-    <style name="FAB">
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:backgroundTint">@android:color/white</item>
-        <item name="android:tint">@color/purple_300</item>
-    </style>
 
 </resources>

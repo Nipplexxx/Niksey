@@ -7,13 +7,30 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
-import com.example.niksey.models.CommonModel
 import com.example.niksey.utillits.downloadAndSetImage
 
+/** Участник группы для списка. */
+data class GroupMember(
+    val id: String,
+    val name: String,
+    val photoUrl: String,
+    val isCreator: Boolean
+)
+
+/**
+ * Список участников группы. Кнопка удаления видна только при [canRemove]
+ * (то есть когда текущий пользователь — создатель группы).
+ */
 class GroupParticipantsAdapter(
-    private val participants: MutableList<CommonModel>,
-    private val onRemoveClick: (CommonModel) -> Unit
+    private val participants: List<GroupMember>,
+    private val onRemoveClick: (GroupMember) -> Unit
 ) : RecyclerView.Adapter<GroupParticipantsAdapter.ParticipantHolder>() {
+
+    var canRemove: Boolean = false
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
 
     inner class ParticipantHolder(view: View) : RecyclerView.ViewHolder(view) {
         val name: TextView = view.findViewById(R.id.participant_name)
@@ -30,14 +47,14 @@ class GroupParticipantsAdapter(
     override fun getItemCount(): Int = participants.size
 
     override fun onBindViewHolder(holder: ParticipantHolder, position: Int) {
-        val user = participants[position]
+        val member = participants[position]
 
-        holder.name.text = user.fullname.ifEmpty { user.username }
-        holder.photo.downloadAndSetImage(user.photoUrl)
+        holder.name.text = if (member.isCreator) "${member.name} · создатель" else member.name
+        holder.photo.downloadAndSetImage(member.photoUrl)
 
-        // Кнопка удаления
-        holder.btnRemove.setOnClickListener {
-            onRemoveClick(user)
-        }
+        // Удалять можно участников, но не себя и не создателя
+        val removable = canRemove && !member.isCreator
+        holder.btnRemove.visibility = if (removable) View.VISIBLE else View.GONE
+        holder.btnRemove.setOnClickListener { onRemoveClick(member) }
     }
 }

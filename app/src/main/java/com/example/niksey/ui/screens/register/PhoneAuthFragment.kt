@@ -2,6 +2,7 @@
 
 package com.example.niksey.ui.screens.register
 
+import com.example.niksey.utillits.APP_ACTIVITY
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.text.Editable
@@ -226,13 +227,13 @@ class PhoneAuthFragment : Fragment(R.layout.fragment_phone_auth) {
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (snapshot.exists()) {
-                        showToast(getString(R.string.welcome))
+                        showToast(APP_ACTIVITY.getString(R.string.welcome))
                         navigateToMainActivity()
                     } else {
                         val newUser = UserModel(id = uid, username = generateRandomUsername(), fullname = generateRandomFullname(), phone = phone)
                         REF_DATABASE_ROOT.child(NODE_USERS).child(uid).setValue(newUser)
                             .addOnSuccessListener {
-                                showToast(getString(R.string.welcome))
+                                showToast(APP_ACTIVITY.getString(R.string.welcome))
                                 navigateToMainActivity()
                             }
                             .addOnFailureListener { showToast(it.message.toString()) }

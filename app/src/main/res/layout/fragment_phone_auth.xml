@@ -4,69 +4,86 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_dark"
-    android:padding="32dp">
+    android:background="@android:color/transparent"
+    android:padding="20dp">
 
     <!-- Заголовок -->
     <TextView
+        android:id="@+id/phone_auth_title"
+        style="@style/NikseyTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="40dp"
+        android:layout_marginTop="8dp"
         android:text="@string/phone_auth_title"
-        android:textColor="@color/text_primary"
-        android:textSize="26sp"
-        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Выбор страны + номер -->
-    <com.hbb20.CountryCodePicker
-        android:id="@+id/ccp"
+    <!-- Стеклянная карточка: код страны и номер -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/phone_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="80dp"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:layout_marginTop="20dp"
+        app:cardBackgroundColor="@color/glass_fill"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="8dp"
+        app:strokeColor="@color/glass_stroke"
+        app:strokeWidth="1dp"
+        app:layout_constraintTop_toBottomOf="@id/phone_auth_title">
 
-    <EditText
-        android:id="@+id/phone_input"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:background="@drawable/bg_input_glass"
-        android:padding="16dp"
-        android:textColor="@color/text_primary"
-        android:textColorHint="@color/text_secondary"
-        app:layout_constraintTop_toBottomOf="@id/ccp"
-        tools:ignore="Autofill,TextFields" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp">
 
-    <!-- Кнопка отправить код -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_send_code"
-        style="@style/GlassButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="@string/next"
-        app:layout_constraintTop_toBottomOf="@id/phone_input" />
+            <com.hbb20.CountryCodePicker
+                android:id="@+id/ccp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
 
-    <!-- Поле для ввода кода (как в Telegram) -->
+            <EditText
+                android:id="@+id/phone_input"
+                style="@style/NikseyInputText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/bg_input_glass"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="14dp"
+                tools:ignore="Autofill,TextFields" />
+
+            <!-- Основное действие: получить код -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_send_code"
+                style="@style/NikseyButtonPrimary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/next" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Ввод кода: 6 ячеек -->
     <LinearLayout
         android:id="@+id/code_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="24dp"
         android:gravity="center"
         android:orientation="horizontal"
         android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/btn_send_code">
+        app:layout_constraintTop_toBottomOf="@id/phone_card">
 
         <EditText
             android:id="@+id/code_1"
-            android:layout_width="48dp"
+            android:layout_width="44dp"
             android:layout_height="56dp"
             android:layout_marginEnd="8dp"
-            android:background="@drawable/code_digit_bg"
+            android:background="@drawable/bg_input_glass"
+            android:fontFamily="@font/outfit"
             android:gravity="center"
             android:inputType="number"
             android:maxLength="1"
@@ -77,10 +94,11 @@
 
         <EditText
             android:id="@+id/code_2"
-            android:layout_width="48dp"
+            android:layout_width="44dp"
             android:layout_height="56dp"
             android:layout_marginEnd="8dp"
-            android:background="@drawable/code_digit_bg"
+            android:background="@drawable/bg_input_glass"
+            android:fontFamily="@font/outfit"
             android:gravity="center"
             android:inputType="number"
             android:maxLength="1"
@@ -91,10 +109,11 @@
 
         <EditText
             android:id="@+id/code_3"
-            android:layout_width="48dp"
+            android:layout_width="44dp"
             android:layout_height="56dp"
             android:layout_marginEnd="8dp"
-            android:background="@drawable/code_digit_bg"
+            android:background="@drawable/bg_input_glass"
+            android:fontFamily="@font/outfit"
             android:gravity="center"
             android:inputType="number"
             android:maxLength="1"
@@ -105,10 +124,11 @@
 
         <EditText
             android:id="@+id/code_4"
-            android:layout_width="48dp"
+            android:layout_width="44dp"
             android:layout_height="56dp"
             android:layout_marginEnd="8dp"
-            android:background="@drawable/code_digit_bg"
+            android:background="@drawable/bg_input_glass"
+            android:fontFamily="@font/outfit"
             android:gravity="center"
             android:inputType="number"
             android:maxLength="1"
@@ -119,10 +139,11 @@
 
         <EditText
             android:id="@+id/code_5"
-            android:layout_width="48dp"
+            android:layout_width="44dp"
             android:layout_height="56dp"
             android:layout_marginEnd="8dp"
-            android:background="@drawable/code_digit_bg"
+            android:background="@drawable/bg_input_glass"
+            android:fontFamily="@font/outfit"
             android:gravity="center"
             android:inputType="number"
             android:maxLength="1"
@@ -133,9 +154,10 @@
 
         <EditText
             android:id="@+id/code_6"
-            android:layout_width="48dp"
+            android:layout_width="44dp"
             android:layout_height="56dp"
-            android:background="@drawable/code_digit_bg"
+            android:background="@drawable/bg_input_glass"
+            android:fontFamily="@font/outfit"
             android:gravity="center"
             android:inputType="number"
             android:maxLength="1"
@@ -146,10 +168,10 @@
 
     </LinearLayout>
 
-    <!-- Кнопки подтверждения и повторной отправки -->
+    <!-- Подтвердить код -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_verify_code"
-        style="@style/GlassButton"
+        style="@style/NikseyButtonPrimary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
@@ -157,9 +179,10 @@
         android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/code_container" />
 
+    <!-- Повторно отправить код -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_resend_code"
-        style="@style/GlassButton"
+        style="@style/NikseyButtonGlass"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
@@ -170,19 +193,19 @@
     <!-- Статус и таймер -->
     <TextView
         android:id="@+id/tv_status"
+        style="@style/NikseySubtitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:gravity="center"
-        android:textColor="@color/text_secondary"
         app:layout_constraintTop_toBottomOf="@id/btn_resend_code" />
 
     <TextView
         android:id="@+id/tv_timer"
+        style="@style/NikseyCaption"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:textColor="@color/text_hint"
         app:layout_constraintTop_toBottomOf="@id/tv_status" />
 
     <ProgressBar
@@ -190,6 +213,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
+        android:indeterminateTint="@color/accent_cyan"
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

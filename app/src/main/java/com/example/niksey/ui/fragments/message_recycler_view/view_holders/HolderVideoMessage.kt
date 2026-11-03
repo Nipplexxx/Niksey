@@ -1,7 +1,5 @@
 package com.example.niksey.ui.fragments.message_recycler_view.view_holders
 
-import android.graphics.Bitmap
-import android.media.MediaMetadataRetriever
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
@@ -10,15 +8,13 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
+import com.example.niksey.utillits.media.MediaViews
+import com.example.niksey.utillits.showToast
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 import com.example.niksey.utillits.CURRENT_UID
 import com.example.niksey.utillits.asTime
 import com.google.android.material.card.MaterialCardView
 import de.hdodenhof.circleimageview.CircleImageView
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class HolderVideoMessage(view: View) : RecyclerView.ViewHolder(view), MessageHolder {
 
@@ -66,10 +62,10 @@ class HolderVideoMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         chatUserVideoPlay.visibility = View.VISIBLE
 
         // Загружаем реальный первый кадр
-        loadVideoThumbnail(view.fileUrl, chatUserVideoThumbnail)
+        chatUserVideoThumbnail.setImageResource(R.drawable.ic_video) // превью не грузим: видео скачивается по нажатию
 
         val clickListener = View.OnClickListener {
-            togglePlayback(view.fileUrl, userPlayerView, chatUserVideoThumbnail, chatUserVideoPlay)
+            MediaViews.withFile(view, { file -> togglePlayback(file.absolutePath, userPlayerView, chatUserVideoThumbnail, chatUserVideoPlay) }, { showToast("Видео недоступно") })
         }
         chatUserVideoPlay.setOnClickListener(clickListener)
         blocUserVideo.setOnClickListener(clickListener)
@@ -86,32 +82,13 @@ class HolderVideoMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         receivedPlayerView.visibility = View.GONE
         chatReceivedVideoPlay.visibility = View.VISIBLE
 
-        loadVideoThumbnail(view.fileUrl, chatReceivedVideoThumbnail)
+        chatReceivedVideoThumbnail.setImageResource(R.drawable.ic_video)
 
         val clickListener = View.OnClickListener {
-            togglePlayback(view.fileUrl, receivedPlayerView, chatReceivedVideoThumbnail, chatReceivedVideoPlay)
+            MediaViews.withFile(view, { file -> togglePlayback(file.absolutePath, receivedPlayerView, chatReceivedVideoThumbnail, chatReceivedVideoPlay) }, { showToast("Видео недоступно") })
         }
         chatReceivedVideoPlay.setOnClickListener(clickListener)
         blocReceivedVideo.setOnClickListener(clickListener)
-    }
-
-    private fun loadVideoThumbnail(url: String, imageView: CircleImageView) {
-        CoroutineScope(Dispatchers.Main).launch {
-            val bitmap = withContext(Dispatchers.IO) {
-                try {
-                    val retriever = MediaMetadataRetriever()
-                    retriever.setDataSource(url)
-                    val frame = retriever.getFrameAtTime(300000) // 0.3 секунды
-                    retriever.release()
-                    frame
-                } catch (e: Exception) {
-                    null
-                }
-            }
-            bitmap?.let {
-                imageView.setImageBitmap(it)
-            } ?: imageView.setImageResource(R.drawable.ic_video)
-        }
     }
 
     private fun togglePlayback(
@@ -139,7 +116,7 @@ class HolderVideoMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
             releasePlayer()
 
             exoPlayer = ExoPlayer.Builder(itemView.context).build().apply {
-                setMediaItem(MediaItem.fromUri(url))
+                setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(java.io.File(url))))
                 prepare()
                 playWhenReady = true
             }

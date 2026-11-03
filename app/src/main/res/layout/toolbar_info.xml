@@ -1,55 +1,124 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Единая стеклянная шапка чата: назад · аватар · имя и статус · меню.
+     Нажатие на аватар/имя открывает профиль собеседника. -->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="55dp"
-    android:background="@color/background_dark"
-    android:paddingStart="16dp"
-    android:paddingEnd="16dp">
+    android:layout_height="64dp"
+    android:background="@drawable/bg_glass_bar">
 
-    <!-- Аватарка -->
-    <de.hdodenhof.circleimageview.CircleImageView
-        android:id="@+id/toolbar_chat_image"
-        android:layout_width="45dp"
-        android:layout_height="45dp"
-        app:civ_border_color="@color/accent_purple"
-        app:civ_border_width="1.5dp"
+    <!-- Назад -->
+    <ImageView
+        android:id="@+id/chat_btn_back"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_marginStart="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@null"
+        android:padding="12dp"
+        android:src="@drawable/ic_arrow_back"
+        android:tint="@color/text_primary"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Имя + Статус -->
-    <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:orientation="vertical"
+    <!-- Меню чата (очистить, удалить и т.д.) -->
+    <ImageView
+        android:id="@+id/chat_btn_more"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_marginEnd="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@null"
+        android:padding="12dp"
+        android:src="@drawable/img_btn_action_menu"
+        android:tint="@color/text_primary"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@id/toolbar_chat_image"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-        <TextView
-            android:id="@+id/toolbar_chat_fullname"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/chivo"
-            android:textColor="@color/text_primary"
-            android:textSize="16.5sp"
-            android:textStyle="bold"
-            android:maxLines="1"
-            android:ellipsize="end" />
+    <!-- Аватар со свечением + имя и статус: одна кликабельная зона -->
+    <LinearLayout
+        android:id="@+id/chat_header_info"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingEnd="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/chat_btn_more"
+        app:layout_constraintStart_toEndOf="@id/chat_btn_back"
+        app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:id="@+id/toolbar_chat_status"
-            android:layout_width="wrap_content"
+        <FrameLayout
+            android:layout_width="46dp"
+            android:layout_height="46dp">
+
+            <View
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:background="@drawable/bg_avatar_glow" />
+
+            <de.hdodenhof.circleimageview.CircleImageView
+                android:id="@+id/toolbar_chat_image"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_person"
+                app:civ_border_color="@color/accent_cyan"
+                app:civ_border_width="1.5dp" />
+
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/chivo"
-            android:textColor="@color/text_secondary"
-            android:textSize="12.5sp"
-            android:maxLines="1"
-            android:ellipsize="end" />
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/toolbar_chat_fullname"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="@font/outfit"
+                android:maxLines="1"
+                android:textColor="@color/text_primary"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <!-- Точка статуса: цвет задаётся в коде (онлайн — teal, офлайн — серый) -->
+                <View
+                    android:id="@+id/chat_status_dot"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_status_dot" />
+
+                <TextView
+                    android:id="@+id/toolbar_chat_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/manrope"
+                    android:maxLines="1"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+        </LinearLayout>
 
     </LinearLayout>
 

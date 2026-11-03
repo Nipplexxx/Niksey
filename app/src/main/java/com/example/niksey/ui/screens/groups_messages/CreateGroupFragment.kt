@@ -11,6 +11,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.canhub.cropper.CropImageContract
 import com.canhub.cropper.CropImageContractOptions
@@ -60,7 +61,7 @@ class CreateGroupFragment(private var listContacts: List<CommonModel>) :
         view?.findViewById<FloatingActionButton>(R.id.create_group_btn_complete)?.setOnClickListener {
             val nameGroup = view?.findViewById<EditText>(R.id.create_group_input_name)?.text.toString()
             if (nameGroup.isEmpty()) {
-                showToast(getString(R.string.enter_a_name))
+                showToast(APP_ACTIVITY.getString(R.string.enter_a_name))
             } else {
                 createGroupToDatabase(nameGroup, mUri, listContacts) {
                     replaceFragment(MainListFragment())
@@ -110,6 +111,7 @@ class CreateGroupFragment(private var listContacts: List<CommonModel>) :
     private fun initRecyclerView() {
         mRecyclerView = view?.findViewById(R.id.create_group_recycle_view)!!
         mAdapter = AddContactsAdapter()
+        mRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         mRecyclerView.adapter = mAdapter
         listContacts.forEach { mAdapter.updateListItems(it) }
     }

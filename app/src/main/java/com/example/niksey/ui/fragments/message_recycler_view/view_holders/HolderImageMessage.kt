@@ -16,7 +16,7 @@ import com.example.niksey.ui.screens.private_messages.SingleChatFragment
 import com.example.niksey.utillits.APP_ACTIVITY
 import com.example.niksey.utillits.CURRENT_UID
 import com.example.niksey.utillits.asTime
-import com.example.niksey.utillits.downloadAndSetImage
+import com.example.niksey.utillits.media.MediaViews
 import com.example.niksey.utillits.showToast
 import com.google.android.material.card.MaterialCardView
 
@@ -44,16 +44,16 @@ class HolderImageMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         blocUserImage.visibility = View.VISIBLE
         blocReceivedImage.visibility = View.GONE
 
-        chatUserImage.downloadAndSetImage(view.fileUrl)
+        MediaViews.showImage(view, chatUserImage, R.drawable.ic_attach_image)
         chatUserImageTime.text = view.timeStamp.asTime()
 
         showReplyPreview(view, userReplyPreview)
 
         val clickListener = View.OnClickListener {
-            if (view.fileUrl.isNotBlank()) {
-                ImagePreviewBottomSheet.newInstance(view.fileUrl)
+            MediaViews.withFile(view, { file ->
+                ImagePreviewBottomSheet.newInstance(file.absolutePath)
                     .show(APP_ACTIVITY.supportFragmentManager, "image_preview")
-            }
+            })
         }
         chatUserImage.setOnClickListener(clickListener)
         blocUserImage.setOnClickListener(clickListener)
@@ -63,16 +63,16 @@ class HolderImageMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         blocUserImage.visibility = View.GONE
         blocReceivedImage.visibility = View.VISIBLE
 
-        chatReceivedImage.downloadAndSetImage(view.fileUrl)
+        MediaViews.showImage(view, chatReceivedImage, R.drawable.ic_attach_image)
         chatReceivedImageTime.text = view.timeStamp.asTime()
 
         showReplyPreview(view, receivedReplyPreview)
 
         val clickListener = View.OnClickListener {
-            if (view.fileUrl.isNotBlank()) {
-                ImagePreviewBottomSheet.newInstance(view.fileUrl)
+            MediaViews.withFile(view, { file ->
+                ImagePreviewBottomSheet.newInstance(file.absolutePath)
                     .show(APP_ACTIVITY.supportFragmentManager, "image_preview")
-            }
+            })
         }
         chatReceivedImage.setOnClickListener(clickListener)
         blocReceivedImage.setOnClickListener(clickListener)
@@ -88,7 +88,7 @@ class HolderImageMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         previewView.text = "↩️ Ответ на фото"
 
         previewView.setOnClickListener {
-            getSingleChatFragment()?.scrollToMessage(messageView.replyTo!!)
+            findSingleChat()?.scrollToMessage(messageView.replyTo!!)
         }
     }
 
@@ -102,32 +102,12 @@ class HolderImageMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
     }
 
     private fun showMessageOptions(messageView: MessageView, anchor: View) {
-        val popup = PopupMenu(itemView.context, anchor)
-        popup.inflate(R.menu.message_context_menu)
-        popup.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                R.id.menu_copy -> {
-                    copyImageUrl(messageView.fileUrl)
-                    true
-                }
-                R.id.menu_delete -> {
-                    getSingleChatFragment()?.deleteMessage(messageView.id, messageView.from)
-                    true
-                }
-                R.id.menu_reply -> {
-                    replyToMessage(messageView)
-                    true
-                }
-                else -> false
-            }
-        }
-        popup.show()
-    }
-
-    private fun replyToMessage(view: MessageView) {
-        val fragment = getSingleChatFragment() ?: return
-        val senderName = if (view.from == CURRENT_UID) "Вы" else "Собеседник"
-        fragment.startReply(view.id, "[Фото]", senderName)
+        showMessageMenu(
+            anchor = anchor,
+            message = messageView,
+            onCopy = { copyImageUrl(messageView.fileUrl) },
+            replyPreview = "[Фото]"
+        )
     }
 
     private fun copyImageUrl(url: String) {
@@ -140,10 +120,6 @@ class HolderImageMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         showToast("Ссылка на фото скопирована")
     }
 
-    private fun getSingleChatFragment(): SingleChatFragment? {
-        return APP_ACTIVITY.supportFragmentManager.fragments
-            .firstOrNull { it is SingleChatFragment } as? SingleChatFragment
-    }
 
     override fun onDetach() {
         chatUserImage.setOnClickListener(null)

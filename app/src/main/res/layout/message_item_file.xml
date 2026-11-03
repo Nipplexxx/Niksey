@@ -5,34 +5,40 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingHorizontal="12dp"
-    android:paddingVertical="6dp">
+    android:paddingVertical="4dp">
 
-    <!-- === Исходящий файл (стекло + акцент) === -->
+    <!-- === Исходящий файл (градиент) === -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/bloc_user_file_message"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="50dp"
         android:visibility="gone"
-        style="@style/GlassCard"
-        app:cardBackgroundColor="@color/glass_card_bg"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="4dp"
-        app:strokeColor="@color/accent_purple"
-        app:strokeWidth="1.5dp"
+        app:cardBackgroundColor="@android:color/transparent"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="6dp"
+        app:strokeWidth="0dp"
         tools:ignore="MissingConstraints">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_bubble_out" />
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:padding="14dp">
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="12dp">
 
             <ImageView
                 android:id="@+id/chat_user_file_icon"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
+                android:background="@drawable/bg_icon_chip"
+                android:padding="8dp"
                 android:importantForAccessibility="no" />
 
             <LinearLayout
@@ -45,6 +51,7 @@
                     android:id="@+id/chat_user_filename"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:fontFamily="@font/outfit"
                     android:textColor="@color/text_primary"
                     android:textSize="15sp" />
 
@@ -52,6 +59,7 @@
                     android:id="@+id/chat_user_file_info"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:fontFamily="@font/manrope"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp" />
 
@@ -70,6 +78,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:layout_marginStart="12dp"
+                android:indeterminateTint="@color/text_primary"
                 android:visibility="invisible" />
 
             <TextView
@@ -77,6 +86,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"
+                android:fontFamily="@font/manrope"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp" />
 
@@ -84,32 +94,38 @@
 
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- === Входящий файл (чистое стекло) === -->
+    <!-- === Входящий файл (стекло) === -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/bloc_received_file_message"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="50dp"
         android:visibility="gone"
-        style="@style/GlassCard"
-        app:cardBackgroundColor="@color/glass_card_bg"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="3dp"
-        app:strokeColor="@color/glass_border"
-        app:strokeWidth="1dp"
+        app:cardBackgroundColor="@android:color/transparent"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="6dp"
+        app:strokeWidth="0dp"
         tools:ignore="MissingConstraints">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_bubble_in" />
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:padding="14dp">
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="12dp">
 
             <ImageView
                 android:id="@+id/chat_received_file_icon"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
+                android:background="@drawable/bg_icon_chip"
+                android:padding="8dp"
                 android:importantForAccessibility="no" />
 
             <LinearLayout
@@ -122,6 +138,7 @@
                     android:id="@+id/chat_received_filename"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:fontFamily="@font/outfit"
                     android:textColor="@color/text_primary"
                     android:textSize="15sp" />
 
@@ -129,6 +146,7 @@
                     android:id="@+id/chat_received_file_info"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:fontFamily="@font/manrope"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp" />
 
@@ -140,13 +158,16 @@
                 android:layout_height="32dp"
                 android:layout_marginStart="12dp"
                 android:importantForAccessibility="no"
-                android:src="@drawable/ic_download" />
+                android:src="@drawable/ic_download"
+                android:tint="@color/accent_cyan"
+                tools:ignore="UseAppTint" />
 
             <ProgressBar
                 android:id="@+id/chat_received_progress_bar"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:layout_marginStart="12dp"
+                android:indeterminateTint="@color/accent_cyan"
                 android:visibility="invisible" />
 
             <TextView
@@ -154,6 +175,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"
+                android:fontFamily="@font/manrope"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp" />
 

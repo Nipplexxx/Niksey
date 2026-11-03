@@ -46,24 +46,11 @@ class MainListAdapter : RecyclerView.Adapter<MainListAdapter.MainListHolder>() {
         }
 
         holder.itemView.setOnClickListener {
-            val type = item.type.lowercase()
-
-            when {
-                type == TYPE_CHAT.lowercase() ||
-                        type == "text" ||
-                        type == TYPE_MESSAGE_VOICE.lowercase() ||
-                        type == TYPE_MESSAGE_IMAGE.lowercase() ||
-                        type == TYPE_MESSAGE_FILE.lowercase() ||
-                        type == TYPE_MESSAGE_VIDEO.lowercase() ||           // ← ДОБАВИЛИ
-                        type == "video" -> {                               // ← ДОБАВИЛИ
-                    replaceFragment(SingleChatFragment.newInstance(item.id))
-                }
-                type == TYPE_GROUP.lowercase() -> {
-                    replaceFragment(GroupChatFragment(item))
-                }
-                else -> {
-                    showToast("Неизвестный тип чата: ${item.type}")
-                }
+            // Тип чата задаёт список (чат или группа), а не тип последнего сообщения
+            if (item.type == TYPE_GROUP) {
+                replaceFragment(GroupChatFragment(item))
+            } else {
+                replaceFragment(SingleChatFragment.newInstance(item.id))
             }
         }
     }

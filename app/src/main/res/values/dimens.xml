@@ -20,4 +20,6 @@
     <!--Toolbar fragment-->
     <dimen name="toolbar_image_width">45dp</dimen>
     <dimen name="toolbar_image_height">45dp</dimen>
+    <!-- Место под плавающую нижнюю панель (высота 72dp + отступ 14dp + запас) -->
+    <dimen name="main_content_bottom_inset">96dp</dimen>
 </resources>

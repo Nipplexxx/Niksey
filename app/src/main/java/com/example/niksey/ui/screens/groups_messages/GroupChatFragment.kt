@@ -1,4 +1,3 @@
-@file:Suppress("UNCHECKED_CAST", "DEPRECATION")
 package com.example.niksey.ui.screens.groups_messages
 
 import android.Manifest.permission.RECORD_AUDIO
@@ -13,6 +12,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -26,31 +26,51 @@ import com.example.niksey.R
 import com.example.niksey.database.*
 import com.example.niksey.models.CommonModel
 import com.example.niksey.models.UserModel
+import com.example.niksey.ui.objects.bindIdentityBanner
+import com.example.niksey.ui.objects.setStatusDotColor
+import com.example.niksey.ui.objects.showChatMenu
 import com.example.niksey.ui.screens.base_fragment.BaseFragment
 import com.example.niksey.ui.screens.main_list.MainListFragment
 import com.example.niksey.ui.viewmodels.ChatViewModel
 import com.example.niksey.utillits.*
-import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.example.niksey.utillits.signal.SecureMessaging
+import com.example.niksey.utillits.signal.SignalManager
 import com.google.firebase.database.DatabaseReference
 
+/**
+ * Групповой чат.
+ *
+ * Жизненный цикл:
+ *  • onViewCreated — все вью и объекты создаются здесь, один раз на вью; здесь же подписки (observers).
+ *  • onResume — только то, что зависит от сессии (ключи, шапка, участники). Всё, что создаётся в onResume,
+ *    должно уметь пересоздаваться без дублирования.
+ *  • onPause — снимаем слушатели, которые добавили в onResume.
+ *  Поля, которые могут быть не готовы, объявлены как nullable (без lateinit): обращение до готовности не падает.
+ */
 class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.fragment_chat) {
 
     private val viewModel: ChatViewModel by viewModels()
 
-    private lateinit var mListenerInfoToolbar: AppValueEventListener
-    private lateinit var mReceivingUser: UserModel
-    private lateinit var mToolbarInfo: View
-    private lateinit var mRefUser: DatabaseReference
-    private lateinit var mAdapter: GroupChatAdapter
-    private lateinit var mRecyclerView: RecyclerView
-    private lateinit var mSwipeRefreshLayout: SwipeRefreshLayout
-    private lateinit var mLayoutManager: LinearLayoutManager
-    private lateinit var mAppVoiceRecorder: AppVoiceRecorder
-    private lateinit var mBottomSheetBehavior: BottomSheetBehavior<*>
+    // Создаются в onViewCreated
+    private var mToolbarInfo: View? = null
+    private var mSwipeRefreshLayout: SwipeRefreshLayout? = null
+    private var mRecyclerView: RecyclerView? = null
+    private var mAdapter: GroupChatAdapter? = null
+    private var mLayoutManager: LinearLayoutManager? = null
+    private var mAppVoiceRecorder: AppVoiceRecorder? = null
+
+    // Создаются в onCreate (регистрация launcher'ов обязана быть до onStart)
+    private var cropImageLauncher: ActivityResultLauncher<CropImageContractOptions>? = null
+    private var pickFileLauncher: ActivityResultLauncher<Intent>? = null
+
+    // Слушатель шапки: добавляется в onResume, снимается в onPause
+    private var mRefUser: DatabaseReference? = null
+    private var mListenerInfoToolbar: AppValueEventListener? = null
+
     private var participantsCount = 0
 
-    private lateinit var cropImageLauncher: ActivityResultLauncher<CropImageContractOptions>
-    private lateinit var pickFileLauncher: ActivityResultLauncher<Intent>
+    // Первая загрузка сообщений прокручивает к последнему; дальше — только когда пользователь у низа
+    private var initialScrollDone = false
 
     // ==================== REPLY SYSTEM ====================
     private var replyingToMessageId: String? = null
@@ -68,7 +88,7 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
                     viewModel.reloadMessages()
                 }
             } else {
-                showToast(getString(R.string.error_cropping_image))
+                showToast(APP_ACTIVITY.getString(R.string.error_cropping_image))
             }
         }
 
@@ -84,26 +104,108 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
         }
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        // 1. Вью и объекты, от которых зависит всё остальное
+        mToolbarInfo = view.findViewById(R.id.toolbar_info)
+        mSwipeRefreshLayout = view.findViewById(R.id.chat_swipe_refresh)
+        initialScrollDone = false
+        // stackFromEnd: список начинается снизу, поэтому новые сообщения видны сразу
+        mLayoutManager = LinearLayoutManager(requireContext()).apply { stackFromEnd = true }
+        mAdapter = GroupChatAdapter()
+        mAppVoiceRecorder = AppVoiceRecorder()
+        mRecyclerView = view.findViewById<RecyclerView>(R.id.chat_recycle_view).apply {
+            adapter = mAdapter
+            setHasFixedSize(true)
+            isNestedScrollingEnabled = false
+            layoutManager = mLayoutManager
+        }
+
+        // 2. Обработчики ввода и кнопок — один раз
+        initInputFields(view)
+
+        // 3. Подписки на данные — один раз на вью (viewLifecycleOwner)
+        viewModel.messages.observe(viewLifecycleOwner) { messages ->
+            // Открываем чат на последнем сообщении; дальше — прокручиваем, только если пользователь у низа
+            val lm = mLayoutManager
+            val nearBottom = lm != null && lm.findLastVisibleItemPosition() >= (mAdapter?.itemCount ?: 0) - 3
+            val firstLoad = !initialScrollDone
+            mAdapter?.submitList(messages)
+            if (messages.isNotEmpty() && (firstLoad || nearBottom)) {
+                initialScrollDone = true
+                mRecyclerView?.post { mRecyclerView?.scrollToPosition(messages.size - 1) }
+            }
+        }
+        viewModel.refreshing.observe(viewLifecycleOwner) { refreshing ->
+            mSwipeRefreshLayout?.isRefreshing = refreshing
+        }
+        viewModel.error.observe(viewLifecycleOwner) { error ->
+            error?.let {
+                showToast(it)
+                viewModel.clearError()
+            }
+        }
+        mSwipeRefreshLayout?.setOnRefreshListener { viewModel.loadMoreMessages() }
+        // Pull-to-refresh показывает ещё сообщения, поэтому спиннер гаснет по окончании загрузки
+
+        // 4. Загрузка сообщений — один раз на вью
+        viewModel.initChat(group.id, isGroup = true)
+    }
+
     override fun onResume() {
         super.onResume()
-        initFields()
+        APP_ACTIVITY.mAppDrawer.setToolbarVisible(false)
+        SecureMessaging.onDecryptedUpdate = { mAdapter?.notifyDataSetChanged() }
+
+        val conversationId = ChatEncryptionManager.groupConversationId(group.id)
+        ChatEncryptionManager.currentConversationId = conversationId
+        ChatEncryptionManager.getKeyAsync(conversationId) { key ->
+            if (key != null) APP_ACTIVITY.runOnUiThread { mAdapter?.notifyDataSetChanged() }
+        }
+
+        // Забираем sender keys участников, адресованные мне; затем перерисовываем сообщения
+        SignalManager.syncGroupKeys(group.id) {
+            activity?.runOnUiThread { mAdapter?.notifyDataSetChanged() }
+        }
+        SignalManager.fetchMembers(group.id) { members ->
+            bindIdentityBanner(members.orEmpty().filter { it != CURRENT_UID })
+        }
+
         initToolbar()
-        initRecycleView()
         loadParticipantsCount()
     }
 
-    @SuppressLint("ClickableViewAccessibility")
-    private fun initFields() {
-        mAppVoiceRecorder = AppVoiceRecorder()
-        mLayoutManager = LinearLayoutManager(requireContext())
-        mBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+    override fun onPause() {
+        super.onPause()
+        SecureMessaging.onDecryptedUpdate = null
+        ChatEncryptionManager.currentConversationId = null
+        mListenerInfoToolbar?.let { mRefUser?.removeEventListener(it) }
+        mRefUser = null
+        mListenerInfoToolbar = null
+        mToolbarInfo?.visibility = View.GONE
+    }
 
-        // TextWatcher
-        requireView().findViewById<EditText>(R.id.chat_input_message)
+    override fun onDestroyView() {
+        super.onDestroyView()
+        mAppVoiceRecorder?.releaseRecorder()
+        mAdapter?.onDestroy()
+        mRecyclerView = null
+        mAdapter = null
+        mLayoutManager = null
+        mSwipeRefreshLayout = null
+        mToolbarInfo = null
+    }
+
+    // ==================== ВВОД ====================
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun initInputFields(view: View) {
+        view.findViewById<EditText>(R.id.chat_input_message)
             .addTextChangedListener(AppTextWatcher { text ->
-                val sendBtn = requireView().findViewById<ImageView>(R.id.chat_btn_send_message)
-                val attachBtn = requireView().findViewById<ImageView>(R.id.chat_btn_attach)
-                val voiceBtn = requireView().findViewById<ImageView>(R.id.chat_btn_voice)
+                val sendBtn = view.findViewById<ImageView>(R.id.chat_btn_send_message)
+                val attachBtn = view.findViewById<ImageView>(R.id.chat_btn_attach)
+                val voiceBtn = view.findViewById<ImageView>(R.id.chat_btn_voice)
 
                 val textStr = text?.toString() ?: ""
                 val isEmpty = textStr.isEmpty() || textStr == getString(R.string.record)
@@ -113,36 +215,33 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
                 voiceBtn?.visibility = if (isEmpty) View.VISIBLE else View.GONE
             })
 
-        // Кнопка прикрепления
-        requireView().findViewById<ImageView>(R.id.chat_btn_attach)?.setOnClickListener { attach() }
+        view.findViewById<ImageView>(R.id.chat_btn_attach)?.setOnClickListener { attach() }
 
-        // Кнопка отправки — исправленная версия
-        requireView().findViewById<ImageView>(R.id.chat_btn_send_message)?.setOnClickListener {
-            val message = requireView().findViewById<EditText>(R.id.chat_input_message)?.text?.toString()?.trim() ?: ""
+        view.findViewById<ImageView>(R.id.chat_btn_send_message)?.setOnClickListener {
+            val message = view.findViewById<EditText>(R.id.chat_input_message)?.text?.toString()?.trim() ?: ""
             if (message.isNotEmpty()) {
                 viewModel.sendMessage(message, replyingToMessageId) {
-                    requireView().findViewById<EditText>(R.id.chat_input_message)?.setText("")
+                    view.findViewById<EditText>(R.id.chat_input_message)?.setText("")
                     cancelReply()
                 }
             }
         }
 
-        // Голосовые сообщения
-        requireView().findViewById<ImageView>(R.id.chat_btn_voice)?.setOnTouchListener { _, event ->
+        view.findViewById<ImageView>(R.id.chat_btn_voice)?.setOnTouchListener { _, event ->
             if (checkPermission(RECORD_AUDIO)) {
+                val recorder = mAppVoiceRecorder
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
-                        requireView().findViewById<EditText>(R.id.chat_input_message)?.setText(getString(R.string.record))
-                        requireView().findViewById<ImageView>(R.id.chat_btn_voice)?.setColorFilter(
+                        view.findViewById<EditText>(R.id.chat_input_message)?.setText(getString(R.string.record))
+                        view.findViewById<ImageView>(R.id.chat_btn_voice)?.setColorFilter(
                             ContextCompat.getColor(APP_ACTIVITY, R.color.purple_300)
                         )
-                        val messageKey = getMessageKeyGroup(group.id)
-                        mAppVoiceRecorder.startRecord(messageKey)
+                        recorder?.startRecord(getMessageKeyGroup(group.id))
                     }
                     MotionEvent.ACTION_UP -> {
-                        requireView().findViewById<EditText>(R.id.chat_input_message)?.setText("")
-                        requireView().findViewById<ImageView>(R.id.chat_btn_voice)?.colorFilter = null
-                        mAppVoiceRecorder.stopRecord { file, messageKey ->
+                        view.findViewById<EditText>(R.id.chat_input_message)?.setText("")
+                        view.findViewById<ImageView>(R.id.chat_btn_voice)?.colorFilter = null
+                        recorder?.stopRecord { file, messageKey ->
                             uploadFileToStorageGroup(Uri.fromFile(file), messageKey, group.id, TYPE_MESSAGE_VOICE) {
                                 viewModel.reloadMessages()
                             }
@@ -154,7 +253,71 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
         }
     }
 
-    // ==================== REPLY SYSTEM (как в SingleChatFragment) ====================
+    // ==================== ШАПКА ====================
+
+    private fun initToolbar() {
+        val header = mToolbarInfo ?: return
+        header.visibility = View.VISIBLE
+        header.findViewById<ImageView>(R.id.chat_btn_back)?.setOnClickListener { parentFragmentManager.popBackStack() }
+        header.findViewById<ImageView>(R.id.chat_btn_more)?.setOnClickListener { showChatMenu(it, R.menu.single_chat_action_menu) }
+        header.findViewById<View>(R.id.chat_header_info)?.setOnClickListener { openGroupInfo() }
+
+        // Слушатель добавляем только если его ещё нет (onResume может вызываться многократно)
+        if (mListenerInfoToolbar == null) {
+            // Название и фото группы — из groups/{id}: группа не пользователь и в users не хранится
+            val listener = AppValueEventListener { snapshot ->
+                if (!snapshot.exists()) return@AppValueEventListener
+                val updated = snapshot.getCommonModel()
+                group.fullname = updated.fullname
+                group.photoUrl = updated.photoUrl
+                initInfoToolbar()
+            }
+            val ref = REF_DATABASE_ROOT.child(NODE_GROUPS).child(group.id)
+            ref.addValueEventListener(listener)
+            mRefUser = ref
+            mListenerInfoToolbar = listener
+        }
+
+        preloadGroupMembersPublicKeys()
+    }
+
+    private fun preloadGroupMembersPublicKeys() {
+        REF_DATABASE_ROOT.child("$NODE_GROUPS/${group.id}/$NODE_MEMBERS")
+            .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
+                snapshot.children.forEach { member ->
+                    val memberId = member.key ?: return@forEach
+                    if (memberId != CURRENT_UID) {
+                        ChatEncryptionManager.getOtherUserPublicKey(memberId) { publicKey ->
+                            if (!publicKey.isNullOrEmpty()) ChatEncryptionManager.cachePublicKey(memberId, publicKey)
+                        }
+                    }
+                }
+            })
+    }
+
+    /** Шапка группы: название, фото и число участников (вместо статуса собеседника). */
+    private fun initInfoToolbar() {
+        val header = mToolbarInfo ?: return
+        header.findViewById<TextView>(R.id.toolbar_chat_fullname)?.text = group.fullname
+        header.findViewById<ImageView>(R.id.toolbar_chat_image)?.downloadAndSetImage(group.photoUrl)
+        header.findViewById<TextView>(R.id.toolbar_chat_status)?.text = getPlurals(participantsCount)
+        header.findViewById<View>(R.id.chat_status_dot)?.visibility = View.GONE
+    }
+
+    private fun loadParticipantsCount() {
+        REF_DATABASE_ROOT.child("$NODE_GROUPS/${group.id}/$NODE_MEMBERS")
+            .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
+                participantsCount = snapshot.childrenCount.toInt()
+                initInfoToolbar()
+            })
+    }
+
+    /** Открывает информацию о группе: участники и (для создателя) редактирование. */
+    private fun openGroupInfo() {
+        replaceFragment(GroupSettingsFragment(group))
+    }
+
+    // ==================== REPLY SYSTEM ====================
 
     fun startReply(messageId: String, messageText: String, fromUser: String) {
         replyingToMessageId = messageId
@@ -163,57 +326,57 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
     }
 
     private fun showReplyPreview(fromUser: String) {
-        val replyPreview = requireView().findViewById<View>(R.id.reply_preview) ?: return
-        val replyTextView = replyPreview.findViewById<TextView>(R.id.reply_text)
-        val closeBtn = replyPreview.findViewById<ImageView>(R.id.reply_close)
-
-        replyTextView.text = "↩️ $fromUser: $replyingToText"
+        val replyPreview = view?.findViewById<View>(R.id.reply_preview) ?: return
+        replyPreview.findViewById<TextView>(R.id.reply_text)?.text = "↩️ $fromUser: $replyingToText"
         replyPreview.visibility = View.VISIBLE
-
-        closeBtn.setOnClickListener { cancelReply() }
+        replyPreview.findViewById<ImageView>(R.id.reply_close)?.setOnClickListener { cancelReply() }
     }
 
     private fun cancelReply() {
         replyingToMessageId = null
         replyingToText = null
-        requireView().findViewById<View>(R.id.reply_preview)?.visibility = View.GONE
+        view?.findViewById<View>(R.id.reply_preview)?.visibility = View.GONE
     }
 
     // ==================== ПУБЛИЧНЫЕ МЕТОДЫ ДЛЯ ХОЛДЕРОВ ====================
 
     fun deleteMessage(messageId: String, fromUserId: String) {
-        val path = "$NODE_GROUPS/${group.id}/$NODE_MESSAGES/$messageId"
-        REF_DATABASE_ROOT.child(path).removeValue()
+        REF_DATABASE_ROOT.child("$NODE_GROUPS/${group.id}/$NODE_MESSAGES/$messageId").removeValue()
             .addOnSuccessListener {
                 showToast("Сообщение удалено")
                 viewModel.reloadMessages()
             }
-            .addOnFailureListener {
-                showToast("Не удалось удалить сообщение")
-            }
+            .addOnFailureListener { showToast("Не удалось удалить сообщение") }
     }
 
     fun scrollToMessage(messageId: String) {
         val messages = viewModel.messages.value ?: return
         val position = messages.indexOfFirst { it.id == messageId }
         if (position >= 0) {
-            mRecyclerView.smoothScrollToPosition(position)
+            mRecyclerView?.smoothScrollToPosition(position)
         } else {
             showToast("Сообщение не найдено")
         }
     }
 
-    private fun attach() {
-        mBottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
-    }
+    // ==================== ВЛОЖЕНИЯ ====================
 
-    private fun attachToClose() {
-        mBottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+    /** Вложение: фото или файл (как в личном чате). */
+    private fun attach() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Прикрепить")
+            .setItems(arrayOf("Фото", "Файл")) { _, which ->
+                when (which) {
+                    0 -> attachImage()
+                    1 -> attachFile()
+                }
+            }
+            .show()
     }
 
     private fun attachFile() {
         val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "*/*" }
-        pickFileLauncher.launch(intent)
+        pickFileLauncher?.launch(intent)
     }
 
     private fun attachImage() {
@@ -228,99 +391,10 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
                 cropShape = CropImageView.CropShape.OVAL
             )
         )
-        cropImageLauncher.launch(options)
+        cropImageLauncher?.launch(options)
     }
 
-    private fun initRecycleView() {
-        mRecyclerView = requireView().findViewById(R.id.chat_recycle_view)
-        mAdapter = GroupChatAdapter()
-        mRecyclerView.apply {
-            adapter = mAdapter
-            setHasFixedSize(true)
-            isNestedScrollingEnabled = false
-            layoutManager = mLayoutManager
-        }
-
-        viewModel.messages.observe(viewLifecycleOwner) { messages ->
-            mAdapter.submitList(messages)
-            if (messages.isNotEmpty()) mRecyclerView.smoothScrollToPosition(messages.size - 1)
-        }
-
-        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
-            mSwipeRefreshLayout.isRefreshing = isLoading
-        }
-
-        viewModel.error.observe(viewLifecycleOwner) { error ->
-            error?.let {
-                showToast(it)
-                viewModel.clearError()
-            }
-        }
-
-        mSwipeRefreshLayout.setOnRefreshListener {
-            viewModel.loadMoreMessages()
-        }
-
-        viewModel.initChat(group.id, isGroup = true)
-    }
-
-    private fun loadParticipantsCount() {
-        REF_DATABASE_ROOT.child("$NODE_GROUPS/${group.id}/$NODE_PARTICIPANTS")
-            .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
-                participantsCount = snapshot.childrenCount.toInt()
-                APP_ACTIVITY.title = "${group.fullname} ($participantsCount)"
-            })
-    }
-
-    private fun initToolbar() {
-        mToolbarInfo = APP_ACTIVITY.mToolbar.findViewById(R.id.toolbar_info)
-        mToolbarInfo.visibility = View.VISIBLE
-
-        mListenerInfoToolbar = AppValueEventListener {
-            mReceivingUser = it.getUserModel()
-            initInfoToolbar()
-        }
-
-        mRefUser = REF_DATABASE_ROOT.child(NODE_USERS).child(group.id)
-        mRefUser.addValueEventListener(mListenerInfoToolbar)
-
-        preloadGroupMembersPublicKeys()
-    }
-
-    private fun preloadGroupMembersPublicKeys() {
-        REF_DATABASE_ROOT.child("$NODE_GROUPS/${group.id}/$NODE_MEMBERS")
-            .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
-                snapshot.children.forEach { member ->
-                    val memberId = member.key ?: return@forEach
-                    if (memberId != CURRENT_UID) {
-                        ChatEncryptionManager.getOtherUserPublicKey(memberId) { publicKey ->
-                            if (!publicKey.isNullOrEmpty()) {
-                                ChatEncryptionManager.cachePublicKey(memberId, publicKey)
-                            }
-                        }
-                    }
-                }
-            })
-    }
-
-    private fun initInfoToolbar() {
-        val name = mReceivingUser.fullname.ifEmpty { group.fullname }
-        mToolbarInfo.findViewById<TextView>(R.id.toolbar_chat_fullname).text = name
-        mToolbarInfo.findViewById<ImageView>(R.id.toolbar_chat_image).downloadAndSetImage(group.photoUrl)
-        mToolbarInfo.findViewById<TextView>(R.id.toolbar_chat_status).text = mReceivingUser.getStateText()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        mToolbarInfo.visibility = View.GONE
-        mRefUser.removeEventListener(mListenerInfoToolbar)
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        mAppVoiceRecorder.releaseRecorder()
-        mAdapter.onDestroy()
-    }
+    // ==================== МЕНЮ ====================
 
     @Deprecated("Deprecated in Java")
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -332,15 +406,15 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_clear_chat -> clearChatGroup(group.id) {
-                showToast(getString(R.string.chat_cleared))
+                showToast(APP_ACTIVITY.getString(R.string.chat_cleared))
                 replaceFragment(MainListFragment())
             }
             R.id.menu_remove_chat -> removeChatGroup(group.id) {
-                showToast(getString(R.string.chat_remove))
+                showToast(APP_ACTIVITY.getString(R.string.chat_remove))
                 replaceFragment(MainListFragment())
             }
             R.id.menu_delete_chat -> deleteChatGroup(group.id) {
-                showToast(getString(R.string.chat_deleted))
+                showToast(APP_ACTIVITY.getString(R.string.chat_deleted))
                 replaceFragment(MainListFragment())
             }
             1001 -> replaceFragment(GroupSettingsFragment(group))

@@ -2,6 +2,7 @@
 
 package com.example.niksey.ui.screens.register
 
+import com.example.niksey.utillits.APP_ACTIVITY
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -104,7 +105,7 @@ class EnteredFragment : Fragment(R.layout.fragment_entered) {
                 val account = task.getResult(ApiException::class.java)
                 firebaseAuthWithGoogle(account)
             } catch (_: ApiException) {
-                showToast(getString(R.string.auth_failed))
+                showToast(APP_ACTIVITY.getString(R.string.auth_failed))
             }
         }
     }
@@ -113,7 +114,7 @@ class EnteredFragment : Fragment(R.layout.fragment_entered) {
         val credential = GoogleAuthProvider.getCredential(acct?.idToken, null)
         AUTH.signInWithCredential(credential).addOnCompleteListener { task ->
             if (task.isSuccessful) createOrUpdateUserProfile()
-            else showToast(getString(R.string.auth_failed))
+            else showToast(APP_ACTIVITY.getString(R.string.auth_failed))
         }
     }
 
@@ -121,7 +122,7 @@ class EnteredFragment : Fragment(R.layout.fragment_entered) {
     private fun signInAnonymously() {
         AUTH.signInAnonymously().addOnCompleteListener { task ->
             if (task.isSuccessful) createOrUpdateUserProfile()
-            else showToast(getString(R.string.auth_failed))
+            else showToast(APP_ACTIVITY.getString(R.string.auth_failed))
         }
     }
 
@@ -142,7 +143,7 @@ class EnteredFragment : Fragment(R.layout.fragment_entered) {
                             existingUser.email = email
                             REF_DATABASE_ROOT.child(NODE_USERS).child(uid).setValue(existingUser)
                         }
-                        showToast(getString(R.string.welcome))
+                        showToast(APP_ACTIVITY.getString(R.string.welcome))
                         navigateToMainActivity()
                     } else {
                         // Профиля нет → создаём новый
@@ -154,7 +155,7 @@ class EnteredFragment : Fragment(R.layout.fragment_entered) {
                         )
                         REF_DATABASE_ROOT.child(NODE_USERS).child(uid).setValue(newUser)
                             .addOnSuccessListener {
-                                showToast(getString(R.string.welcome))
+                                showToast(APP_ACTIVITY.getString(R.string.welcome))
                                 navigateToMainActivity()
                             }
                             .addOnFailureListener { showToast(it.message.toString()) }

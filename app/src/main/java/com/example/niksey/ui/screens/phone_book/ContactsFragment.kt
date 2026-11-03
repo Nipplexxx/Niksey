@@ -5,12 +5,14 @@ import android.util.Log
 import android.view.*
 import android.widget.TextView
 import androidx.appcompat.widget.SearchView
+import androidx.core.view.isVisible
+import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
 import com.example.niksey.database.*
 import com.example.niksey.models.CommonModel
 import com.example.niksey.models.UserModel
-import com.example.niksey.ui.screens.base_fragment.BaseFragment
+import com.example.niksey.ui.objects.AppDrawer
 import com.example.niksey.ui.screens.private_messages.SingleChatFragment
 import com.example.niksey.utillits.*
 import com.firebase.ui.database.FirebaseRecyclerAdapter
@@ -19,9 +21,10 @@ import com.google.firebase.database.DatabaseReference
 import de.hdodenhof.circleimageview.CircleImageView
 
 @Suppress("DEPRECATION")
-class ContactsFragment : BaseFragment(R.layout.fragment_contacts) {
+class ContactsFragment : Fragment(R.layout.fragment_contacts) {
 
     private lateinit var mRecyclerView: RecyclerView
+    private lateinit var mEmptyState: View
     private lateinit var mAdapter: FirebaseRecyclerAdapter<CommonModel, ContactsHolder>
     private lateinit var mRefMainList: DatabaseReference
     private var searchView: SearchView? = null
@@ -34,19 +37,30 @@ class ContactsFragment : BaseFragment(R.layout.fragment_contacts) {
     override fun onResume() {
         super.onResume()
         APP_ACTIVITY.mToolbar.title = getString(R.string.contacts)
+        APP_ACTIVITY.mAppDrawer.showRoot(AppDrawer.Tab.CONTACTS)
         initRecycleView()
         hideKeyboard()
     }
 
     private fun initRecycleView() {
+        // Останавливаем прошлый адаптер, иначе он продолжает слушать Firebase (утечка)
+        if (::mAdapter.isInitialized) mAdapter.stopListening()
         mRecyclerView = requireView().findViewById(R.id.contacts_recycle_view)
+        mEmptyState = requireView().findViewById(R.id.contacts_empty_state)
+        mEmptyState.findViewById<TextView>(R.id.empty_title).setText(R.string.empty_contacts_title)
+        mEmptyState.findViewById<TextView>(R.id.empty_subtitle).setText(R.string.empty_contacts_subtitle)
         mRefMainList = REF_DATABASE_ROOT.child(NODE_MAIN_LIST).child(CURRENT_UID)
 
+        // Только личные контакты: группы живут в списке чатов и сюда не попадают
         val options = FirebaseRecyclerOptions.Builder<CommonModel>()
-            .setQuery(mRefMainList, CommonModel::class.java)
+            .setQuery(mRefMainList.orderByChild(CHILD_TYPE).equalTo(TYPE_CHAT), CommonModel::class.java)
             .build()
 
         mAdapter = object : FirebaseRecyclerAdapter<CommonModel, ContactsHolder>(options) {
+            override fun onDataChanged() {
+                mEmptyState.isVisible = itemCount == 0
+            }
+
             override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ContactsHolder {
                 val view = LayoutInflater.from(parent.context)
                     .inflate(R.layout.contact_item, parent, false)
@@ -96,6 +110,7 @@ class ContactsFragment : BaseFragment(R.layout.fragment_contacts) {
     }
 
     private fun searchUsers(query: String) {
+        if (::mAdapter.isInitialized) mAdapter.stopListening()
         val searchQuery = REF_DATABASE_ROOT.child(NODE_USERS)
             .orderByChild("username")
             .startAt(query)
