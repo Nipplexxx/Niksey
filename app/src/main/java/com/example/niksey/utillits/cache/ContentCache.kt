@@ -90,6 +90,7 @@ object ContentCache {
         put("lastMessage", model.lastMessage)
         put("replyTo", model.replyTo ?: JSONObject.NULL)
         put("duration", model.duration ?: JSONObject.NULL)
+        put("unreadCount", model.unreadCount)
     }
 
     private fun fromJsonArray(bytes: ByteArray): List<CommonModel> =
@@ -114,7 +115,8 @@ object ContentCache {
                 fileUrl = o.optString("fileUrl", "empty"),
                 lastMessage = o.optString("lastMessage"),
                 replyTo = if (o.isNull("replyTo")) null else o.optString("replyTo"),
-                duration = if (o.isNull("duration")) null else o.optString("duration")
+                duration = if (o.isNull("duration")) null else o.optString("duration"),
+                unreadCount = o.optInt("unreadCount", 0)
             )
         }
     }

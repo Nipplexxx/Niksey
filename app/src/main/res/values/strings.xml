@@ -78,7 +78,10 @@
     <string name="group_name">Group name</string>
     <string name="group_name_updated">Group name updated</string>
     <string name="group_settings">Group settings</string>
+    <string name="participants">Participants</string>
     <string name="participant_removed">Participant removed</string>
+    <string name="participants_added">Participants added</string>
+    <string name="only_creator_can_edit">Only the group creator can do this</string>
     <string name="group_participants_title">PARTICIPANTS</string>
     <string name="group_photo_updated">Group photo updated</string>
     <string name="group_info_title">Group info</string>
@@ -177,4 +180,7 @@
     <string name="profile_not_set">Not set</string>
         <string name="empty_contacts_title">No contacts yet</string>
     <string name="empty_contacts_subtitle">People you chat with will appear here. Search by username to find someone.</string>
+    <string name="profile_send_message">Send message</string>
+    <string name="you_prefix">You: </string>
+    <string name="group_creator_badge">owner</string>
 </resources>

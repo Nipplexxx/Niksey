@@ -78,6 +78,7 @@
     <string name="group_name">Название группы</string>
     <string name="group_name_updated">Название группы обновлено</string>
     <string name="group_settings">Настройки группы</string>
+    <string name="participants">Участники</string>
     <string name="participant_removed">Участник удалён</string>
     <string name="save">Сохранить</string>
 
@@ -154,4 +155,7 @@
         <item quantity="other">%d участников</item>
     </plurals>
 
+    <string name="profile_send_message">Написать сообщение</string>
+    <string name="you_prefix">Вы: </string>
+    <string name="group_creator_badge">создатель</string>
 </resources>

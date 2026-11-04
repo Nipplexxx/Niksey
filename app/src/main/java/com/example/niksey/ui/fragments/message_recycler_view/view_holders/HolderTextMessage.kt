@@ -69,7 +69,7 @@ class HolderTextMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
         previewView.text = "↩️ Ответ на сообщение"
 
         previewView.setOnClickListener {
-            findSingleChat()?.scrollToMessage(messageView.replyTo!!)
+            findChatHost()?.scrollToMessage(messageView.replyTo!!)
         }
     }
 

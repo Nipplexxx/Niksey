@@ -7,7 +7,6 @@ import android.view.View
 import android.widget.PopupMenu
 import com.example.niksey.R
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
-import com.example.niksey.ui.screens.private_messages.SingleChatFragment
 import com.example.niksey.utillits.APP_ACTIVITY
 import com.example.niksey.utillits.CURRENT_UID
 import com.example.niksey.utillits.showToast
@@ -27,10 +26,10 @@ internal fun showMessageMenu(
     popup.setOnMenuItemClickListener { item ->
         when (item.itemId) {
             R.id.menu_copy -> onCopy()
-            R.id.menu_delete -> findSingleChat()?.deleteMessage(message.id, message.from)
+            R.id.menu_delete -> findChatHost()?.deleteMessage(message.id, message.from)
             R.id.menu_reply -> {
                 val sender = if (message.from == CURRENT_UID) "Вы" else "Собеседник"
-                findSingleChat()?.startReply(message.id, replyPreview, sender)
+                findChatHost()?.startReply(message.id, replyPreview, sender)
             }
             else -> return@setOnMenuItemClickListener false
         }
@@ -39,10 +38,20 @@ internal fun showMessageMenu(
     popup.show()
 }
 
-/** Экран личного чата, если он открыт: сообщения удаляются и на него отвечают только там. */
-internal fun findSingleChat(): SingleChatFragment? =
-    APP_ACTIVITY.supportFragmentManager.fragments
-        .firstOrNull { it is SingleChatFragment } as? SingleChatFragment
+/**
+ * Открытый экран чата (личный или групповой), если он сверху.
+ * Ищем в активных фрагментах, включая вложенные — холдеры не знают, какой чат открыт.
+ */
+internal fun findChatHost(): ChatHost? {
+    val manager = APP_ACTIVITY.supportFragmentManager
+    // replace() убирает прошлый фрагмент, поэтому в менеджере обычно один чат.
+    // Идём с конца списка: сверху стека — текущий экран.
+    for (index in manager.fragments.indices.reversed()) {
+        val fragment = manager.fragments[index]
+        if (fragment is ChatHost) return fragment
+    }
+    return null
+}
 
 internal fun copyMessageText(label: String, text: String, toast: String) {
     val clipboard = APP_ACTIVITY.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

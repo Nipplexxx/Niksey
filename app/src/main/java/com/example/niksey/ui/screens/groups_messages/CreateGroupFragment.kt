@@ -26,7 +26,7 @@ import com.example.niksey.utillits.*
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.mikepenz.materialize.util.KeyboardUtil.hideKeyboard
 
-class CreateGroupFragment(private var listContacts: List<CommonModel>) :
+class CreateGroupFragment() :
     BaseFragment(R.layout.fragment_create_group) {
 
     private lateinit var mRecyclerView: RecyclerView
@@ -34,8 +34,15 @@ class CreateGroupFragment(private var listContacts: List<CommonModel>) :
     private var mUri = Uri.EMPTY
     private lateinit var cropImageLauncher: ActivityResultLauncher<CropImageContractOptions>
 
+    /** Выбранные участники — через Bundle: при пересоздании фрагмента системой данные не теряются. */
+    private lateinit var listContacts: List<CommonModel>
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        @Suppress("DEPRECATION")
+        val saved = arguments?.getParcelableArrayList<CommonModel>(ARG_CONTACTS)
+        listContacts = saved.orEmpty()
 
         cropImageLauncher = registerForActivityResult(CropImageContract()) { result ->
             if (result.isSuccessful) {
@@ -114,5 +121,15 @@ class CreateGroupFragment(private var listContacts: List<CommonModel>) :
         mRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         mRecyclerView.adapter = mAdapter
         listContacts.forEach { mAdapter.updateListItems(it) }
+    }
+
+    companion object {
+        private const val ARG_CONTACTS = "contacts"
+
+        fun newInstance(contacts: ArrayList<CommonModel>): CreateGroupFragment {
+            return CreateGroupFragment().apply {
+                arguments = Bundle().apply { putParcelableArrayList(ARG_CONTACTS, contacts) }
+            }
+        }
     }
 }

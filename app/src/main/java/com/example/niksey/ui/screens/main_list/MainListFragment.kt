@@ -63,6 +63,8 @@ class MainListFragment : Fragment(R.layout.fragment_main_list) {
         super.onResume()
         APP_ACTIVITY.mToolbar.title = getString(R.string.app_name)
         APP_ACTIVITY.mAppDrawer.showRoot(AppDrawer.Tab.CHATS)
+        // Возврат из чата: пересчитываем счётчики непрочитанных (метка «прочитано» обновилась)
+        viewModel.refreshUnread()
     }
 
     private fun initViews(view: View) {

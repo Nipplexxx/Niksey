@@ -17,7 +17,9 @@ import com.example.niksey.database.getUserModel
 import com.example.niksey.models.UserModel
 import com.example.niksey.utillits.AppValueEventListener
 import com.example.niksey.utillits.downloadAndSetImage
+import com.example.niksey.utillits.replaceFragment
 import com.example.niksey.utillits.showToast
+import com.example.niksey.ui.screens.private_messages.SingleChatFragment
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import de.hdodenhof.circleimageview.CircleImageView
 
@@ -43,6 +45,13 @@ class UserProfileSheet : BottomSheetDialogFragment() {
 
         view.findViewById<View>(R.id.profile_copy_id).setOnClickListener { copyId() }
 
+        // «Написать»: закрываем лист и открываем чат (как в Telegram)
+        view.findViewById<View>(R.id.profile_send_message)?.setOnClickListener {
+            if (userId.isBlank()) return@setOnClickListener
+            dismiss()
+            replaceFragment(SingleChatFragment.newInstance(userId))
+        }
+
         if (userId.isBlank()) return
         REF_DATABASE_ROOT.child(NODE_USERS).child(userId)
             .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
@@ -57,8 +66,14 @@ class UserProfileSheet : BottomSheetDialogFragment() {
         v.findViewById<CircleImageView>(R.id.profile_photo).downloadAndSetImage(user.photoUrl)
         v.findViewById<TextView>(R.id.profile_name).text =
             user.fullname.ifEmpty { user.username.ifEmpty { getString(R.string.profile_not_set) } }
-        v.findViewById<TextView>(R.id.profile_username).text =
-            if (user.username.isNotBlank()) "@${user.username}" else ""
+        // Если username нет — строку скрываем, иначе в шапке остаётся пустой разрыв
+        val usernameView = v.findViewById<TextView>(R.id.profile_username)
+        if (user.username.isNotBlank()) {
+            usernameView.visibility = View.VISIBLE
+            usernameView.text = "@${user.username}"
+        } else {
+            usernameView.visibility = View.GONE
+        }
         v.findViewById<TextView>(R.id.profile_id).text = "ID · ${fullId.take(14)}"
 
         val online = user.state == "online"

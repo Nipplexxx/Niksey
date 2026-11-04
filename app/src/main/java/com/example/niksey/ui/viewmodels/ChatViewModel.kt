@@ -59,6 +59,7 @@ class ChatViewModel : ViewModel() {
         // Сначала — последние сообщения из кэша: экран не пустует, пока идёт загрузка из сети
         _messages.value = ContentCache.loadMessages(cacheKey()).map { AppViewFactory.getView(it) }
         load(userRequested = false)
+        attachLiveUpdates()
     }
 
     /** Обновление по жесту пользователя: спиннер виден до ответа, ошибки или таймаута. */
@@ -218,7 +219,59 @@ class ChatViewModel : ViewModel() {
         }
     }
 
+    // ==================== живые обновления ====================
+
+    /**
+     * Новые сообщения приходят сами (как в Telegram), без pull-to-refresh:
+     * ChildEventListener на сообщения чата. Снимается в onCleared — не течёт.
+     */
+    private var liveListener: com.google.firebase.database.ChildEventListener? = null
+    private var liveRef: com.google.firebase.database.DatabaseReference? = null
+
+    private fun attachLiveUpdates() {
+        detachLiveUpdates()
+
+        val ref = if (isGroup) {
+            REF_DATABASE_ROOT.child(NODE_GROUPS).child(chatId).child(NODE_MESSAGES)
+        } else {
+            REF_DATABASE_ROOT.child(NODE_MESSAGES).child(CURRENT_UID).child(chatId)
+        }
+
+        val listener = object : com.google.firebase.database.ChildEventListener {
+            override fun onChildAdded(snapshot: com.google.firebase.database.DataSnapshot, previousChildName: String?) {
+                val model = snapshot.getCommonModel()
+                val view = AppViewFactory.getView(model)
+
+                val current = _messages.value.orEmpty()
+                if (current.any { it.id == view.id }) return
+
+                val updated = (current + view).sortedBy { it.timeStamp.toLongOrNull() ?: 0 }
+                _messages.value = updated
+            }
+
+            override fun onChildRemoved(snapshot: com.google.firebase.database.DataSnapshot) {
+                val id = snapshot.key ?: return
+                _messages.value = _messages.value.orEmpty().filterNot { it.id == id }
+            }
+
+            override fun onChildChanged(snapshot: com.google.firebase.database.DataSnapshot, previousChildName: String?) {}
+            override fun onChildMoved(snapshot: com.google.firebase.database.DataSnapshot, previousChildName: String?) {}
+            override fun onCancelled(error: DatabaseError) {}
+        }
+
+        ref.addChildEventListener(listener)
+        liveListener = listener
+        liveRef = ref
+    }
+
+    private fun detachLiveUpdates() {
+        liveListener?.let { liveRef?.removeEventListener(it) }
+        liveListener = null
+        liveRef = null
+    }
+
     override fun onCleared() {
+        detachLiveUpdates()
         cancelRefreshTimeout()
         super.onCleared()
     }

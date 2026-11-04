@@ -19,6 +19,7 @@ import com.example.niksey.database.generateRandomFullname
 import com.example.niksey.database.generateRandomUsername
 import com.example.niksey.models.UserModel
 import com.example.niksey.utillits.AUTH
+import com.example.niksey.utillits.NODE_PHONES
 import com.example.niksey.utillits.NODE_USERS
 import com.example.niksey.utillits.REF_DATABASE_ROOT
 import com.example.niksey.utillits.showToast
@@ -223,6 +224,9 @@ class PhoneAuthFragment : Fragment(R.layout.fragment_phone_auth) {
     private fun createOrUpdateUserProfile() {
         val uid = AUTH.currentUser?.uid ?: return
         val phone = getFullPhoneNumber()
+        // Телефон → uid: по этой таблице другие пользователи находят знакомых из своей
+        // телефонной книги (initContacts → updatePhonesToDatabase)
+        REF_DATABASE_ROOT.child(NODE_PHONES).child(normalizePhone(phone)).setValue(uid)
         REF_DATABASE_ROOT.child(NODE_USERS).child(uid)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -244,6 +248,9 @@ class PhoneAuthFragment : Fragment(R.layout.fragment_phone_auth) {
                 }
             })
     }
+
+    /** Приводит номер к одному виду: только цифры (как при чтении телефонной книги). */
+    private fun normalizePhone(phone: String): String = phone.replace(Regex("[\\s,-]"), "")
 
     private fun startResendTimer() {
         btnResendCode.isEnabled = false

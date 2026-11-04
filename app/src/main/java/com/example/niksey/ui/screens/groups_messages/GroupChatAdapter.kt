@@ -18,30 +18,35 @@ class GroupChatAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     override fun getItemViewType(position: Int): Int {
-        return mListMessagesCache[position].getTypeView()
+        // DiffUtil может спросить тип для позиции, которой уже нет (расшифровка обновляет список)
+        return if (position in mListMessagesCache.indices) mListMessagesCache[position].getTypeView() else -1
     }
 
     override fun getItemCount(): Int = mListMessagesCache.size
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        (holder as MessageHolder).drawMessage(mListMessagesCache[position])
+        if (holder is MessageHolder && position in mListMessagesCache.indices) {
+            holder.drawMessage(mListMessagesCache[position])
+        }
     }
 
     override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {
         super.onViewAttachedToWindow(holder)
-        val messageHolder = holder as MessageHolder
-        val position = holder.adapterPosition
-        if (position != RecyclerView.NO_POSITION) {
-            messageHolder.onAttach(mListMessagesCache[position])
-            mListHolders.add(messageHolder)
+        if (holder is MessageHolder) {
+            val position = holder.adapterPosition
+            if (position != RecyclerView.NO_POSITION && position in mListMessagesCache.indices) {
+                holder.onAttach(mListMessagesCache[position])
+                mListHolders.add(holder)
+            }
         }
     }
 
     override fun onViewDetachedFromWindow(holder: RecyclerView.ViewHolder) {
         super.onViewDetachedFromWindow(holder)
-        val messageHolder = holder as MessageHolder
-        messageHolder.onDetach()
-        mListHolders.remove(messageHolder)
+        if (holder is MessageHolder) {
+            holder.onDetach()
+            mListHolders.remove(holder)
+        }
     }
 
     fun onDestroy() {
@@ -49,7 +54,6 @@ class GroupChatAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         mListHolders.clear()
     }
 
-    // ==================== НОВЫЙ МЕТОД submitList ====================
     fun submitList(newList: List<MessageView>) {
         val diffCallback = DiffUtilCallback(mListMessagesCache, newList)
         val diffResult = DiffUtil.calculateDiff(diffCallback)
@@ -74,6 +78,7 @@ private class DiffUtilCallback(
     }
 
     override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-        return oldList[oldItemPosition].text == newList[newItemPosition].text
+        return oldList[oldItemPosition].text == newList[newItemPosition].text &&
+                oldList[oldItemPosition].decryptedText == newList[newItemPosition].decryptedText
     }
 }

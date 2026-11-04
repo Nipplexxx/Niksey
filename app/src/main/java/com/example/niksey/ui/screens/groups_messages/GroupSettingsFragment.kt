@@ -29,7 +29,10 @@ import java.util.concurrent.atomic.AtomicInteger
  * Все видят участников. Редактировать название, фото и удалять участников может только создатель
  * (роль берётся из groups/{id}/members).
  */
-class GroupSettingsFragment(private val group: CommonModel) : BaseFragment(R.layout.fragment_group_settings) {
+class GroupSettingsFragment() : BaseFragment(R.layout.fragment_group_settings) {
+
+    /** Группа — через Bundle: фрагмент восстанавливается пустым конструктором при пересоздании. */
+    private lateinit var group: CommonModel
 
     private var mAdapter: GroupParticipantsAdapter? = null
     private val members = mutableListOf<GroupMember>()
@@ -38,6 +41,11 @@ class GroupSettingsFragment(private val group: CommonModel) : BaseFragment(R.lay
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Группа — из Bundle: при пересоздании фрагмента системой данные не теряются
+        @Suppress("DEPRECATION")
+        group = requireNotNull(arguments?.getParcelable<CommonModel>(ARG_GROUP)) {
+            "GroupSettingsFragment открыт без данных группы"
+        }
         cropLauncher = registerForActivityResult(CropImageContract()) { result ->
             if (result.isSuccessful) {
                 result.uriContent?.let { uploadGroupPhoto(it) }
@@ -63,7 +71,7 @@ class GroupSettingsFragment(private val group: CommonModel) : BaseFragment(R.lay
 
         val recycler = view.findViewById<RecyclerView>(R.id.participants_recycler)
         recycler.layoutManager = LinearLayoutManager(requireContext())
-        mAdapter = GroupParticipantsAdapter(members) { member -> removeMember(member) }
+        mAdapter = GroupParticipantsAdapter(members, childFragmentManager) { member -> removeMember(member) }
         recycler.adapter = mAdapter
 
         view.findViewById<MaterialButton>(R.id.btn_save_name).setOnClickListener {
@@ -71,9 +79,18 @@ class GroupSettingsFragment(private val group: CommonModel) : BaseFragment(R.lay
             if (newName.isNotEmpty()) updateGroupName(newName)
         }
         view.findViewById<MaterialButton>(R.id.btn_add_participants).setOnClickListener {
-            replaceFragment(AddContactsFragment())
+            if (isCreator) {
+                // Добавление в ЭТУ группу: существующие участники отфильтруются в списке
+                replaceFragment(AddContactsFragment.forGroup(group.id))
+            } else {
+                showToast("Только создатель может добавлять участников")
+            }
         }
+        // Фото и подсказка «сменить фото» — обе открывают кроппер (только создатель)
         view.findViewById<ImageView>(R.id.group_info_photo).setOnClickListener {
+            if (isCreator) cropLauncher?.launch(photoCropOptions())
+        }
+        view.findViewById<ImageView>(R.id.group_info_photo_edit).setOnClickListener {
             if (isCreator) cropLauncher?.launch(photoCropOptions())
         }
 
@@ -138,6 +155,8 @@ class GroupSettingsFragment(private val group: CommonModel) : BaseFragment(R.lay
 
         v.findViewById<View>(R.id.group_edit_panel).visibility = if (isCreator) View.VISIBLE else View.GONE
         v.findViewById<View>(R.id.btn_add_participants).visibility = if (isCreator) View.VISIBLE else View.GONE
+        // Подсказка «сменить фото» на аватаре — только создателю
+        v.findViewById<View>(R.id.group_info_photo_edit).visibility = if (isCreator) View.VISIBLE else View.GONE
         v.findViewById<EditText>(R.id.group_name_edit).setText(group.fullname)
         bindHeader(v)
     }
@@ -197,4 +216,13 @@ class GroupSettingsFragment(private val group: CommonModel) : BaseFragment(R.lay
             cropShape = CropImageView.CropShape.OVAL
         )
     )
+
+    companion object {
+        private const val ARG_GROUP = "arg_group"
+
+        fun newInstance(group: CommonModel): GroupSettingsFragment =
+            GroupSettingsFragment().apply {
+                arguments = Bundle().apply { putParcelable(ARG_GROUP, group) }
+            }
+    }
 }

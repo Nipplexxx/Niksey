@@ -102,7 +102,9 @@ fun initContacts() {
 }
 
 fun String.asTime(): String {
-    val time = Date(this.toLong())
+    // timeStamp бывает пустой строкой (сообщение ещё пишется, ServerValue.TIMESTAMP
+    // заполняется сервером) — toLong() на такой строке бросает NumberFormatException
+    val time = Date(this.toLongOrNull() ?: 0L)
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     return timeFormat.format(time)
 }

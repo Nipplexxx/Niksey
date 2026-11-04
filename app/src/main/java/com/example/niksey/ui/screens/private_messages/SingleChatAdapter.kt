@@ -1,33 +1,30 @@
 package com.example.niksey.ui.screens.private_messages
 
-import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.ui.fragments.message_recycler_view.view_holders.AppHolderFactory
-import com.example.niksey.ui.fragments.message_recycler_view.view_holders.HolderVideoMessage
 import com.example.niksey.ui.fragments.message_recycler_view.view_holders.MessageHolder
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 
+/**
+ * Адаптер списка сообщений личного чата.
+ *
+ * • viewType выбирает MessageView.getTypeView() — фабрика AppHolderFactory создаёт холдер.
+ * • submitList считает DiffUtil: перестановки и точечные обновления без полной перерисовки
+ *   (важно: расшифровка приходит асинхронно и вызывает notifyDataSetChanged только один раз
+ *   на весь список через SecureMessaging.onDecryptedUpdate).
+ * • onAttach/onDetach включая mListHolders: холдеры подписываются на клики при появлении
+ *   на экране и снимают подписки при уходе — не копим слушатели на переиспользованных строках.
+ */
 @Suppress("DEPRECATION")
 class SingleChatAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val mListMessagesCache = mutableListOf<MessageView>()
     private val mListHolders = mutableListOf<MessageHolder>()
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        return try {
-            android.util.Log.d("SingleChatAdapter", "Создаём холдер для viewType = $viewType")
-            AppHolderFactory.getHolder(parent, viewType)
-        } catch (e: Exception) {
-            android.util.Log.e("SingleChatAdapter", "КРАШ при создании холдера viewType=$viewType", e)
-            when (viewType) {
-                4 -> HolderVideoMessage(LayoutInflater.from(parent.context).inflate(com.example.niksey.R.layout.message_item_video, parent, false))
-                else -> object : RecyclerView.ViewHolder(View(parent.context)) {}
-            }
-        }
-    }
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
+        AppHolderFactory.getHolder(parent, viewType)
 
     override fun getItemViewType(position: Int): Int {
         return if (position in mListMessagesCache.indices) mListMessagesCache[position].getTypeView() else -1
@@ -67,6 +64,7 @@ class SingleChatAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         diff.dispatchUpdatesTo(this)
     }
 
+    /** Вызывается из onDestroyView фрагмента: снимает подписки со всех видимых холдеров. */
     fun onDestroy() {
         mListHolders.forEach { it.onDetach() }
         mListHolders.clear()
@@ -80,5 +78,6 @@ private class DiffUtilCallback(
     override fun getOldListSize() = oldList.size
     override fun getNewListSize() = newList.size
     override fun areItemsTheSame(old: Int, new: Int) = oldList[old].id == newList[new].id
-    override fun areContentsTheSame(old: Int, new: Int) = oldList[old].text == newList[new].text
+    override fun areContentsTheSame(old: Int, new: Int) =
+        oldList[old].text == newList[new].text && oldList[old].decryptedText == newList[new].decryptedText
 }

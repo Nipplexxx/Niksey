@@ -12,6 +12,7 @@ import com.example.niksey.database.*
 import com.example.niksey.models.CommonModel
 import com.example.niksey.models.UserModel
 import com.example.niksey.ui.screens.base_fragment.BaseFragment
+import com.example.niksey.ui.screens.main_list.MainListFragment
 import com.example.niksey.utillits.*
 import com.firebase.ui.database.FirebaseRecyclerAdapter
 import com.firebase.ui.database.FirebaseRecyclerOptions
@@ -27,9 +28,16 @@ class AddContactsFragment : BaseFragment(R.layout.fragment_add_contacts) {
     private lateinit var mRefMainList: DatabaseReference
     private var searchView: SearchView? = null
 
+    /** id существующей группы: не null — режим «добавить участников в группу», null — создание новой. */
+    private var targetGroupId: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
+        targetGroupId = arguments?.getString(ARG_GROUP_ID)
+
+        // Выбор с прошлого захода не должен переноситься: список статический — чистим
+        listContacts.clear()
     }
 
 
@@ -43,8 +51,17 @@ class AddContactsFragment : BaseFragment(R.layout.fragment_add_contacts) {
         view?.findViewById<com.google.android.material.button.MaterialButton>(R.id.add_contacts_btn_next)?.setOnClickListener {
             if (listContacts.isEmpty()) {
                 showToast(APP_ACTIVITY.getString(R.string.add_participant))
+            } else if (targetGroupId != null) {
+                // Добавляем выбранных в СУЩЕСТВУЮЩУЮ группу, а не создаём новую
+                addParticipantsToGroup(targetGroupId!!, listContacts) {
+                    showToast(APP_ACTIVITY.getString(R.string.participants_added))
+                    listContacts.clear()
+                    replaceFragment(MainListFragment())
+                }
             } else {
-                replaceFragment(CreateGroupFragment(listContacts))
+                // Создание новой группы: контакты передаются через Bundle (фрагмент пересоздаётся
+                // при повороте экрана — список из static-поля терялся бы)
+                replaceFragment(CreateGroupFragment.newInstance(ArrayList(listContacts)))
             }
         }
     }
@@ -182,5 +199,14 @@ class AddContactsFragment : BaseFragment(R.layout.fragment_add_contacts) {
 
     companion object {
         val listContacts = mutableListOf<CommonModel>()
+        private const val ARG_GROUP_ID = "group_id"
+
+        /** Обычный режим: выбор участников для НОВОЙ группы. */
+        fun newInstance(): AddContactsFragment = AddContactsFragment()
+
+        /** Режим добавления участников в существующую группу [groupId]. */
+        fun forGroup(groupId: String): AddContactsFragment = AddContactsFragment().apply {
+            arguments = Bundle().apply { putString(ARG_GROUP_ID, groupId) }
+        }
     }
 }

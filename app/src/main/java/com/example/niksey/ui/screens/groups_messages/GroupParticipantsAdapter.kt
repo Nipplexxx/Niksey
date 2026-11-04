@@ -5,8 +5,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.fragment.app.FragmentManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
+import com.example.niksey.ui.screens.profile.UserProfileSheet
 import com.example.niksey.utillits.downloadAndSetImage
 
 /** Участник группы для списка. */
@@ -18,11 +20,13 @@ data class GroupMember(
 )
 
 /**
- * Список участников группы. Кнопка удаления видна только при [canRemove]
- * (то есть когда текущий пользователь — создатель группы).
+ * Список участников группы.
+ * • Нажатие на участника открывает его профиль (как в Telegram).
+ * • Кнопка удаления видна только при [canRemove] (текущий пользователь — создатель).
  */
 class GroupParticipantsAdapter(
     private val participants: List<GroupMember>,
+    private val fragmentManager: FragmentManager,
     private val onRemoveClick: (GroupMember) -> Unit
 ) : RecyclerView.Adapter<GroupParticipantsAdapter.ParticipantHolder>() {
 
@@ -34,6 +38,7 @@ class GroupParticipantsAdapter(
 
     inner class ParticipantHolder(view: View) : RecyclerView.ViewHolder(view) {
         val name: TextView = view.findViewById(R.id.participant_name)
+        val creatorBadge: TextView = view.findViewById(R.id.participant_creator_badge)
         val photo: ImageView = view.findViewById(R.id.participant_photo)
         val btnRemove: ImageView = view.findViewById(R.id.btn_remove_participant)
     }
@@ -49,8 +54,17 @@ class GroupParticipantsAdapter(
     override fun onBindViewHolder(holder: ParticipantHolder, position: Int) {
         val member = participants[position]
 
-        holder.name.text = if (member.isCreator) "${member.name} · создатель" else member.name
+        holder.name.text = member.name
         holder.photo.downloadAndSetImage(member.photoUrl)
+
+        // Бейдж «создатель» рядом с именем
+        holder.creatorBadge.visibility = if (member.isCreator) View.VISIBLE else View.GONE
+
+        // Нажатие на участника — его профиль
+        holder.itemView.setOnClickListener {
+            UserProfileSheet.newInstance(member.id)
+                .show(fragmentManager, "participant_profile")
+        }
 
         // Удалять можно участников, но не себя и не создателя
         val removable = canRemove && !member.isCreator

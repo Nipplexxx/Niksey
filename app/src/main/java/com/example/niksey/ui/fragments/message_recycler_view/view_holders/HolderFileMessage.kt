@@ -4,15 +4,14 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Environment
 import android.view.View
 import android.widget.ImageView
-import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
-import com.example.niksey.database.getFileFromStorage
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 import com.example.niksey.utillits.APP_ACTIVITY
 import com.example.niksey.utillits.CURRENT_UID
@@ -127,6 +126,9 @@ class HolderFileMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
     /**
      * Файл сначала расшифровывается в кэш (см. MediaRepository), затем копируется в «Загрузки»
      * под исходным именем — это действие пользователя, поэтому копия становится видна системе.
+     *
+     * Android 10+ не даёт писать в публичные Загрузки напрямую: на Q+ файл попадает туда
+     * через MediaStore (запись делает система), на старых версиях — обычной записью.
      */
     private fun downloadFile(messageView: MessageView) {
         val isUser = messageView.from == CURRENT_UID
@@ -134,32 +136,81 @@ class HolderFileMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
 
         MediaViews.withFile(messageView, { cached ->
             try {
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val target = File(downloadsDir, fileDisplayName(messageView))
-                cached.copyTo(target, overwrite = true)
+                val uri = saveToDownloads(cached, fileDisplayName(messageView))
                 hideProgress(isUser)
-                showToast("Файл сохранён в Загрузки")
-                openDownloadedFile(target)
+                if (uri != null) {
+                    showToast("Файл сохранён в Загрузки")
+                    openDownloadedFile(uri)
+                } else {
+                    showToast("Не удалось сохранить файл")
+                }
             } catch (e: Exception) {
                 hideProgress(isUser)
                 showToast("Ошибка сохранения: ${e.message}")
             }
         }, { error ->
-            hideProgress(isUser)
-            showToast("Ошибка скачивания: ${error.message}")
+            // Ключ беседы ещё загружается — не пугаем пользователя ошибкой
+            if (error !is MediaRepository.KeyPendingException) {
+                hideProgress(isUser)
+                showToast("Ошибка скачивания: ${error.message}")
+            }
         })
+    }
+
+    /** Копирует файл в Загрузки; возвращает uri, по которому файл можно открыть. */
+    private fun saveToDownloads(source: File, displayName: String): android.net.Uri? {
+        val name = displayName.ifBlank { "file_${System.currentTimeMillis()}" }
+        val mime = mimeOf(name)
+
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Downloads.DISPLAY_NAME, name)
+                put(android.provider.MediaStore.Downloads.MIME_TYPE, mime)
+                put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
+            }
+            val resolver = APP_ACTIVITY.contentResolver
+            val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                ?: return null
+            try {
+                resolver.openOutputStream(uri)?.use { out ->
+                    source.inputStream().use { it.copyTo(out) }
+                } ?: throw java.io.IOException("Нет потока записи")
+                values.clear()
+                values.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
+                resolver.update(uri, values, null, null)
+                uri
+            } catch (e: Exception) {
+                resolver.delete(uri, null, null)
+                null
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            downloadsDir.mkdirs()
+            val target = File(downloadsDir, name)
+            source.copyTo(target, overwrite = true)
+            FileProvider.getUriForFile(APP_ACTIVITY, "${APP_ACTIVITY.packageName}.fileprovider", target)
+        }
+    }
+
+    private fun mimeOf(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
+        "pdf" -> "application/pdf"
+        "jpg", "jpeg" -> "image/jpeg"
+        "png" -> "image/png"
+        "gif" -> "image/gif"
+        "mp4", "mov" -> "video/mp4"
+        "m4a" -> "audio/mp4"
+        "mp3" -> "audio/mpeg"
+        "txt" -> "text/plain"
+        "zip" -> "application/zip"
+        else -> "application/octet-stream"
     }
 
     private fun fileDisplayName(messageView: MessageView): String =
         MediaRepository.cachedName(messageView)?.ifEmpty { null } ?: "file"
 
-    private fun openDownloadedFile(file: File) {
+    private fun openDownloadedFile(uri: android.net.Uri) {
         try {
-            val uri = FileProvider.getUriForFile(
-                APP_ACTIVITY,
-                "${APP_ACTIVITY.packageName}.fileprovider",
-                file
-            )
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, "*/*")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -195,9 +246,15 @@ class HolderFileMessage(view: View) : RecyclerView.ViewHolder(view), MessageHold
         showMessageMenu(
             anchor = anchorView,
             message = messageView,
-            onCopy = { copyMessageText("file", messageView.text, "Имя файла скопировано") },
-            replyPreview = "[Файл]"
+            onCopy = { copyToClipboard(getDisplayFileName(MediaRepository.cachedName(messageView))) },
+            replyPreview = "[Файл] ${getDisplayFileName(MediaRepository.cachedName(messageView))}"
         )
+    }
+
+    private fun copyToClipboard(text: String) {
+        val clipboard = APP_ACTIVITY.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("file", text))
+        showToast("Имя файла скопировано")
     }
 
     override fun onDetach() {

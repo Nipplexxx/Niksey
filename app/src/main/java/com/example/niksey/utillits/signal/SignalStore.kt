@@ -117,6 +117,8 @@ class SignalStore(context: Context) : SignalProtocolStore {
     fun replaceIdentity(address: SignalProtocolAddress, identityKey: IdentityKey) {
         remoteIdentities.put(addressKey(address), identityKey.serialize())
         setIdentityChanged(address.name, false)
+        // Старые sender keys были зашифрованы прежней сессией — они нечитаемы, шлём заново
+        resetSenderKeysSentTo(address.name)
     }
 
     fun isBundlePublished(): Boolean = flags.get("bundle_published") != null
@@ -129,6 +131,20 @@ class SignalStore(context: Context) : SignalProtocolStore {
 
     fun setSenderKeySent(groupId: String, memberId: String) =
         flags.put("skdm_sent:$groupId:$memberId", byteArrayOf(1))
+
+    /**
+     * Сбрасывает отметки «sender key отправлен» для участника во всех группах.
+     * Смена ключа собеседника делает старые SKDM нечитаемыми: ключи нужно разослать заново
+     * с новой сессией. Вызывается при подтверждении нового ключа (replaceIdentity) и
+     * при сбросе сессии.
+     */
+    fun resetSenderKeysSentTo(memberId: String) {
+        val prefix = "skdm_sent:"
+        val suffix = ":$memberId"
+        flags.entries().keys
+            .filter { it.startsWith(prefix) && it.endsWith(suffix) }
+            .forEach { flags.remove(it) }
+    }
 
     /** Сколько одноразовых ключей осталось. */
     fun preKeyIds(): List<Int> = preKeys.entries().keys.map { it.toInt() }

@@ -62,6 +62,15 @@ class UserProfileDialog : DialogFragment() {
         view.findViewById<View>(R.id.profile_copy_id).setOnClickListener { copyId() }
         attachSwipeToDismiss(view.findViewById(R.id.profile_card))
 
+        // «Написать»: закрываем карточку и открываем чат (как в Telegram)
+        view.findViewById<View>(R.id.profile_send_message)?.setOnClickListener {
+            if (userId.isBlank()) return@setOnClickListener
+            dismiss()
+            com.example.niksey.utillits.replaceFragment(
+                com.example.niksey.ui.screens.private_messages.SingleChatFragment.newInstance(userId)
+            )
+        }
+
         if (userId.isBlank()) return
         REF_DATABASE_ROOT.child(NODE_USERS).child(userId)
             .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
@@ -110,8 +119,14 @@ class UserProfileDialog : DialogFragment() {
         v.findViewById<CircleImageView>(R.id.profile_photo).downloadAndSetImage(user.photoUrl)
         v.findViewById<TextView>(R.id.profile_name).text =
             user.fullname.ifEmpty { user.username.ifEmpty { getString(R.string.profile_not_set) } }
-        v.findViewById<TextView>(R.id.profile_username).text =
-            if (user.username.isNotBlank()) "@${user.username}" else ""
+        // Нет username — строку скрываем, иначе в карточке остаётся пустой разрыв
+        val usernameView = v.findViewById<TextView>(R.id.profile_username)
+        if (user.username.isNotBlank()) {
+            usernameView.visibility = View.VISIBLE
+            usernameView.text = "@${user.username}"
+        } else {
+            usernameView.visibility = View.GONE
+        }
         v.findViewById<TextView>(R.id.profile_id).text =
             if (fullId.length > ID_PREVIEW_LENGTH) fullId.take(ID_PREVIEW_LENGTH) + "…" else fullId
 

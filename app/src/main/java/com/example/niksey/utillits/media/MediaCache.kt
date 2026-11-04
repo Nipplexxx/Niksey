@@ -31,6 +31,15 @@ object MediaCache {
     private val mediaDir: File get() = File(appContext.cacheDir, MEDIA_DIR).apply { mkdirs() }
     private val tmpDir: File get() = File(appContext.cacheDir, TMP_DIR).apply { mkdirs() }
 
+    /**
+     * Поколение кэша: растёт при каждой очистке. Холдеры держат миниатюры/длительности,
+     * привязанные к путям файлов; после clear() путь тот же, а содержимое будет заново
+     * скачано — старые миниатюры обязаны устареть, иначе покажется чужой кадр.
+     */
+    @Volatile
+    var generation: Long = 0L
+        private set
+
     /** Итоговый путь расшифрованного файла для ссылки [url]. Расширение нужно плеерам. */
     fun fileFor(url: String, extension: String): File {
         val digest = MessageDigest.getInstance("SHA-256").digest(url.toByteArray(Charsets.UTF_8))
@@ -50,12 +59,19 @@ object MediaCache {
     /** Размер кэша медиа (включая временные файлы), в байтах. */
     fun sizeBytes(): Long = directorySize(mediaDir) + directorySize(tmpDir) + directorySize(picassoDir())
 
-    /** Удаляет кэш медиа и кэш картинок аватаров. Сообщения и ключи не затрагиваются. */
+    /**
+     * Удаляет кэш медиа и кэш картинок аватаров. Сообщения и ключи не затрагиваются.
+     * Каталоги пересоздаются: загрузки, которые идут прямо сейчас, должны иметь куда
+     * сохраниться (MediaRepository восстановит папку при записи).
+     */
     fun clear() {
         synchronized(lock) {
             mediaDir.deleteRecursively()
             tmpDir.deleteRecursively()
             picassoDir().deleteRecursively()
+            generation += 1
+            mediaDir.mkdirs()
+            tmpDir.mkdirs()
         }
     }
 

@@ -37,9 +37,20 @@ object MediaRepository {
     /** Метаданные ещё нельзя расшифровать: ключ беседы не загружен. Экран перерисуется, когда ключ появится. */
     class KeyPendingException : IOException("Ключ беседы ещё загружается")
 
+    /**
+     * Вызывается, когда медиа появилось в кэше (скачано и расшифровано).
+     * Экран чата подписывается на это и перерисовывает список — картинки и длительности
+     * подставляются автоматически, без ручных notifyDataSetChanged.
+     */
+    @Volatile
+    var onMediaReady: (() -> Unit)? = null
+
     private val executor = Executors.newFixedThreadPool(3)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val inFlight = HashMap<String, MutableList<(Result<File>) -> Unit>>()
+
+    /** Меньше этого считаем файл в кэше битым (пустой остаток прерванной загрузки). */
+    private const val MIN_VALID_FILE_BYTES = 16L
 
     /** Метаданные медиа-сообщения. Новый формат — зашифрованный JSON (k = ключ файла, n = имя). */
     fun encodeMeta(fileKey: ByteArray, name: String): String =
@@ -97,17 +108,21 @@ object MediaRepository {
     fun resolve(view: MessageView, conversationId: String, onResult: (Result<File>) -> Unit) {
         loadAttachment(view, conversationId) { loaded ->
             val attachment = loaded.getOrElse { onResult(Result.failure(it)); return@loadAttachment }
-            if (attachment.url.isEmpty()) {
+            // «empty» — заглушка из CommonModel по умолчанию: сообщения без файла
+            if (attachment.url.isEmpty() || attachment.url == "empty") {
                 onResult(Result.failure(IOException("Файл недоступен")))
                 return@loadAttachment
             }
 
             val target = MediaCache.fileFor(attachment.url, extensionOf(attachment.name))
-            if (target.isFile && target.length() > 0) {
+            // Файл мог остаться от прерванной загрузки (нулевой) или быть битым —
+            // проверяем размер: пустые и подозрительно маленькие файлы перекачиваем
+            if (target.isFile && target.length() > MIN_VALID_FILE_BYTES) {
                 MediaCache.touch(target)
                 onResult(Result.success(target))
                 return@loadAttachment
             }
+            if (target.isFile) target.delete() // битый/пустой остаток — качаем заново
 
             synchronized(inFlight) {
                 val waiting = inFlight[target.name]
@@ -120,20 +135,34 @@ object MediaRepository {
 
             executor.execute {
                 val result = runCatching { download(attachment, target) }
+                // Снимаем задачу с учёта только ПОСЛЕ завершения: если снять раньше,
+                // повторный resolve во время загрузки начинал вторую загрузку того же файла
                 val callbacks = synchronized(inFlight) { inFlight.remove(target.name).orEmpty() }
-                mainHandler.post { callbacks.forEach { it(result) } }
+                mainHandler.post {
+                    callbacks.forEach { it(result) }
+                    // Файл впервые появился в кэше — сообщаем экрану, чтобы перерисовать
+                    // превью картинок, длительности голосовых и миниатюры видео
+                    if (result.isSuccess) onMediaReady?.invoke()
+                }
             }
         }
     }
 
     private fun download(attachment: MediaAttachment, target: File): File {
-        val tmp = MediaCache.tmpFile(target.name + ".part")
+        // Имя временного файла уникально: параллельные загрузки одного вложения
+        // (гонка между удалением из inFlight и постом колбэков) не пишут в один файл
+        val tmp = MediaCache.tmpFile("${target.name}.${System.nanoTime()}.part")
         try {
             val connection = (URL(attachment.url).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 15_000
                 readTimeout = 30_000
+                instanceFollowRedirects = true
             }
             try {
+                // Ошибку сервера (403/404) нельзя «скачивать»: раньше тело ошибки
+                // записывалось в кэш как файл и медиа навсегда показывалось битым
+                val code = connection.responseCode
+                if (code !in 200..299) throw IOException("HTTP $code: ${attachment.url}")
                 connection.inputStream.use { input ->
                     tmp.outputStream().use { out ->
                         val key = attachment.fileKey
@@ -147,11 +176,23 @@ object MediaRepository {
             } finally {
                 connection.disconnect()
             }
-            if (!tmp.renameTo(target)) throw IOException("Не удалось сохранить файл в кэш")
+
+            // Кэш могли очистить, пока шла загрузка: папку восстанавливаем,
+            // а битый/устаревший target заменяем — атомарно, через переименование
+            target.parentFile?.mkdirs()
+            if (target.exists() && !target.delete()) throw IOException("Не удалось заменить файл в кэше")
+            if (!tmp.renameTo(target)) {
+                try {
+                    tmp.copyTo(target, overwrite = true)
+                } finally {
+                    tmp.delete()
+                }
+            }
         } catch (e: Exception) {
             tmp.delete()
             throw e
         }
+        MediaCache.touch(target)
         MediaCache.trim()
         return target
     }

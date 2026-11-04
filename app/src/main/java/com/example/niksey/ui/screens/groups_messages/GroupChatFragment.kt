@@ -35,6 +35,7 @@ import com.example.niksey.ui.viewmodels.ChatViewModel
 import com.example.niksey.utillits.*
 import com.example.niksey.utillits.signal.SecureMessaging
 import com.example.niksey.utillits.signal.SignalManager
+import com.example.niksey.utillits.media.MediaRepository
 import com.google.firebase.database.DatabaseReference
 
 /**
@@ -47,9 +48,17 @@ import com.google.firebase.database.DatabaseReference
  *  • onPause — снимаем слушатели, которые добавили в onResume.
  *  Поля, которые могут быть не готовы, объявлены как nullable (без lateinit): обращение до готовности не падает.
  */
-class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.fragment_chat) {
+class GroupChatFragment() : BaseFragment(R.layout.fragment_chat),
+    com.example.niksey.ui.fragments.message_recycler_view.view_holders.ChatHost {
 
     private val viewModel: ChatViewModel by viewModels()
+
+    /**
+     * Группа передаётся через Bundle (не конструктором): при пересоздании фрагмента системой
+     * (убийство процесса, поворот при некоторых конфигурациях) используется пустой конструктор —
+     * данные из полей конструктора были бы потеряны и чат падал бы при восстановлении.
+     */
+    private lateinit var group: CommonModel
 
     // Создаются в onViewCreated
     private var mToolbarInfo: View? = null
@@ -79,6 +88,11 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
+
+        // Группа — из Bundle: конструктор без аргументов используется системой при пересоздании
+        group = requireNotNull(arguments?.getParcelable(ARG_GROUP)) {
+            "GroupChatFragment открыт без данных группы"
+        }
 
         cropImageLauncher = registerForActivityResult(CropImageContract()) { result ->
             if (result.isSuccessful) {
@@ -157,6 +171,15 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
         super.onResume()
         APP_ACTIVITY.mAppDrawer.setToolbarVisible(false)
         SecureMessaging.onDecryptedUpdate = { mAdapter?.notifyDataSetChanged() }
+        // Медиа скачалось и расшифровалось в кэш — перерисовываем список (появятся
+        // картинки, длительности голосовых, миниатюры видео)
+        MediaRepository.onMediaReady = { mAdapter?.notifyDataSetChanged() }
+
+        // Группа открыта: помечаем прочитанной — счётчик в списке чатов обнулится
+        APP_ACTIVITY.getSharedPreferences(
+            com.example.niksey.ui.viewmodels.MainListViewModel.PREFS_LAST_OPENED,
+            android.content.Context.MODE_PRIVATE
+        ).edit().putLong(group.id, System.currentTimeMillis()).apply()
 
         val conversationId = ChatEncryptionManager.groupConversationId(group.id)
         ChatEncryptionManager.currentConversationId = conversationId
@@ -174,11 +197,23 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
 
         initToolbar()
         loadParticipantsCount()
+        loadMyRole()
+    }
+
+    /** Роль текущего пользователя в группе: только создатель может удалить группу целиком. */
+    private var isCreator = false
+
+    private fun loadMyRole() {
+        REF_DATABASE_ROOT.child("$NODE_GROUPS/${group.id}/$NODE_MEMBERS/$CURRENT_UID")
+            .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
+                isCreator = snapshot.getValue(String::class.java) == USER_CREATOR
+            })
     }
 
     override fun onPause() {
         super.onPause()
         SecureMessaging.onDecryptedUpdate = null
+        MediaRepository.onMediaReady = null
         ChatEncryptionManager.currentConversationId = null
         mListenerInfoToolbar?.let { mRefUser?.removeEventListener(it) }
         mRefUser = null
@@ -314,12 +349,12 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
 
     /** Открывает информацию о группе: участники и (для создателя) редактирование. */
     private fun openGroupInfo() {
-        replaceFragment(GroupSettingsFragment(group))
+        replaceFragment(GroupSettingsFragment.newInstance(group))
     }
 
     // ==================== REPLY SYSTEM ====================
 
-    fun startReply(messageId: String, messageText: String, fromUser: String) {
+    override fun startReply(messageId: String, messageText: String, fromUser: String) {
         replyingToMessageId = messageId
         replyingToText = messageText.take(70) + if (messageText.length > 70) "..." else ""
         showReplyPreview(fromUser)
@@ -340,7 +375,7 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
 
     // ==================== ПУБЛИЧНЫЕ МЕТОДЫ ДЛЯ ХОЛДЕРОВ ====================
 
-    fun deleteMessage(messageId: String, fromUserId: String) {
+    override fun deleteMessage(messageId: String, fromUserId: String) {
         REF_DATABASE_ROOT.child("$NODE_GROUPS/${group.id}/$NODE_MESSAGES/$messageId").removeValue()
             .addOnSuccessListener {
                 showToast("Сообщение удалено")
@@ -349,7 +384,7 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
             .addOnFailureListener { showToast("Не удалось удалить сообщение") }
     }
 
-    fun scrollToMessage(messageId: String) {
+    override fun scrollToMessage(messageId: String) {
         val messages = viewModel.messages.value ?: return
         val position = messages.indexOfFirst { it.id == messageId }
         if (position >= 0) {
@@ -413,12 +448,37 @@ class GroupChatFragment(private val group: CommonModel) : BaseFragment(R.layout.
                 showToast(APP_ACTIVITY.getString(R.string.chat_remove))
                 replaceFragment(MainListFragment())
             }
-            R.id.menu_delete_chat -> deleteChatGroup(group.id) {
-                showToast(APP_ACTIVITY.getString(R.string.chat_deleted))
-                replaceFragment(MainListFragment())
+            R.id.menu_delete_chat -> {
+                if (isCreator) {
+                    // Только создатель удаляет группу целиком — иначе любой участник
+                    // стёр бы её для всех (потеря чужих сообщений)
+                    deleteChatGroup(group.id) {
+                        showToast(APP_ACTIVITY.getString(R.string.chat_deleted))
+                        replaceFragment(MainListFragment())
+                    }
+                } else {
+                    // Не создатель: убираем группу только из своего списка чатов
+                    removeChatGroup(group.id) {
+                        showToast(APP_ACTIVITY.getString(R.string.chat_remove))
+                        replaceFragment(MainListFragment())
+                    }
+                }
             }
-            1001 -> replaceFragment(GroupSettingsFragment(group))
+            1001 -> replaceFragment(GroupSettingsFragment.newInstance(group))
         }
         return true
+    }
+
+    companion object {
+        private const val ARG_GROUP = "group"
+
+        @JvmStatic
+        fun newInstance(group: CommonModel): GroupChatFragment {
+            return GroupChatFragment().apply {
+                arguments = Bundle().apply {
+                    putParcelable(ARG_GROUP, group)
+                }
+            }
+        }
     }
 }

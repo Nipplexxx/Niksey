@@ -1,17 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Стеклянная строка чата: аватар со свечением, имя, превью последнего сообщения, время -->
+<!-- Строка чата как в Telegram: аватар, имя, превью последнего сообщения, время и счётчик непрочитанных.
+     Компактная строка (70dp+) — удобная цель для нажатия, две строки текста, ровные отступы. -->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="10dp"
+    android:layout_marginStart="4dp"
+    android:layout_marginEnd="4dp"
+    android:layout_marginBottom="6dp"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
     app:cardBackgroundColor="@color/row_fill"
-    app:cardCornerRadius="20dp"
+    app:cardCornerRadius="18dp"
     app:cardElevation="0dp"
     app:strokeColor="@color/glass_stroke_strong"
     app:strokeWidth="1dp">
@@ -19,31 +22,42 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingHorizontal="14dp"
-        android:paddingVertical="12dp">
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="10dp">
 
         <!-- Аватар со мягким свечением -->
         <FrameLayout
             android:id="@+id/main_list_avatar_frame"
-            android:layout_width="68dp"
-            android:layout_height="68dp"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent">
 
             <View
-                android:layout_width="68dp"
-                android:layout_height="68dp"
+                android:layout_width="54dp"
+                android:layout_height="54dp"
                 android:background="@drawable/bg_avatar_glow" />
 
             <de.hdodenhof.circleimageview.CircleImageView
                 android:id="@+id/main_list_item_photo"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_person"
                 app:civ_border_color="@color/accent_cyan"
                 app:civ_border_width="1.5dp" />
+
+            <!-- Точка онлайн-статуса (видимость управляется из адаптера) -->
+            <View
+                android:id="@+id/main_list_online_dot"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="2dp"
+                android:background="@drawable/bg_status_dot"
+                android:visibility="gone"
+                tools:visibility="visible" />
 
         </FrameLayout>
 
@@ -58,39 +72,63 @@
             android:maxLines="1"
             android:textColor="@color/text_primary"
             android:textSize="16sp"
+            android:textStyle="bold"
             app:layout_constraintEnd_toStartOf="@id/main_list_time"
             app:layout_constraintStart_toEndOf="@id/main_list_avatar_frame"
             app:layout_constraintTop_toTopOf="parent"
             tools:text="ghost_niksey" />
+
+        <!-- Время: справа от имени, по базовой линии -->
+        <TextView
+            android:id="@+id/main_list_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:fontFamily="@font/manrope"
+            android:textColor="@color/text_hint"
+            android:textSize="12sp"
+            app:layout_constraintBottom_toBottomOf="@id/main_list_item_name"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/main_list_item_name"
+            tools:text="14:28" />
+
+        <!-- Счётчик непрочитанных (плашка, как в Telegram) -->
+        <TextView
+            android:id="@+id/main_list_unread_count"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:background="@drawable/bg_unread_badge"
+            android:fontFamily="@font/outfit"
+            android:gravity="center"
+            android:minWidth="22dp"
+            android:paddingHorizontal="7dp"
+            android:textColor="@color/white_100"
+            android:textSize="12sp"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            tools:text="3"
+            tools:visibility="visible" />
 
         <!-- Превью последнего сообщения -->
         <TextView
             android:id="@+id/main_list_last_message"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="3dp"
             android:layout_marginStart="12dp"
+            android:layout_marginEnd="10dp"
             android:ellipsize="end"
             android:fontFamily="@font/manrope"
             android:maxLines="1"
             android:textColor="@color/text_secondary"
             android:textSize="14sp"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/main_list_unread_count"
             app:layout_constraintStart_toEndOf="@id/main_list_avatar_frame"
             app:layout_constraintTop_toBottomOf="@id/main_list_item_name"
-            tools:text="Последний эхо • 3 мин назад" />
-
-        <!-- Время -->
-        <TextView
-            android:id="@+id/main_list_time"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/manrope"
-            android:textColor="@color/text_hint"
-            android:textSize="12sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@id/main_list_item_name"
-            tools:text="14:28" />
+            app:layout_constraintVertical_bias="1"
+            tools:text="Последний эхо" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

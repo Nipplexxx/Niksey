@@ -367,6 +367,50 @@ fun saveToMainList(id: String, type: String) {
     )
 }
 
+/**
+ * Добавляет участников в СУЩЕСТВУЮЩУЮ группу: роль member + запись в main_list каждого
+ * (иначе новый участник не увидит группу у себя в списке чатов). Уже состоящих в группе
+ * пропускаем — повторное добавление не дублирует ни участников, ни записи.
+ */
+fun addParticipantsToGroup(groupId: String, listContacts: List<CommonModel>, function: () -> Unit) {
+    if (listContacts.isEmpty()) {
+        function()
+        return
+    }
+
+    REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupId/$NODE_MEMBERS").get()
+        .addOnSuccessListener { snapshot ->
+            val existing = snapshot.children.mapNotNull { it.key }.toSet()
+            val fresh = listContacts.filter { it.id.isNotEmpty() && it.id !in existing }
+
+            if (fresh.isEmpty()) {
+                function()
+                return@addOnSuccessListener
+            }
+
+            val updates = hashMapOf<String, Any>()
+            fresh.forEach { contact ->
+                updates["$NODE_GROUPS/$groupId/$NODE_MEMBERS/${contact.id}"] = USER_MEMBER
+                updates["$NODE_MAIN_LIST/${contact.id}/$groupId"] =
+                    mapOf(CHILD_ID to groupId, CHILD_TYPE to TYPE_GROUP)
+            }
+
+            REF_DATABASE_ROOT.updateChildren(updates)
+                .addOnSuccessListener {
+                    // Новым участникам нужен sender key группы — без него они не смогут
+                    // читать сообщения (шифрование Sender Keys)
+                    SignalManager.shareSenderKey(groupId) { }
+                    function()
+                }
+                .addOnFailureListener {
+                    showToast(APP_ACTIVITY.getString(R.string.error_generic, it.message))
+                }
+        }
+        .addOnFailureListener {
+            showToast(APP_ACTIVITY.getString(R.string.error_generic, it.message))
+        }
+}
+
 // ==================== УДАЛЕНИЕ / ОЧИСТКА ====================
 
 fun deleteChat(id: String, function: () -> Unit) {
@@ -393,14 +437,24 @@ fun removeChat(id: String, function: () -> Unit) {
         .addOnSuccessListener { function() }
 }
 
+/**
+ * Полное удаление группы. Firebase запрещает в одном updateChildren менять путь и его
+ * потомка одновременно (DatabaseException: path is an ancestor) — поэтому третий путь
+ * (свои сообщения в группе) убран: он покрывается удалением всей группы.
+ */
 fun deleteChatGroup(id: String, function: () -> Unit) {
     REF_DATABASE_ROOT.updateChildren(
         mapOf(
             "$NODE_MAIN_LIST/$CURRENT_UID/$id" to null,
-            "$NODE_GROUPS/$id" to null,
-            "$NODE_GROUPS/$id/$NODE_MESSAGES/$CURRENT_UID" to null
+            "$NODE_GROUPS/$id" to null
         )
     ).addOnSuccessListener { function() }
+        .addOnFailureListener {
+            // Один из путей не существует (например, группа уже удалена) — чистим по одному
+            REF_DATABASE_ROOT.child("$NODE_MAIN_LIST/$CURRENT_UID/$id").removeValue()
+            REF_DATABASE_ROOT.child("$NODE_GROUPS/$id").removeValue()
+                .addOnSuccessListener { function() }
+        }
 }
 
 fun clearChatGroup(id: String, function: () -> Unit) {

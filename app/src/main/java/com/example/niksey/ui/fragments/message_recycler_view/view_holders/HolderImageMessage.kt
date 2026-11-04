@@ -88,7 +88,7 @@ class HolderImageMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         previewView.text = "↩️ Ответ на фото"
 
         previewView.setOnClickListener {
-            findSingleChat()?.scrollToMessage(messageView.replyTo!!)
+            findChatHost()?.scrollToMessage(messageView.replyTo!!)
         }
     }
 

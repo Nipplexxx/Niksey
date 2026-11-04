@@ -340,21 +340,26 @@ object SignalManager {
                 entries.forEach { (sender, wire) ->
                     decryptFromPeer(sender, wire) { bytes ->
                         executor.execute {
-                            bytes?.let {
+                            // Сначала обрабатываем, потом удаляем: удаление до обработки
+                            // (или падение расшифровки) теряло бы sender key навсегда
+                            val skdm = bytes
+                            if (skdm != null) {
                                 try {
                                     GroupSessionBuilder(store).process(
                                         addressOf(sender),
-                                        SenderKeyDistributionMessage(it)
+                                        SenderKeyDistributionMessage(skdm)
                                     )
                                 } catch (e: Exception) {
                                     Log.w(TAG, "SKDM не принят: ${e.javaClass.simpleName}")
                                 }
                             }
+                            // Убрано только после обработки; расшифрованное значение
+                            // продублировано в кэш открытым текстом (SecureMessaging),
+                            // поэтому повторная расшифровка не потребуется
+                            REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupId/$NODE_SENDER_KEYS/$CURRENT_UID/$sender")
+                                .removeValue()
+                            if (remaining.decrementAndGet() == 0) done()
                         }
-                        // Сообщение обработано (или не годится) — убираем, чтобы не повторять
-                        REF_DATABASE_ROOT.child("$NODE_GROUPS/$groupId/$NODE_SENDER_KEYS/$CURRENT_UID/$sender")
-                            .removeValue()
-                        if (remaining.decrementAndGet() == 0) done()
                     }
                 }
             }
@@ -491,13 +496,25 @@ object SignalManager {
         val oneTimeId: Int,
         val oneTimePub: ByteArray
     ) {
-        fun toPreKeyBundle(): PreKeyBundle = PreKeyBundle(
-            registrationId, DEVICE_ID,
-            oneTimeId, ECPublicKey(oneTimePub),
-            signedId, ECPublicKey(signedPub), signedSig,
-            IdentityKey(identityKey),
-            kyberId, KEMPublicKey(kyberPub), kyberSig
-        )
+        fun toPreKeyBundle(): PreKeyBundle =
+            if (oneTimeId >= 0) {
+                PreKeyBundle(
+                    registrationId, DEVICE_ID,
+                    oneTimeId, ECPublicKey(oneTimePub),
+                    signedId, ECPublicKey(signedPub), signedSig,
+                    IdentityKey(identityKey),
+                    kyberId, KEMPublicKey(kyberPub), kyberSig
+                )
+            } else {
+                // Одноразовый ключ исчерпан: сессия устанавливается без него (PQXDH это позволяет)
+                PreKeyBundle(
+                    registrationId, DEVICE_ID,
+                    -1, null,
+                    signedId, ECPublicKey(signedPub), signedSig,
+                    IdentityKey(identityKey),
+                    kyberId, KEMPublicKey(kyberPub), kyberSig
+                )
+            }
     }
 
     /** Загружает набор ключей собеседника и забирает один одноразовый ключ (транзакцией). */
@@ -546,7 +563,9 @@ object SignalManager {
 
                     claimOneTimePreKey(peer) { oneTime ->
                         executor.execute {
-                            val remote = oneTime?.let { parseBundle(snapshot, it) }
+                            // Одноразового ключа может не быть (закончились): PQXDH допускает
+                            // установку сессии без него — пробуем, а не сдаёмся сразу
+                            val remote = parseBundle(snapshot, oneTime)
                             if (remote == null) {
                                 done(SessionState.Failed)
                                 return@execute
@@ -574,7 +593,8 @@ object SignalManager {
         null
     }
 
-    private fun parseBundle(snapshot: DataSnapshot, oneTime: Pair<Int, ByteArray>): RemoteBundle? = try {
+    /** Набор ключей из снапшота; [oneTime] может отсутствовать (запас исчерпан) — это допустимо. */
+    private fun parseBundle(snapshot: DataSnapshot, oneTime: Pair<Int, ByteArray>?): RemoteBundle? = try {
         val signed = snapshot.child("signedPreKey")
         val kyber = snapshot.child("kyberPreKey")
         RemoteBundle(
@@ -586,8 +606,8 @@ object SignalManager {
             kyberId = kyber.child("id").getValue(Long::class.java)!!.toInt(),
             kyberPub = decode(kyber.child("pub").getValue(String::class.java)!!),
             kyberSig = decode(kyber.child("sig").getValue(String::class.java)!!),
-            oneTimeId = oneTime.first,
-            oneTimePub = oneTime.second
+            oneTimeId = oneTime?.first ?: -1,
+            oneTimePub = oneTime?.second ?: ByteArray(0)
         )
     } catch (e: Exception) {
         Log.w(TAG, "Набор ключей собеседника повреждён")

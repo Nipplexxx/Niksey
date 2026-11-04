@@ -1,31 +1,40 @@
 package com.example.niksey.ui.screens.phone_book
 
 import android.os.Bundle
-import android.util.Log
 import android.view.*
-import android.widget.TextView
 import androidx.appcompat.widget.SearchView
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.niksey.R
-import com.example.niksey.database.*
+import com.example.niksey.database.saveToMainList
 import com.example.niksey.models.CommonModel
-import com.example.niksey.models.UserModel
 import com.example.niksey.ui.objects.AppDrawer
 import com.example.niksey.ui.screens.private_messages.SingleChatFragment
+import com.example.niksey.ui.screens.profile.UserProfileSheet
 import com.example.niksey.utillits.*
 import com.firebase.ui.database.FirebaseRecyclerAdapter
 import com.firebase.ui.database.FirebaseRecyclerOptions
 import com.google.firebase.database.DatabaseReference
-import de.hdodenhof.circleimageview.CircleImageView
+import android.widget.TextView
 
+/**
+ * Экран контактов.
+ *
+ * • Список берётся из main_list/{uid} — все личные чаты пользователя.
+ * • Поиск — по username (Firebase startAt/endAt-префикс). Найденный контакт открывает чат
+ *   и добавляется в main_list с обеих сторон (saveToMainList).
+ * • FirebaseRecyclerAdapter слушает Firebase: startListening/stopListening строго парные —
+ *   слушание останавливается в onPause и при смене запроса, иначе адаптер продолжал бы
+ *   обновлять мёртвый RecyclerView (утечка).
+ */
 @Suppress("DEPRECATION")
 class ContactsFragment : Fragment(R.layout.fragment_contacts) {
 
     private lateinit var mRecyclerView: RecyclerView
     private lateinit var mEmptyState: View
-    private lateinit var mAdapter: FirebaseRecyclerAdapter<CommonModel, ContactsHolder>
+    private lateinit var mAdapter: FirebaseRecyclerAdapter<CommonModel, ContactBinding.ContactHolder>
     private lateinit var mRefMainList: DatabaseReference
     private var searchView: SearchView? = null
 
@@ -46,38 +55,47 @@ class ContactsFragment : Fragment(R.layout.fragment_contacts) {
         // Останавливаем прошлый адаптер, иначе он продолжает слушать Firebase (утечка)
         if (::mAdapter.isInitialized) mAdapter.stopListening()
         mRecyclerView = requireView().findViewById(R.id.contacts_recycle_view)
+        mRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         mEmptyState = requireView().findViewById(R.id.contacts_empty_state)
         mEmptyState.findViewById<TextView>(R.id.empty_title).setText(R.string.empty_contacts_title)
         mEmptyState.findViewById<TextView>(R.id.empty_subtitle).setText(R.string.empty_contacts_subtitle)
         mRefMainList = REF_DATABASE_ROOT.child(NODE_MAIN_LIST).child(CURRENT_UID)
 
-        // Только личные контакты: группы живут в списке чатов и сюда не попадают
+        // Контакты — только личные чаты (type = "chat"). Группы показываются
+        // в списке чатов, здесь им не место.
         val options = FirebaseRecyclerOptions.Builder<CommonModel>()
-            .setQuery(mRefMainList.orderByChild(CHILD_TYPE).equalTo(TYPE_CHAT), CommonModel::class.java)
+            .setQuery(mRefMainList.orderByChild("type").equalTo(TYPE_CHAT), CommonModel::class.java)
             .build()
 
-        mAdapter = object : FirebaseRecyclerAdapter<CommonModel, ContactsHolder>(options) {
+        mAdapter = object : FirebaseRecyclerAdapter<CommonModel, ContactBinding.ContactHolder>(options) {
             override fun onDataChanged() {
                 mEmptyState.isVisible = itemCount == 0
             }
 
-            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ContactsHolder {
+            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ContactBinding.ContactHolder {
                 val view = LayoutInflater.from(parent.context)
                     .inflate(R.layout.contact_item, parent, false)
-                return ContactsHolder(view)
+                return ContactBinding.createHolder(view)
             }
 
-            override fun onBindViewHolder(holder: ContactsHolder, position: Int, model: CommonModel) {
-                REF_DATABASE_ROOT.child(NODE_USERS).child(model.id)
-                    .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
-                        val user = snapshot.getValue(UserModel::class.java) ?: return@AppValueEventListener
-                        holder.name.text = if (user.fullname.isNotEmpty()) user.fullname else user.username
-                        holder.status.text = user.getStateText()
-                        holder.photo.downloadAndSetImage(user.photoUrl)
-                    })
+            override fun onBindViewHolder(
+                holder: ContactBinding.ContactHolder,
+                position: Int,
+                model: CommonModel
+            ) {
+                // Исторически в main_list у личных чатов type мог попасть тип последнего
+                // сообщения (text/voice/...) — всё это личные чаты, а не группы
+                if (model.type.lowercase() == TYPE_GROUP) return
 
+                ContactBinding.bind(holder, model.id)
                 holder.itemView.setOnClickListener {
-                    replaceFragment(SingleChatFragment.newInstance(model.id))   // ← ИСПРАВЛЕНО
+                    replaceFragment(SingleChatFragment.newInstance(model.id))
+                }
+                // Долгое нажатие: профиль контакта поверх списка (как в Telegram)
+                holder.itemView.setOnLongClickListener {
+                    UserProfileSheet.newInstance(model.id)
+                        .show(parentFragmentManager, "user_profile")
+                    true
                 }
             }
         }
@@ -109,6 +127,7 @@ class ContactsFragment : Fragment(R.layout.fragment_contacts) {
         })
     }
 
+    /** Поиск по префиксу username; выбранный контакт открывает чат и добавляется в main_list. */
     private fun searchUsers(query: String) {
         if (::mAdapter.isInitialized) mAdapter.stopListening()
         val searchQuery = REF_DATABASE_ROOT.child(NODE_USERS)
@@ -120,31 +139,30 @@ class ContactsFragment : Fragment(R.layout.fragment_contacts) {
             .setQuery(searchQuery, CommonModel::class.java)
             .build()
 
-        mAdapter = object : FirebaseRecyclerAdapter<CommonModel, ContactsHolder>(options) {
-            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ContactsHolder {
+        mAdapter = object : FirebaseRecyclerAdapter<CommonModel, ContactBinding.ContactHolder>(options) {
+            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ContactBinding.ContactHolder {
                 val view = LayoutInflater.from(parent.context)
                     .inflate(R.layout.contact_item, parent, false)
-                return ContactsHolder(view)
+                return ContactBinding.createHolder(view)
             }
 
-            override fun onBindViewHolder(holder: ContactsHolder, position: Int, model: CommonModel) {
-                REF_DATABASE_ROOT.child(NODE_USERS).child(model.id)
-                    .addListenerForSingleValueEvent(AppValueEventListener { snapshot ->
-                        val user = snapshot.getValue(UserModel::class.java) ?: return@AppValueEventListener
-                        holder.name.text = if (user.fullname.isNotEmpty()) user.fullname else user.username
-                        holder.status.text = user.getStateText()
-                        holder.photo.downloadAndSetImage(user.photoUrl)
-                    })
+            override fun onBindViewHolder(
+                holder: ContactBinding.ContactHolder,
+                position: Int,
+                model: CommonModel
+            ) {
+                if (model.id == CURRENT_UID) return // себя не показываем
 
+                ContactBinding.bind(holder, model.id)
                 holder.itemView.setOnClickListener {
                     try {
                         saveToMainList(model.id, TYPE_CHAT)
-                        replaceFragment(SingleChatFragment.newInstance(model.id))   // ← ИСПРАВЛЕНО
+                        replaceFragment(SingleChatFragment.newInstance(model.id))
                         searchView?.setQuery("", false)
                         searchView?.clearFocus()
                         initRecycleView()
                     } catch (e: Exception) {
-                        Log.e("ContactsFragment", "Ошибка при открытии чата из поиска", e)
+                        android.util.Log.e("ContactsFragment", "Ошибка при открытии чата из поиска", e)
                         showToast("Ошибка при открытии чата")
                     }
                 }
@@ -160,11 +178,5 @@ class ContactsFragment : Fragment(R.layout.fragment_contacts) {
         if (::mAdapter.isInitialized) {
             mAdapter.stopListening()
         }
-    }
-
-    class ContactsHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val name: TextView = view.findViewById(R.id.contact_fullname)
-        val status: TextView = view.findViewById(R.id.contact_status)
-        val photo: CircleImageView = view.findViewById(R.id.contact_photo)
     }
 }

@@ -12,6 +12,8 @@ import com.example.niksey.utillits.signal.SecureMessaging
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.Query
+import com.google.firebase.database.ValueEventListener
 
 /**
  * Список чатов экрана «Чаты».
@@ -22,6 +24,10 @@ import com.google.firebase.database.DatabaseError
  * Источник правды — Firebase `main_list/{me}`. Подписка через ChildEventListener: добавления,
  * изменения и удаления приходят по одному, поэтому частичный или кэшированный ответ не может
  * удалить чаты. Кэш с диска используется только для мгновенного показа до первого ответа сети.
+ *
+ * Превью обновляются сами (как в Telegram): на сообщения каждого чата висит живая подписка
+ * `limitToLast(UNREAD_WINDOW)`. Новое сообщение меняет превью и счётчик непрочитанных
+ * без перечитывания списка. Все живые подписки снимаются в [onCleared] и при удалении чата.
  *
  * Все изменения [items] происходят на главном потоке (Firebase и колбэки расшифровки приходят туда).
  */
@@ -42,6 +48,16 @@ class MainListViewModel : ViewModel() {
     /** Чаты с готовым превью: id → модель. */
     private val items = LinkedHashMap<String, CommonModel>()
 
+    /** Шапки чатов (профиль собеседника или группы): id → модель. */
+    private val headers = HashMap<String, CommonModel>()
+
+    /** Последнее окно сообщений чата: id → список. Хранится в памяти — непрочитанные пересчитываются без сети. */
+    private val messageWindows = HashMap<String, List<CommonModel>>()
+
+    /** Живые подписки на сообщения чатов: id → запрос и слушатель. Снимаются в [detachLive]. */
+    private val liveQueries = HashMap<String, Query>()
+    private val liveListeners = HashMap<String, ValueEventListener>()
+
     /** Id, которые сейчас есть в main_list: поздний результат превью для удалённого чата отбрасывается. */
     private val active = HashSet<String>()
 
@@ -58,6 +74,9 @@ class MainListViewModel : ViewModel() {
             val id = snapshot.key ?: return
             active.remove(id)
             items.remove(id)
+            headers.remove(id)
+            messageWindows.remove(id)
+            detachLive(id)
             publish()
         }
 
@@ -84,9 +103,14 @@ class MainListViewModel : ViewModel() {
         mainRef.addListenerForSingleValueEvent(AppValueEventListener(::onMainListFailed) { snapshot ->
             // Полный список из сети: убираем кэшированные чаты, которых на сервере уже нет
             val keys = snapshot.children.mapNotNull { it.key }.toSet()
-            active.retainAll(keys)
+            (active - keys).forEach { id ->
+                active.remove(id)
+                items.remove(id)
+                headers.remove(id)
+                messageWindows.remove(id)
+                detachLive(id)
+            }
             active.addAll(keys)
-            items.keys.retainAll(keys)
             publish()
             _loaded.value = true
         })
@@ -98,63 +122,107 @@ class MainListViewModel : ViewModel() {
 
     override fun onCleared() {
         mainRef.removeEventListener(childListener)
+        liveQueries.keys.toList().forEach { detachLive(it) }
         super.onCleared()
     }
 
     // ==================== загрузка чатов ====================
 
+    /** Запись из main_list: подтягиваем шапку и подписываемся на сообщения чата. */
     private fun upsert(snapshot: DataSnapshot) {
         val id = snapshot.key ?: return
-        val type = snapshot.getCommonModel().type
+        val isGroup = snapshot.getCommonModel().type == TYPE_GROUP
         active.add(id)
-        if (type == TYPE_GROUP) loadGroup(id) else loadPrivateChat(id)
+        if (isGroup) loadGroupHeader(id) else loadPrivateHeader(id)
+        attachLiveMessages(id, isGroup)
     }
 
-    private fun loadPrivateChat(id: String) {
+    /** Шапка личного чата: имя, фото и онлайн-статус собеседника. Одноразовое чтение. */
+    private fun loadPrivateHeader(id: String) {
         REF_DATABASE_ROOT.child(NODE_USERS).child(id)
             .addListenerForSingleValueEvent(AppValueEventListener({ onPreviewFailed(id, it) }) { userSnap ->
+                if (!active.contains(id)) return@AppValueEventListener
                 val user = userSnap.getCommonModel()
-                val messagesRef = REF_DATABASE_ROOT.child(NODE_MESSAGES).child(CURRENT_UID).child(id)
-                messagesRef.limitToLast(1).addListenerForSingleValueEvent(AppValueEventListener({ onPreviewFailed(id, it) }) { msgSnap ->
-                    val last = msgSnap.children.firstOrNull()?.getCommonModel()
-                    val conversationId = ChatEncryptionManager.privateConversationId(CURRENT_UID, id)
-                    val model = user.copy(id = id, type = TYPE_CHAT).also {
-                        if (it.fullname.isEmpty()) it.fullname = it.phone
-                    }
-                    showPreview(id, model, last, conversationId)
-                })
+                val model = items[id] ?: user.copy(id = id, type = TYPE_CHAT).also {
+                    if (it.fullname.isEmpty()) it.fullname = it.phone
+                }
+                model.state = userSnap.child(CHILD_STATE).getValue(String::class.java) ?: ""
+                headers[id] = model
+                applyWindow(id)
             })
     }
 
-    private fun loadGroup(id: String) {
-        val groupRef = REF_DATABASE_ROOT.child(NODE_GROUPS).child(id)
-        groupRef.addListenerForSingleValueEvent(AppValueEventListener({ onPreviewFailed(id, it) }) { groupSnap ->
-            val group = groupSnap.getCommonModel()
-            groupRef.child(NODE_MESSAGES).limitToLast(1)
-                .addListenerForSingleValueEvent(AppValueEventListener({ onPreviewFailed(id, it) }) { msgSnap ->
-                    val last = msgSnap.children.firstOrNull()?.getCommonModel()
-                    val conversationId = ChatEncryptionManager.groupConversationId(id)
-                    val model = group.copy(id = id, type = TYPE_GROUP)
-                    showPreview(id, model, last, conversationId)
-                })
-        })
+    /** Шапка группы: название и фото. Одноразовое чтение. */
+    private fun loadGroupHeader(id: String) {
+        REF_DATABASE_ROOT.child(NODE_GROUPS).child(id)
+            .addListenerForSingleValueEvent(AppValueEventListener({ onPreviewFailed(id, it) }) { groupSnap ->
+                if (!active.contains(id)) return@AppValueEventListener
+                val group = groupSnap.getCommonModel()
+                val model = items[id] ?: group.copy(id = id, type = TYPE_GROUP)
+                headers[id] = model
+                applyWindow(id)
+            })
     }
 
     /**
-     * Заполняет превью последнего сообщения. Тип чата (чат/группа) задаётся списком, а не типом
-     * сообщения: иначе группа с последним текстовым сообщением открывалась бы как личный чат.
+     * Живая подписка на последние сообщения чата. Первый ответ приходит сразу (это начальная
+     * загрузка превью), дальше — каждое новое сообщение обновляет превью и непрочитанных само.
      */
-    private fun showPreview(id: String, model: CommonModel, last: CommonModel?, conversationId: String) {
+    private fun attachLiveMessages(id: String, isGroup: Boolean) {
+        if (liveListeners.containsKey(id)) return
+
+        val query = if (isGroup) {
+            REF_DATABASE_ROOT.child(NODE_GROUPS).child(id).child(NODE_MESSAGES).limitToLast(UNREAD_WINDOW)
+        } else {
+            REF_DATABASE_ROOT.child(NODE_MESSAGES).child(CURRENT_UID).child(id).limitToLast(UNREAD_WINDOW)
+        }
+
+        val listener = AppValueEventListener({ onPreviewFailed(id, it) }) { snapshot ->
+            messageWindows[id] = snapshot.children.map { it.getCommonModel() }
+            applyWindow(id)
+        }
+
+        query.addValueEventListener(listener)
+        liveQueries[id] = query
+        liveListeners[id] = listener
+    }
+
+    /** Снимает живую подписку на сообщения чата (чат удалён или ViewModel уничтожается). */
+    private fun detachLive(id: String) {
+        val listener = liveListeners.remove(id) ?: return
+        liveQueries.remove(id)?.removeEventListener(listener)
+    }
+
+    /**
+     * Применяет последнее окно сообщений к строке чата: превью, время и счётчик непрочитанных.
+     * Работает и как начальная загрузка, и как обновление при новом сообщении.
+     */
+    private fun applyWindow(id: String) {
+        if (!active.contains(id)) return
+        val model = items[id] ?: headers[id] ?: return
+        val messages = messageWindows[id] ?: return
+
+        val conversationId = if (model.type == TYPE_GROUP) {
+            ChatEncryptionManager.groupConversationId(id)
+        } else {
+            ChatEncryptionManager.privateConversationId(CURRENT_UID, id)
+        }
+
+        model.unreadCount = countUnread(messages, lastOpened(id), conversationId)
+
+        val last = messages.lastOrNull()
         if (last == null) {
             model.lastMessage = APP_ACTIVITY.getString(R.string.chat_cleared)
             model.timeStamp = 0L
             store(id, model)
-            return
-        }
-        decryptPreview(last, conversationId) { text ->
-            model.lastMessage = text
+        } else {
             model.timeStamp = last.timeStamp as? Long ?: 0L
-            store(id, model)
+            // Превью как в Telegram: свои сообщения с префиксом «Вы: »
+            val youPrefix = if (last.from == CURRENT_UID) APP_ACTIVITY.getString(R.string.you_prefix) else ""
+            decryptPreview(last, conversationId) { text ->
+                model.lastMessage = youPrefix + text
+                store(id, model)
+            }
         }
     }
 
@@ -195,6 +263,9 @@ class MainListViewModel : ViewModel() {
             type.contains("image") || type.contains("photo") || fileUrl.contains("image") || fileUrl.contains("photo") -> {
                 onResult("🖼️ Изображение"); return
             }
+            type.contains("video") || fileUrl.contains("video") -> {
+                onResult("📹 Видео"); return
+            }
             type.contains("file") || fileUrl.contains("file") -> {
                 onResult("📎 Файл"); return
             }
@@ -217,5 +288,40 @@ class MainListViewModel : ViewModel() {
             if (decrypted != null) msg.decryptedText = decrypted
             onResult(preview(decrypted))
         }
+    }
+
+    // ==================== непрочитанные ====================
+
+    /**
+     * Чужие сообщения, пришедшие после последнего открытия чата. Метка открытия
+     * пишется фрагментом чата при onResume (см. markChatAsRead в чатах).
+     * Для открытого сейчас чата счётчик всегда 0: пользователь видит сообщения.
+     */
+    private fun countUnread(messages: List<CommonModel>, lastOpened: Long, conversationId: String): Int {
+        if (ChatEncryptionManager.currentConversationId == conversationId) return 0
+        return messages.count { msg ->
+            msg.from != CURRENT_UID &&
+                    ((msg.timeStamp as? Long) ?: 0L) > lastOpened
+        }
+    }
+
+    /** Метка последнего открытия чата (0 — чат ещё не открывали, все чужие сообщения новые). */
+    private fun lastOpened(chatId: String): Long = APP_ACTIVITY
+        .getSharedPreferences(PREFS_LAST_OPENED, android.content.Context.MODE_PRIVATE)
+        .getLong(chatId, 0L)
+
+    /**
+     * Пересчитать счётчики без сети: вызывается, когда пользователь вернулся из открытого чата
+     * (метка «прочитано» изменилась — счётчик должен обнулиться сразу, из окна в памяти).
+     */
+    fun refreshUnread() {
+        active.filter { (items[it]?.unreadCount ?: 0) > 0 }.forEach { applyWindow(it) }
+    }
+
+    companion object {
+        /** SharedPreferences: id чата → время последнего открытия. */
+        const val PREFS_LAST_OPENED = "last_opened_chats"
+        /** Сколько последних сообщений читаем для счётчика непрочитанных. */
+        private const val UNREAD_WINDOW = 20
     }
 }

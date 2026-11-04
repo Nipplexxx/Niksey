@@ -3,6 +3,15 @@ package com.example.niksey.ui.fragments.message_recycler_view.views
 import com.example.niksey.models.CommonModel
 import com.example.niksey.utillits.*
 
+/**
+ * Превращает запись из базы (CommonModel) в модель для отображения (MessageView).
+ *
+ * ВАЖНО: message.text — это зашифрованные метаданные вложения (ключ файла + имя,
+ * см. MediaRepository.encodeMeta). Без них медиа нельзя расшифровать, поэтому text
+ * передаётся ВСЕМ медиа-типам (image/voice/video/file), а не только текстовым сообщениям.
+ * Тип записи (message.type) задаёт подкласс; неизвестный тип показывается как текст —
+ * чат не ломается при новых типах сообщений от обновлённой версии приложения.
+ */
 class AppViewFactory {
 
     companion object {
@@ -24,6 +33,7 @@ class AppViewFactory {
                     from = message.from,
                     timeStamp = message.timeStamp.toString(),
                     fileUrl = message.fileUrl,
+                    text = message.text,
                     replyTo = message.replyTo
                 )
 
@@ -32,6 +42,7 @@ class AppViewFactory {
                     from = message.from,
                     timeStamp = message.timeStamp.toString(),
                     fileUrl = message.fileUrl,
+                    text = message.text,
                     replyTo = message.replyTo
                 )
 
@@ -49,6 +60,8 @@ class AppViewFactory {
                     from = message.from,
                     timeStamp = message.timeStamp.toString(),
                     fileUrl = message.fileUrl,
+                    text = message.text,
+                    replyTo = message.replyTo,
                     duration = message.duration ?: "0:15"
                 )
 

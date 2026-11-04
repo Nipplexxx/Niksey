@@ -119,6 +119,14 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             .setPositiveButton(R.string.clear_cache_title) { _, _ ->
                 Thread {
                     MediaCache.clear()
+                    // Миниатюры видео и длительности голосовых в холдерах привязаны
+                    // к путям файлов — после очистки они обязаны устареть
+                    com.example.niksey.ui.fragments.message_recycler_view.view_holders.HolderVideoMessage.invalidateCaches()
+                    com.example.niksey.ui.fragments.message_recycler_view.view_holders.HolderVoiceMessage.invalidateCaches()
+                    // ВАЖНО: Picasso.shutdown() здесь НЕ вызываем — в 2.718 singleton после
+                    // shutdown не пересоздаётся, и все картинки в приложении сломаются до
+                    // перезапуска. Миниатюры медиакэша устарели выше; аватары Picasso
+                    // обновятся своим сроком жизни.
                     APP_ACTIVITY.runOnUiThread {
                         showToast(APP_ACTIVITY.getString(R.string.cache_cleared))
                         refreshCacheSize()

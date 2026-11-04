@@ -29,8 +29,8 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingTop="6dp"
-            android:paddingBottom="140dp" />
+            android:paddingTop="8dp"
+            android:paddingBottom="96dp" />
 
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
@@ -68,72 +68,76 @@
             android:text="@string/identity_accept" />
     </LinearLayout>
 
-    <!-- ==================== REPLY PREVIEW (как в Telegram) ==================== -->
+    <!-- ==================== НИЖНЯЯ ЗОНА: ПРЕВЬЮ ОТВЕТА + ПАНЕЛЬ ВВОДА ====================
+         Один dock-контейнер: превью ответа пристыковано прямо над полем ввода,
+         клавиатура поднимает всё вместе (adjustResize), сообщение под панелью не теряется. -->
     <LinearLayout
-        android:id="@+id/reply_preview"
+        android:id="@+id/chat_bottom_dock"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:layout_marginHorizontal="10dp"
-        android:layout_marginBottom="70dp"
-        android:background="@drawable/bg_glass_row"
-        android:orientation="horizontal"
-        android:paddingStart="14dp"
-        android:paddingEnd="10dp"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp"
-        android:visibility="gone"
-        android:elevation="8dp">
+        android:layout_marginBottom="8dp"
+        android:orientation="vertical">
 
-        <!-- Иконка ответа -->
-        <ImageView
-            android:layout_width="18dp"
-            android:layout_height="18dp"
-            android:layout_gravity="center_vertical"
-            android:layout_marginEnd="8dp"
-            android:src="@drawable/ic_reply"
-            android:tint="@color/accent_purple"
-            tools:ignore="UseAppTint" />
-
-        <!-- Текст превью -->
-        <TextView
-            android:id="@+id/reply_text"
-            android:layout_width="0dp"
+        <!-- REPLY PREVIEW (как в Telegram) -->
+        <LinearLayout
+            android:id="@+id/reply_preview"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_gravity="center_vertical"
-            android:fontFamily="@font/manrope"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:maxLines="1"
-            android:ellipsize="end" />
+            android:layout_marginBottom="6dp"
+            android:background="@drawable/bg_glass_row"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:visibility="gone"
+            android:elevation="8dp">
 
-        <!-- Кнопка закрыть -->
-        <ImageView
-            android:id="@+id/reply_close"
-            android:layout_width="26dp"
-            android:layout_height="26dp"
-            android:layout_gravity="center_vertical"
-            android:padding="4dp"
-            android:src="@drawable/ic_close"
-            android:tint="@color/text_hint"
-            tools:ignore="UseAppTint" />
+            <!-- Цветной корешок ответа -->
+            <View
+                android:layout_width="3dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="10dp"
+                android:background="@color/accent_purple" />
 
-    </LinearLayout>
+            <!-- Текст превью -->
+            <TextView
+                android:id="@+id/reply_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_gravity="center_vertical"
+                android:fontFamily="@font/manrope"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
 
-    <!-- ПАНЕЛЬ ВВОДА -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/input_panel"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:layout_marginHorizontal="10dp"
-        android:layout_marginBottom="10dp"
-        app:cardBackgroundColor="@color/glass_fill_strong"
-        app:cardCornerRadius="26dp"
-        app:cardElevation="12dp"
-        app:strokeColor="@color/glass_stroke_strong"
-        app:strokeWidth="1dp">
+            <!-- Кнопка закрыть -->
+            <ImageView
+                android:id="@+id/reply_close"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center_vertical"
+                android:padding="6dp"
+                android:src="@drawable/ic_close"
+                android:tint="@color/text_hint"
+                tools:ignore="UseAppTint" />
+
+        </LinearLayout>
+
+        <!-- ПАНЕЛЬ ВВОДА -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/input_panel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="@color/glass_fill_strong"
+            app:cardCornerRadius="26dp"
+            app:cardElevation="12dp"
+            app:strokeColor="@color/glass_stroke_strong"
+            app:strokeWidth="1dp">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
@@ -143,9 +147,9 @@
 
             <ImageView
                 android:id="@+id/chat_btn_attach"
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:padding="5dp"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:padding="9dp"
                 android:src="@drawable/ic_attach"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -156,7 +160,7 @@
                 android:id="@+id/chat_input_message"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="6dp"
+                android:layout_marginHorizontal="2dp"
                 android:background="@android:color/transparent"
                 android:hint="@string/enter_a_message"
                 android:inputType="textMultiLine"
@@ -164,7 +168,8 @@
                 android:maxLines="4"
                 android:scrollbars="vertical"
                 android:paddingHorizontal="10dp"
-                android:paddingVertical="8dp"
+                android:paddingVertical="10dp"
+                android:textSize="16sp"
                 android:textColor="@color/text_primary"
                 android:textColorHint="@color/text_hint"
                 app:layout_constraintBottom_toBottomOf="parent"
@@ -175,9 +180,9 @@
 
             <ImageView
                 android:id="@+id/chat_btn_voice"
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:padding="5dp"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:padding="9dp"
                 android:src="@drawable/ic_mic"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -186,9 +191,9 @@
 
             <ImageView
                 android:id="@+id/chat_btn_send_message"
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:padding="5dp"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:padding="8dp"
                 android:src="@drawable/ic_send"
                 android:visibility="gone"
                 app:layout_constraintBottom_toBottomOf="parent"
@@ -197,6 +202,8 @@
                 tools:ignore="ContentDescription" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
-    </com.google.android.material.card.MaterialCardView>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

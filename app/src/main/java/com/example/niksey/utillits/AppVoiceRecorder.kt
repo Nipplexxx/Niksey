@@ -85,8 +85,12 @@ class AppVoiceRecorder {
         }
     }
 
+    /**
+     * Файл записи. Расширение .m4a: кодек AAC в контейнере MPEG_4 — иначе некоторые
+     * плееры не могут определить формат по расширению .3gp и голосовое не играет.
+     */
     private fun createFileForRecord() {
-        mFile = File(APP_ACTIVITY.filesDir, "$mMessageKey.3gp")
+        mFile = File(APP_ACTIVITY.filesDir, "$mMessageKey.m4a")
         if (mFile.exists()) {
             mFile.delete()
         }

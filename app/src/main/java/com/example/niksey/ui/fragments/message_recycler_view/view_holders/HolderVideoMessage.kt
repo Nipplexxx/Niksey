@@ -1,9 +1,16 @@
 package com.example.niksey.ui.fragments.message_recycler_view.view_holders
 
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.RecyclerView
@@ -13,9 +20,23 @@ import com.example.niksey.utillits.showToast
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 import com.example.niksey.utillits.CURRENT_UID
 import com.example.niksey.utillits.asTime
+import com.example.niksey.utillits.media.MediaCache
 import com.google.android.material.card.MaterialCardView
 import de.hdodenhof.circleimageview.CircleImageView
+import java.io.File
+import java.util.concurrent.Executors
 
+/**
+ * Видеосообщение (круглое, как в Telegram).
+ *
+ * Как работает:
+ *  • Превью: настоящий первый кадр берётся MediaMetadataRetriever'ом из расшифрованного
+ *    файла в кэше. Пока файла нет — иконка-заглушка; после скачивания кадр подставится.
+ *  • Воспроизведение: ExoPlayer играет локальный файл из кэша (кэш → загрузка → расшифровка,
+ *    см. MediaRepository). Одновременно играет только одно видео ([currentPlayingHolder]).
+ *  • Длительность на плашке — из MediaMetadataRetriever, а не заглушка.
+ *  • thumbnail.tag защищает от подстановки кадра чужого видео в переиспользованную строку.
+ */
 class HolderVideoMessage(view: View) : RecyclerView.ViewHolder(view), MessageHolder {
 
     // === ИСХОДЯЩЕЕ ВИДЕО ===
@@ -36,10 +57,32 @@ class HolderVideoMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
 
     private var exoPlayer: ExoPlayer? = null
     private var currentUrl: String? = null
-    private var isPlaying = false
+
+    private val handler = Handler(Looper.getMainLooper())
+
+    /** Чтение метаданных видео — на фоне: retriever тяжелый, нельзя на главном потоке. */
+    private val metadataExecutor = Executors.newSingleThreadExecutor()
 
     companion object {
+        /** Играющее сейчас видео: только одно одновременно. */
         var currentPlayingHolder: HolderVideoMessage? = null
+
+        /** Путь → кадр-превью и длительность, чтобы не читать повторно при прокрутке. */
+        private val thumbnailCache = java.util.concurrent.ConcurrentHashMap<String, Bitmap>()
+        private val durationCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+        /** Поколение кэша, для которого заполнены миниатюры (см. MediaCache.clear). */
+        private var cachedGeneration = MediaCache.generation
+
+        /** Кэш медиа очищен: миниатюры по путям больше не соответствуют содержимому. */
+        fun invalidateCaches() {
+            cachedGeneration = MediaCache.generation
+            thumbnailCache.clear()
+            durationCache.clear()
+        }
+
+        /** true — записи ещё соответствуют текущему поколению кэша. */
+        private fun cachesValid(): Boolean = cachedGeneration == MediaCache.generation
     }
 
     override fun drawMessage(view: MessageView) {
@@ -55,17 +98,18 @@ class HolderVideoMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         blocReceivedVideo.visibility = View.GONE
 
         chatUserVideoTime.text = view.timeStamp.asTime()
-        chatUserVideoDuration.text = view.duration ?: "0:15"
 
         chatUserVideoThumbnail.visibility = View.VISIBLE
         userPlayerView.visibility = View.GONE
         chatUserVideoPlay.visibility = View.VISIBLE
 
-        // Загружаем реальный первый кадр
-        chatUserVideoThumbnail.setImageResource(R.drawable.ic_video) // превью не грузим: видео скачивается по нажатию
+        chatUserVideoThumbnail.setImageResource(R.drawable.ic_video)
+        loadThumbnailFor(view, chatUserVideoThumbnail, chatUserVideoDuration)
 
         val clickListener = View.OnClickListener {
-            MediaViews.withFile(view, { file -> togglePlayback(file.absolutePath, userPlayerView, chatUserVideoThumbnail, chatUserVideoPlay) }, { showToast("Видео недоступно") })
+            MediaViews.withFile(view, { file ->
+                togglePlayback(file.absolutePath, userPlayerView, chatUserVideoThumbnail, chatUserVideoPlay)
+            }, { showToast("Видео недоступно") })
         }
         chatUserVideoPlay.setOnClickListener(clickListener)
         blocUserVideo.setOnClickListener(clickListener)
@@ -76,19 +120,76 @@ class HolderVideoMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         blocReceivedVideo.visibility = View.VISIBLE
 
         chatReceivedVideoTime.text = view.timeStamp.asTime()
-        chatReceivedVideoDuration.text = view.duration ?: "0:15"
 
         chatReceivedVideoThumbnail.visibility = View.VISIBLE
         receivedPlayerView.visibility = View.GONE
         chatReceivedVideoPlay.visibility = View.VISIBLE
 
         chatReceivedVideoThumbnail.setImageResource(R.drawable.ic_video)
+        loadThumbnailFor(view, chatReceivedVideoThumbnail, chatReceivedVideoDuration)
 
         val clickListener = View.OnClickListener {
-            MediaViews.withFile(view, { file -> togglePlayback(file.absolutePath, receivedPlayerView, chatReceivedVideoThumbnail, chatReceivedVideoPlay) }, { showToast("Видео недоступно") })
+            MediaViews.withFile(view, { file ->
+                togglePlayback(file.absolutePath, receivedPlayerView, chatReceivedVideoThumbnail, chatReceivedVideoPlay)
+            }, { showToast("Видео недоступно") })
         }
         chatReceivedVideoPlay.setOnClickListener(clickListener)
         blocReceivedVideo.setOnClickListener(clickListener)
+    }
+
+    /**
+     * Подставляет первый кадр и длительность, когда файл появился в кэше.
+     * Если файла ещё нет (не скачан) — показываем заглушку; после скачивания холдер
+     * перерисуется через SecureMessaging.onDecryptedUpdate и кадр появится.
+     */
+    private fun loadThumbnailFor(message: MessageView, thumbnail: CircleImageView, durationView: TextView) {
+        MediaViews.withFile(message, { file ->
+            val path = file.absolutePath
+            thumbnail.tag = path
+
+            // Кэш медиа очищали — старые миниатюры больше не соответствуют файлам
+            if (!cachesValid()) invalidateCaches()
+
+            // Кэш строки: кадр и длительность уже читали для этого файла
+            thumbnailCache[path]?.let {
+                if (thumbnail.tag == path) thumbnail.setImageBitmap(it)
+            }
+            durationCache[path]?.let {
+                if (thumbnail.tag == path) durationView.text = it
+            }
+            if (thumbnailCache.containsKey(path) && durationCache.containsKey(path)) return@withFile
+
+            metadataExecutor.execute {
+                val retriever = MediaMetadataRetriever()
+                try {
+                    retriever.setDataSource(path)
+                    val frame: Bitmap? = retriever.frameAtTime
+                    val ms = retriever.extractMetadata(
+                        MediaMetadataRetriever.METADATA_KEY_DURATION
+                    )?.toLongOrNull() ?: 0L
+                    val durationText = formatDuration(ms)
+
+                    if (frame != null) thumbnailCache[path] = frame
+                    durationCache[path] = durationText
+
+                    handler.post {
+                        if (thumbnail.tag == path) {
+                            frame?.let { thumbnail.setImageBitmap(it) }
+                            durationView.text = durationText
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Битый файл: оставляем заглушку, чат не падает
+                } finally {
+                    runCatching { retriever.release() }
+                }
+            }
+        })
+    }
+
+    private fun formatDuration(ms: Long): String {
+        val totalSeconds = ms / 1000
+        return String.format("%d:%02d", totalSeconds / 60, totalSeconds % 60)
     }
 
     private fun togglePlayback(
@@ -97,46 +198,51 @@ class HolderVideoMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         thumbnail: CircleImageView,
         playButton: ImageView
     ) {
-        // Если уже играет это видео — пауза
-        if (exoPlayer?.isPlaying == true && currentUrl == url) {
-            exoPlayer?.pause()
-            isPlaying = false
-            playButton.visibility = View.VISIBLE
+        // Если это же видео играет — пауза
+        if (currentUrl == url && exoPlayer != null) {
+            if (exoPlayer?.isPlaying == true) {
+                exoPlayer?.pause()
+                playButton.visibility = View.VISIBLE
+            } else {
+                exoPlayer?.play()
+                playButton.visibility = View.GONE
+            }
             return
         }
 
-        // Останавливаем предыдущее видео
+        // Останавливаем предыдущее видео (играет только одно одновременно)
         currentPlayingHolder?.let { previous ->
             if (previous != this) previous.stopCurrentPlayback()
         }
         currentPlayingHolder = this
 
-        // Если новое видео
-        if (currentUrl != url || exoPlayer == null) {
-            releasePlayer()
+        // Новое видео: пересоздаём плеер
+        releasePlayer()
 
-            exoPlayer = ExoPlayer.Builder(itemView.context).build().apply {
-                setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(java.io.File(url))))
-                prepare()
-                playWhenReady = true
-            }
-
-            playerView.player = exoPlayer
-            currentUrl = url
-        } else {
-            exoPlayer?.play()
+        exoPlayer = ExoPlayer.Builder(itemView.context).build().apply {
+            setMediaItem(MediaItem.fromUri(Uri.fromFile(File(url))))
+            // Битый/неполный файл: возвращаем строку к превью, чат не остаётся
+            // в «зависшем» состоянии плеера без возможности нажать play заново
+            addListener(object : Player.Listener {
+                override fun onPlayerError(error: PlaybackException) {
+                    showToast("Видео недоступно: ${error.errorCodeName}")
+                    stopCurrentPlayback()
+                }
+            })
+            prepare()
+            playWhenReady = true
         }
+        playerView.player = exoPlayer
+        currentUrl = url
 
-        // Переключаем UI
+        // Переключаем UI: превью уходит, видео появляется
         thumbnail.visibility = View.GONE
         playerView.visibility = View.VISIBLE
         playButton.visibility = View.GONE
-        isPlaying = true
     }
 
-    private fun stopCurrentPlayback() {
+    fun stopCurrentPlayback() {
         exoPlayer?.pause()
-        isPlaying = false
 
         if (blocUserVideo.visibility == View.VISIBLE) {
             chatUserVideoThumbnail.visibility = View.VISIBLE
@@ -153,10 +259,10 @@ class HolderVideoMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         exoPlayer?.release()
         exoPlayer = null
         currentUrl = null
-        isPlaying = false
     }
 
     override fun onDetach() {
+        if (currentPlayingHolder == this) currentPlayingHolder = null
         stopCurrentPlayback()
         releasePlayer()
     }

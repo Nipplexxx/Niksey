@@ -78,6 +78,7 @@
     <string name="group_name">Group name</string>
     <string name="group_name_updated">Group name updated</string>
     <string name="group_settings">Group settings</string>
+    <string name="participants">Participants</string>
     <string name="participant_removed">Participant removed</string>
     <string name="save">Save</string>
 
@@ -154,4 +155,7 @@
         <item quantity="other">%d participants</item>
     </plurals>
 
+    <string name="profile_send_message">Send message</string>
+    <string name="you_prefix">You: </string>
+    <string name="group_creator_badge">owner</string>
 </resources>

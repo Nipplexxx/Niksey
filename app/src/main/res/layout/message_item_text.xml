@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Текстовое сообщение: стеклянный пузырь, время под ним -->
+<!-- Текстовое сообщение: стеклянный пузырь, время под ним (как в Telegram, но в своём стиле) -->
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingHorizontal="12dp"
-    android:paddingVertical="3dp">
+    android:paddingHorizontal="10dp"
+    android:paddingVertical="4dp">
 
     <!-- ==================== ИСХОДЯЩЕЕ (violet) ==================== -->
     <com.google.android.material.card.MaterialCardView
@@ -65,7 +65,7 @@
         android:layout_marginTop="3dp"
         android:layout_marginEnd="6dp"
         android:fontFamily="@font/manrope"
-        android:textColor="@color/text_secondary"
+        android:textColor="@color/text_hint"
         android:textSize="11sp"
         app:layout_constraintEnd_toEndOf="@id/bloc_user_message"
         app:layout_constraintTop_toBottomOf="@id/bloc_user_message" />
@@ -127,7 +127,7 @@
         android:layout_marginTop="3dp"
         android:layout_marginStart="6dp"
         android:fontFamily="@font/manrope"
-        android:textColor="@color/text_secondary"
+        android:textColor="@color/text_hint"
         android:textSize="11sp"
         app:layout_constraintStart_toStartOf="@id/bloc_received_message"
         app:layout_constraintTop_toBottomOf="@id/bloc_received_message" />

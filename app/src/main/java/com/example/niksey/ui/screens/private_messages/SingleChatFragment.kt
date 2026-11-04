@@ -49,6 +49,7 @@ import com.example.niksey.ui.screens.base_fragment.BaseFragment
 import com.example.niksey.ui.screens.main_list.MainListFragment
 import com.example.niksey.ui.viewmodels.ChatViewModel
 import com.example.niksey.utillits.*
+import com.example.niksey.utillits.media.MediaRepository
 import com.example.niksey.utillits.signal.SecureMessaging
 import com.example.niksey.utillits.cache.ContentCache
 import com.example.niksey.utillits.signal.SignalManager
@@ -57,7 +58,8 @@ import com.google.firebase.database.DatabaseReference
 import de.hdodenhof.circleimageview.CircleImageView
 import java.io.File
 
-class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
+class SingleChatFragment : BaseFragment(R.layout.fragment_chat),
+    com.example.niksey.ui.fragments.message_recycler_view.view_holders.ChatHost {
 
     private val viewModel: ChatViewModel by viewModels()
     private var contactId: String = ""
@@ -88,6 +90,17 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
     // Первая загрузка сообщений прокручивает к последнему; дальше — только когда пользователь у низа
     private var initialScrollDone = false
 
+    /**
+     * Запоминает время открытия чата: по нему список чатов считает непрочитанные
+     * (чужие сообщения, пришедшие позже метки, считаются новыми).
+     */
+    private fun markChatAsRead(chatId: String) {
+        APP_ACTIVITY.getSharedPreferences(
+            com.example.niksey.ui.viewmodels.MainListViewModel.PREFS_LAST_OPENED,
+            android.content.Context.MODE_PRIVATE
+        ).edit().putLong(chatId, System.currentTimeMillis()).apply()
+    }
+
     // ==================== REPLY SYSTEM ====================
     private var replyingToMessageId: String? = null
     private var replyingToText: String? = null
@@ -114,7 +127,12 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
     private fun initLaunchers() {
         pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri?.let {
-                uploadFileToStorage(it, getMessageKey(contactId), contactId, TYPE_MESSAGE_IMAGE) {
+                // Тип вложения — по реальному MIME-типу: галерея может отдать видео
+                val mime = try {
+                    requireContext().contentResolver.getType(uri).orEmpty()
+                } catch (e: Exception) { "" }
+                val type = if (mime.startsWith("video")) TYPE_MESSAGE_VIDEO else TYPE_MESSAGE_IMAGE
+                uploadFileToStorage(it, getMessageKey(contactId), contactId, type) {
                     viewModel.reloadMessages()
                 }
             }
@@ -135,7 +153,17 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
             if (result.resultCode == Activity.RESULT_OK) {
                 val uri = result.data?.data ?: return@registerForActivityResult
                 val filename = getFilenameFromUri(uri)
-                uploadFileToStorage(uri, getMessageKey(contactId), contactId, TYPE_MESSAGE_FILE, filename) {
+                // Тип по MIME: пользователь мог выбрать видео/картинку через «Файл»
+                val mime = try {
+                    requireContext().contentResolver.getType(uri).orEmpty()
+                } catch (e: Exception) { "" }
+                val type = when {
+                    mime.startsWith("video") -> TYPE_MESSAGE_VIDEO
+                    mime.startsWith("image") -> TYPE_MESSAGE_IMAGE
+                    mime.startsWith("audio") -> TYPE_MESSAGE_VOICE
+                    else -> TYPE_MESSAGE_FILE
+                }
+                uploadFileToStorage(uri, getMessageKey(contactId), contactId, type, filename) {
                     viewModel.reloadMessages()
                 }
             }
@@ -146,6 +174,11 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
         super.onResume()
         APP_ACTIVITY.mAppDrawer.setToolbarVisible(false)
         SecureMessaging.onDecryptedUpdate = { mAdapter?.notifyDataSetChanged() }
+        // Медиа скачалось и расшифровалось в кэш — перерисовываем список (появятся
+        // картинки, длительности голосовых, миниатюры видео)
+        MediaRepository.onMediaReady = { mAdapter?.notifyDataSetChanged() }
+        // Чат открыт: помечаем прочитанным — счётчик в списке чатов обнулится
+        markChatAsRead(contactId)
         bindIdentityBanner(listOf(contactId))
         if (contactId.isBlank()) {
             showToast("Ошибка: контакт не найден")
@@ -212,9 +245,47 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
             mChatBtnSendMessage?.visibility = if (isEmpty) View.GONE else View.VISIBLE
             mChatBtnAttach?.visibility = if (isEmpty) View.VISIBLE else View.GONE
             mChatBtnVoice?.visibility = if (isEmpty) View.VISIBLE else View.GONE
+            // Шлём собеседнику «печатает…» (с троттлингом: не чаще раза в 3 сек)
+            notifyTyping(isEmpty)
         })
 
         setupVoiceAndVideoRecording()
+    }
+
+    // ==================== «ПЕЧАТАЕТ…» ====================
+
+    /**
+     * Пока пользователь печатает — в базу пишется состояние «prints» (собеседник видит
+     * «печатает…»). Пишем не чаще раза в 3 секунды, а через 4 секунды тишины
+     * возвращаем «online», чтобы состояние не зависало навсегда.
+     */
+    private var lastTypingSent = 0L
+    private var typingReset: Runnable? = null
+
+    private fun notifyTyping(inputEmpty: Boolean) {
+        val now = System.currentTimeMillis()
+        if (inputEmpty) {
+            // Текст стёрли — сразу возвращаем «online»
+            typingReset?.let { handler.removeCallbacks(it) }
+            if (lastTypingSent != 0L) {
+                lastTypingSent = 0L
+                AppStates.updateState(AppStates.ONLINE)
+            }
+            return
+        }
+
+        if (now - lastTypingSent < TYPING_THROTTLE_MS) return
+        lastTypingSent = now
+        AppStates.updateState(AppStates.TYPING)
+
+        typingReset?.let { handler.removeCallbacks(it) }
+        typingReset = Runnable {
+            // Пауза в печати: не оставляем «печатает…» висеть бесконечно
+            if (lastTypingSent != 0L) {
+                lastTypingSent = 0L
+                AppStates.updateState(AppStates.ONLINE)
+            }
+        }.also { handler.postDelayed(it, TYPING_RESET_MS) }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -389,6 +460,7 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
         mToolbarInfo?.findViewById<CircleImageView>(R.id.toolbar_chat_image)?.downloadAndSetImage(user.photoUrl)
         val status = when {
             user.state == "online" -> "онлайн"
+            user.state == "prints" -> "печатает…"
             user.state == "recording" -> "записывает голосовое..."
             else -> user.getStateText()
         }
@@ -398,7 +470,7 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
 
     // ==================== REPLY SYSTEM ====================
 
-    fun startReply(messageId: String, messageText: String, fromUser: String) {
+    override fun startReply(messageId: String, messageText: String, fromUser: String) {
         replyingToMessageId = messageId
         replyingToText = messageText.take(70) + if (messageText.length > 70) "..." else ""
         showReplyPreview(fromUser)
@@ -423,13 +495,17 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
     // ==================== ПУБЛИЧНЫЕ МЕТОДЫ ====================
 
     private fun attach() {
-        val options = arrayOf("Выбрать из галереи", "Сделать снимок")
+        val options = arrayOf("Фото из галереи", "Сделать снимок", "Файл", "Видео из галереи")
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("Прикрепить фото")
+            .setTitle("Прикрепить")
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> pickImageLauncher.launch("image/*")
                     1 -> takePhoto()
+                    2 -> pickFileLauncher.launch(
+                        Intent(Intent.ACTION_GET_CONTENT).apply { type = "*/*" }
+                    )
+                    3 -> pickImageLauncher.launch("video/*")
                 }
             }
             .show()
@@ -453,7 +529,7 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
         }
     }
 
-    fun deleteMessage(messageId: String, fromUserId: String) {
+    override fun deleteMessage(messageId: String, fromUserId: String) {
         val path1 = "$NODE_MESSAGES/$CURRENT_UID/$fromUserId/$messageId"
         val path2 = "$NODE_MESSAGES/$fromUserId/$CURRENT_UID/$messageId"
 
@@ -468,7 +544,7 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
             }
     }
 
-    fun scrollToMessage(messageId: String) {
+    override fun scrollToMessage(messageId: String) {
         val messages = viewModel.messages.value ?: return
         val position = messages.indexOfFirst { it.id == messageId }
         if (position >= 0) {
@@ -481,6 +557,7 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
     override fun onPause() {
         super.onPause()
         SecureMessaging.onDecryptedUpdate = null
+        MediaRepository.onMediaReady = null
         ChatEncryptionManager.currentConversationId = null
         try {
             mToolbarInfo?.visibility = View.GONE
@@ -521,5 +598,9 @@ class SingleChatFragment : BaseFragment(R.layout.fragment_chat) {
                 arguments = Bundle().apply { putString("contact_id", contactId) }
             }
         }
+
+        /** Как часто шлём состояние «печатает…» и через сколько тишины его снимаем. */
+        private const val TYPING_THROTTLE_MS = 3_000L
+        private const val TYPING_RESET_MS = 4_000L
     }
 }

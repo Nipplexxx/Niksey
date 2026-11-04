@@ -1,15 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Информация о группе: стеклянная шапка, карточка группы, список участников в стеклянной панели. -->
+<!-- Информация о группе: стеклянная шапка, карточка группы, список участников.
+     ScrollView: на маленьких экранах участники прокручиваются вместе с шапкой, пустых зон нет. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bg_screen_backdrop"
-    android:orientation="vertical"
-    android:paddingHorizontal="16dp"
-    android:paddingTop="8dp"
-    android:paddingBottom="16dp">
+    android:orientation="vertical">
 
     <include
         android:id="@+id/group_info_header"
@@ -17,109 +15,150 @@
         android:layout_width="match_parent"
         android:layout_height="64dp" />
 
-    <!-- Карточка группы: фото, название, число участников -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:background="@drawable/bg_glass_panel"
-        android:gravity="center_horizontal"
-        android:orientation="vertical"
-        android:paddingHorizontal="20dp"
-        android:paddingTop="24dp"
-        android:paddingBottom="20dp">
-
-        <de.hdodenhof.circleimageview.CircleImageView
-            android:id="@+id/group_info_photo"
-            android:layout_width="104dp"
-            android:layout_height="104dp"
-            android:src="@drawable/ic_group"
-            app:civ_border_color="@color/accent_cyan"
-            app:civ_border_width="2dp" />
-
-        <TextView
-            android:id="@+id/group_info_name"
-            style="@style/NikseyTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:gravity="center"
-            android:maxLines="2" />
-
-        <TextView
-            android:id="@+id/group_info_members"
-            style="@style/NikseySubtitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp" />
-
-        <!-- Редактирование: только создатель -->
-        <LinearLayout
-            android:id="@+id/group_edit_panel"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <EditText
-                android:id="@+id/group_name_edit"
-                style="@style/NikseyInputText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:autofillHints="auto"
-                android:background="@drawable/bg_input_glass"
-                android:hint="@string/group_name"
-                android:padding="14dp"
-                tools:ignore="TextFields" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_save_name"
-                style="@style/NikseyButtonPrimary"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="@string/save" />
-
-        </LinearLayout>
-
-    </LinearLayout>
-
-    <TextView
-        style="@style/NikseyCaption"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:layout_marginStart="4dp"
-        android:text="@string/group_participants_title" />
-
-    <!-- Список участников в стеклянной панели -->
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/bg_glass_panel"
-        android:orientation="vertical"
-        android:padding="8dp">
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="16dp"
+        android:scrollbars="none">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/participants_recycler"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:padding="4dp"
-            android:scrollbars="none" />
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-    </LinearLayout>
+            <!-- Карточка группы: фото, название, число участников -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_glass_panel"
+                android:gravity="center_horizontal"
+                android:orientation="vertical"
+                android:paddingHorizontal="20dp"
+                android:paddingTop="18dp"
+                android:paddingBottom="18dp">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_add_participants"
-        style="@style/NikseyButtonGlass"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/add_participants"
-        android:visibility="gone" />
+                <FrameLayout
+                    android:layout_width="104dp"
+                    android:layout_height="104dp">
+
+                    <de.hdodenhof.circleimageview.CircleImageView
+                        android:id="@+id/group_info_photo"
+                        android:layout_width="104dp"
+                        android:layout_height="104dp"
+                        android:src="@drawable/ic_group"
+                        app:civ_border_color="@color/accent_cyan"
+                        app:civ_border_width="2dp" />
+
+                    <!-- Подсказка «сменить фото»: видна только создателю (управляется из кода) -->
+                    <ImageView
+                        android:id="@+id/group_info_photo_edit"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_gravity="bottom|end"
+                        android:background="@drawable/bg_glass_bar"
+                        android:contentDescription="@string/todo"
+                        android:padding="7dp"
+                        android:src="@drawable/ic_camera"
+                        android:tint="@color/text_primary"
+                        android:visibility="gone"
+                        tools:visibility="visible" />
+
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/group_info_name"
+                    style="@style/NikseyTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:gravity="center"
+                    android:maxLines="2" />
+
+                <TextView
+                    android:id="@+id/group_info_members"
+                    style="@style/NikseySubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp" />
+
+                <!-- Редактирование: только создатель -->
+                <LinearLayout
+                    android:id="@+id/group_edit_panel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <EditText
+                        android:id="@+id/group_name_edit"
+                        style="@style/NikseyInputText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:autofillHints="auto"
+                        android:background="@drawable/bg_input_glass"
+                        android:hint="@string/group_name"
+                        android:padding="14dp"
+                        tools:ignore="TextFields" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_save_name"
+                        style="@style/NikseyButtonPrimary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/save" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Список участников в стеклянной панели -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/bg_glass_panel"
+                android:orientation="vertical"
+                android:padding="8dp">
+
+                <TextView
+                    style="@style/NikseyCaption"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="4dp"
+                    android:text="@string/group_participants_title" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/participants_recycler"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never"
+                    android:padding="4dp"
+                    android:scrollbars="none"
+                    tools:itemCount="4" />
+
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_add_participants"
+                style="@style/NikseyButtonGlass"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="@string/add_participants"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </ScrollView>
 
 </LinearLayout>

@@ -15,10 +15,24 @@ import com.example.niksey.R
 import com.example.niksey.ui.fragments.message_recycler_view.views.MessageView
 import com.example.niksey.utillits.CURRENT_UID
 import com.example.niksey.utillits.asTime
+import com.example.niksey.utillits.media.MediaCache
 import com.example.niksey.utillits.media.MediaViews
 import com.google.android.material.card.MaterialCardView
 import kotlin.math.sin
 
+/**
+ * Голосовое сообщение: плеер с кнопкой play/pause, волной, прогрессом и длительностью.
+ *
+ * Как устроено воспроизведение:
+ *  • Голосовое физически лежит в зашифрованном кэше; путь даёт MediaViews.withFile
+ *    (кэш → загрузка → расшифровка, см. MediaRepository).
+ *  • Одновременно играет только одно сообщение: [currentPlayingHolder] останавливает
+ *    предыдущее (как в Telegram).
+ *  • Длительность читается один раз и кэшируется по пути файла; строка могла быть
+ *    переиспользована при прокрутке, поэтому результат пишется только если tag совпадает.
+ *  • onDetach/onRecycled освобождают MediaPlayer и Visualizer — иначе звук продолжал бы
+ *    играть после ухода строки с экрана.
+ */
 class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHolder {
 
     // === ИСХОДЯЩЕЕ ===
@@ -60,14 +74,37 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
     private var currentUrl: String? = null
     private var waveAnimator: ValueAnimator? = null
 
+    /** Сообщение, привязанное к этой строке (нужно для кликов). */
+    private var boundMessage: MessageView? = null
+
     companion object {
+        /** Играющее сейчас голосовое: только одно одновременно. */
         var currentPlayingHolder: HolderVoiceMessage? = null
 
         /** url → длительность в формате m:ss, чтобы не открывать каждое голосовое повторно. */
         private val durationCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+        /** Поколение кэша, для которого посчитаны длительности (см. MediaCache.clear). */
+        @Volatile
+        private var cachedGeneration = MediaCache.generation
+
+        /** Кэш медиа очищен: длительности по путям пересчитаются заново. */
+        fun invalidateCaches() {
+            cachedGeneration = MediaCache.generation
+            durationCache.clear()
+        }
+
+        private fun cachesValid(): Boolean = cachedGeneration == MediaCache.generation
+
+        /**
+         * Один исполнитель для чтения длительностей. Раньше на каждую строку списка
+         * создавался свой Thread — при прокрутке их могло быть десятки одновременно.
+         */
+        private val durationExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
     }
 
     override fun drawMessage(view: MessageView) {
+        boundMessage = view
         if (view.from == CURRENT_UID) {
             showUserVoice(view)
         } else {
@@ -78,24 +115,36 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
     private fun showUserVoice(view: MessageView) {
         blocUserVoice.visibility = View.VISIBLE
         blocReceivedVoice.visibility = View.GONE
-        // currentUrl задаётся при воспроизведении (путь к локальному файлу)
         chatUserVoiceTime.text = view.timeStamp.asTime()
-        MediaViews.withFile(view, { file -> preloadDuration(file.absolutePath, chatUserVoiceDuration) })
+        preloadDurationFor(view, chatUserVoiceDuration)
     }
 
     private fun showReceivedVoice(view: MessageView) {
         blocUserVoice.visibility = View.GONE
         blocReceivedVoice.visibility = View.VISIBLE
-        // currentUrl задаётся при воспроизведении (путь к локальному файлу)
         chatReceivedVoiceTime.text = view.timeStamp.asTime()
-        MediaViews.withFile(view, { file -> preloadDuration(file.absolutePath, chatReceivedVoiceDuration) })
+        preloadDurationFor(view, chatReceivedVoiceDuration)
     }
 
-    private fun preloadDuration(url: String, durationTextView: TextView) {
-        // Длительность уже известна (строка переиспользуется при прокрутке) — не запускаем плеер заново
-        durationCache[url]?.let { durationTextView.text = it; return }
+    /** Длительность асинхронная: tag защищает от записи в переиспользованную строку. */
+    private fun preloadDurationFor(message: MessageView, durationView: TextView) {
+        MediaViews.withFile(message, { file ->
+            val path = file.absolutePath
+            durationView.tag = path
+            preloadDuration(path) { loaded ->
+                if (durationView.tag == path) durationView.text = loaded
+            }
+        })
+    }
 
-        Thread {
+    private fun preloadDuration(url: String, onLoaded: (String) -> Unit) {
+        // Кэш медиа очищали — старые длительности больше не соответствуют файлам
+        if (!cachesValid()) invalidateCaches()
+
+        // Длительность уже известна (строка переиспользуется при прокрутке) — не запускаем плеер заново
+        durationCache[url]?.let { onLoaded(it); return }
+
+        durationExecutor.execute {
             try {
                 val tempPlayer = MediaPlayer().apply {
                     setDataSource(url)
@@ -104,21 +153,22 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
                     val seconds = (duration / 1000) % 60
                     val durationText = String.format("%d:%02d", minutes, seconds)
                     durationCache[url] = durationText
-                    handler.post { durationTextView.text = durationText }
+                    handler.post { onLoaded(durationText) }
                     release()
                 }
             } catch (e: Exception) {
-                handler.post { durationTextView.text = "0:00" }
+                handler.post { onLoaded("0:00") }
             }
-        }.start()
+        }
     }
 
     override fun onAttach(view: MessageView) {
+        boundMessage = view
         chatUserVoicePlay.setOnClickListener {
-            togglePlayback(view, chatUserVoicePlay, chatUserVoiceSeekBar, userWaveBars, true)
+            togglePlayback(view, chatUserVoicePlay, chatUserVoiceSeekBar, userWaveBars)
         }
         chatReceivedVoicePlay.setOnClickListener {
-            togglePlayback(view, chatReceivedVoicePlay, chatReceivedVoiceSeekBar, receivedWaveBars, false)
+            togglePlayback(view, chatReceivedVoicePlay, chatReceivedVoiceSeekBar, receivedWaveBars)
         }
 
         chatUserVoiceSeekBar.setOnSeekBarChangeListener(seekBarListener)
@@ -135,14 +185,19 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         override fun onStopTrackingTouch(seekBar: SeekBar?) {}
     }
 
+    /**
+     * Нажатие play/pause. Файл берётся из кэша асинхронно; нажатие до готовности
+     * просто игнорируется (пользователь нажмёт ещё раз, когда файл появится).
+     */
     private fun togglePlayback(
         messageView: MessageView,
         playBtn: ImageView,
         seekBar: SeekBar,
-        bars: List<View>,
-        isUser: Boolean
+        bars: List<View>
     ) {
-        MediaViews.withFile(messageView, { file -> playFile(file.absolutePath, messageView, playBtn, seekBar, bars, isUser) })
+        MediaViews.withFile(messageView, { file ->
+            playFile(file.absolutePath, messageView, playBtn, seekBar, bars)
+        })
     }
 
     private fun playFile(
@@ -150,64 +205,76 @@ class HolderVoiceMessage(view: View) : RecyclerView.ViewHolder(view), MessageHol
         messageView: MessageView,
         playBtn: ImageView,
         seekBar: SeekBar,
-        bars: List<View>,
-        isUser: Boolean
+        bars: List<View>
     ) {
-
-        // Если уже играет это же сообщение — пауза
-        if (mediaPlayer?.isPlaying == true && currentUrl == url) {
-            mediaPlayer?.pause()
-            isPlaying = false
-            playBtn.setImageResource(if (isUser) R.drawable.ic_voice_play else R.drawable.ic_voice_play)
-            stopWaveAnimation(bars)
-            stopVisualizer()
-            handler.removeCallbacks(updateSeekBar)
+        // Если это же сообщение уже играет — пауза
+        if (currentUrl == url && mediaPlayer != null) {
+            if (mediaPlayer?.isPlaying == true) {
+                mediaPlayer?.pause()
+                isPlaying = false
+                playBtn.setImageResource(R.drawable.ic_voice_play)
+                stopWaveAnimation(bars)
+                stopVisualizer()
+                handler.removeCallbacks(updateSeekBar)
+            } else {
+                resumePlayback(playBtn, seekBar, bars)
+            }
             return
         }
 
-        // Останавливаем предыдущее сообщение
+        // Останавливаем предыдущее сообщение (играет только одно одновременно)
         currentPlayingHolder?.let { previous ->
             if (previous != this) previous.pauseCurrentPlayback()
         }
         currentPlayingHolder = this
 
-        // Если новое сообщение или первый запуск
-        if (currentUrl != url || mediaPlayer == null) {
-            releaseMediaPlayer()
+        // Новое сообщение: пересоздаём плеер
+        releaseMediaPlayer()
 
-            mediaPlayer = MediaPlayer().apply {
-                setDataSource(url)
-                prepareAsync()
-                setOnPreparedListener {
-                    start()
-                    this@HolderVoiceMessage.isPlaying = true
-                    playBtn.setImageResource(if (isUser) R.drawable.ic_voice_pause else R.drawable.ic_voice_pause)
-                    seekBar.max = duration
-                    startWaveAnimation(bars)
-                    startVisualizer(bars)
-                    handler.post(updateSeekBar)
-                }
-                setOnCompletionListener {
-                    this@HolderVoiceMessage.isPlaying = false
-                    playBtn.setImageResource(if (isUser) R.drawable.ic_voice_play else R.drawable.ic_voice_play)
-                    seekBar.progress = 0
-                    stopWaveAnimation(bars)
-                    stopVisualizer()
-                    handler.removeCallbacks(updateSeekBar)
-                    currentPlayingHolder = null
-                }
+        mediaPlayer = MediaPlayer().apply {
+            setDataSource(url)
+            setOnPreparedListener {
+                start()
+                this@HolderVoiceMessage.isPlaying = true
+                playBtn.setImageResource(R.drawable.ic_voice_pause)
+                seekBar.max = duration
+                seekBar.progress = 0
+                startWaveAnimation(bars)
+                startVisualizer(bars)
+                handler.post(updateSeekBar)
             }
-        } else {
-            mediaPlayer?.start()
-            isPlaying = true
-            playBtn.setImageResource(if (isUser) R.drawable.ic_voice_pause else R.drawable.ic_voice_pause)
-            startWaveAnimation(bars)
-            startVisualizer(bars)
-            handler.post(updateSeekBar)
+            setOnCompletionListener {
+                this@HolderVoiceMessage.isPlaying = false
+                playBtn.setImageResource(R.drawable.ic_voice_play)
+                seekBar.progress = 0
+                stopWaveAnimation(bars)
+                stopVisualizer()
+                handler.removeCallbacks(updateSeekBar)
+                // Дослушали: следующее нажатие начнёт с нуля
+                currentPlayingHolder = null
+                releaseMediaPlayer()
+                currentUrl = null
+            }
+            setOnErrorListener { _, _, _ ->
+                playBtn.setImageResource(R.drawable.ic_voice_play)
+                true
+            }
+            prepareAsync()
         }
         currentUrl = url
     }
 
+    /** Возобновление после паузы (тот же файл, плеер уже готов). */
+    private fun resumePlayback(playBtn: ImageView, seekBar: SeekBar, bars: List<View>) {
+        mediaPlayer?.start()
+        isPlaying = true
+        playBtn.setImageResource(R.drawable.ic_voice_pause)
+        startWaveAnimation(bars)
+        startVisualizer(bars)
+        handler.post(updateSeekBar)
+    }
+
+    /** Останавливает это сообщение, если играет его (вызывается из другой строки). */
     fun pauseCurrentPlayback() {
         mediaPlayer?.pause()
         isPlaying = false
